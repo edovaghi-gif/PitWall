@@ -1,0 +1,69 @@
+{
+  "name": "Suzuka International Racing Course",
+  "corners": [
+    {
+      "id": 1,
+      "name": "S Curves",
+      "sector": 1,
+      "desc": "La sequenza più iconica della F1: cambi di direzione ad altissima velocità.",
+      "speed": "255 km/h",
+      "g": "4.8G",
+      "pointIndex": 8
+    },
+    {
+      "id": 2,
+      "name": "Degner",
+      "sector": 1,
+      "desc": "Curva cieca dopo il tunnel, richiede coraggio massimo.",
+      "speed": "165 km/h",
+      "g": "4.1G",
+      "pointIndex": 22
+    },
+    {
+      "id": 3,
+      "name": "Hairpin",
+      "sector": 2,
+      "desc": "La curva più lenta del circuito, fondamentale per la trazione in uscita.",
+      "speed": "55 km/h",
+      "g": "2.5G",
+      "pointIndex": 42
+    },
+    {
+      "id": 4,
+      "name": "Spoon",
+      "sector": 2,
+      "desc": "Curva a cucchiaio ad alta velocità, test estremo per il bilanciamento.",
+      "speed": "215 km/h",
+      "g": "4.6G",
+      "pointIndex": 62
+    },
+    {
+      "id": 5,
+      "name": "130R",
+      "sector": 3,
+      "desc": "Una delle curve più veloci della F1. Leggendaria.",
+      "speed": "295 km/h",
+      "g": "5.2G",
+      "pointIndex": 80
+    }
+  ],
+  "dna": {
+    "tipo": "Permanente",
+    "usuraGomme": "Alta",
+    "importanzaQualifica": "Alta",
+    "safetyCar": "3 su ultimi 10 GP",
+    "sorpassi": "Rari"
+  },
+  "lapRecord": {
+    "time": "1:30.965",
+    "driver": "Andrea Kimi Antonelli",
+    "team": "Mercedes",
+    "year": 2025
+  },
+  "qualiRecord": {
+    "time": "1:26.983",
+    "driver": "Max Verstappen",
+    "team": "Red Bull",
+    "year": 2025
+  }
+}

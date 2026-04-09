@@ -1,0 +1,69 @@
+{
+  "name": "Jeddah Corniche Circuit",
+  "corners": [
+    {
+      "id": 1,
+      "name": "Curva 1",
+      "sector": 1,
+      "desc": "Prima curva del circuito cittadino più veloce del calendario.",
+      "speed": "185 km/h",
+      "g": "3.9G",
+      "pointIndex": 5
+    },
+    {
+      "id": 2,
+      "name": "Curva 4",
+      "sector": 1,
+      "desc": "Sequenza cieca ad alta velocità, uno dei tratti più adrenalinici in F1.",
+      "speed": "270 km/h",
+      "g": "4.5G",
+      "pointIndex": 18
+    },
+    {
+      "id": 3,
+      "name": "Curva 13",
+      "sector": 2,
+      "desc": "Chicane lenta vicino alle barriere, zona di contatto frequente.",
+      "speed": "75 km/h",
+      "g": "3.1G",
+      "pointIndex": 40
+    },
+    {
+      "id": 4,
+      "name": "Curva 22",
+      "sector": 2,
+      "desc": "Curva veloce sul lungomare, visuale spettacolare sul Mar Rosso.",
+      "speed": "295 km/h",
+      "g": "4.8G",
+      "pointIndex": 62
+    },
+    {
+      "id": 5,
+      "name": "Curva 27",
+      "sector": 3,
+      "desc": "Ultima chicane prima del lungo rettilineo finale.",
+      "speed": "110 km/h",
+      "g": "3.3G",
+      "pointIndex": 82
+    }
+  ],
+  "dna": {
+    "tipo": "Cittadino",
+    "usuraGomme": "Bassa",
+    "importanzaQualifica": "Altissima",
+    "safetyCar": "8 su ultimi 10 GP",
+    "sorpassi": "Rari"
+  },
+  "lapRecord": {
+    "time": "1:30.734",
+    "driver": "Lewis Hamilton",
+    "team": "Mercedes",
+    "year": 2021
+  },
+  "qualiRecord": {
+    "time": "1:27.294",
+    "driver": "Max Verstappen",
+    "team": "Red Bull",
+    "year": 2025
+  }
+}

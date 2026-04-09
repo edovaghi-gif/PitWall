@@ -1,0 +1,69 @@
+{
+  "name": "Shanghai International Circuit",
+  "corners": [
+    {
+      "id": 1,
+      "name": "Curva 1-2",
+      "sector": 1,
+      "desc": "Doppia curva ad alta velocità a forma di spirale, unica al mondo.",
+      "speed": "195 km/h",
+      "g": "4.3G",
+      "pointIndex": 8
+    },
+    {
+      "id": 2,
+      "name": "Curva 6",
+      "sector": 1,
+      "desc": "Hairpin lento dopo una lunga frenata, zona di sorpasso chiave.",
+      "speed": "65 km/h",
+      "g": "3.0G",
+      "pointIndex": 25
+    },
+    {
+      "id": 3,
+      "name": "Curva 8",
+      "sector": 2,
+      "desc": "Curva veloce che porta sul lungo back straight.",
+      "speed": "235 km/h",
+      "g": "4.0G",
+      "pointIndex": 45
+    },
+    {
+      "id": 4,
+      "name": "Curva 11",
+      "sector": 2,
+      "desc": "Chicane tecnica nel settore centrale.",
+      "speed": "145 km/h",
+      "g": "3.5G",
+      "pointIndex": 62
+    },
+    {
+      "id": 5,
+      "name": "Curva 14",
+      "sector": 3,
+      "desc": "Sequenza finale prima del rettilineo del traguardo.",
+      "speed": "175 km/h",
+      "g": "3.8G",
+      "pointIndex": 82
+    }
+  ],
+  "dna": {
+    "tipo": "Permanente",
+    "usuraGomme": "Media",
+    "importanzaQualifica": "Media",
+    "safetyCar": "4 su ultimi 10 GP",
+    "sorpassi": "Frequenti"
+  },
+  "lapRecord": {
+    "time": "1:32.238",
+    "driver": "Michael Schumacher",
+    "team": "Ferrari",
+    "year": 2004
+  },
+  "qualiRecord": {
+    "time": "1:30.641",
+    "driver": "Oscar Piastri",
+    "team": "McLaren",
+    "year": 2025
+  }
+}

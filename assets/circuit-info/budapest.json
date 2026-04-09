@@ -1,0 +1,69 @@
+{
+  "name": "Hungaroring",
+  "corners": [
+    {
+      "id": 1,
+      "name": "Curva 1",
+      "sector": 1,
+      "desc": "Staccata pesante, unica zona di sorpasso del circuito.",
+      "speed": "80 km/h",
+      "g": "3.6G",
+      "pointIndex": 5
+    },
+    {
+      "id": 2,
+      "name": "Curva 4",
+      "sector": 1,
+      "desc": "Tornantino lento, richiede massima trazione in uscita.",
+      "speed": "60 km/h",
+      "g": "2.8G",
+      "pointIndex": 20
+    },
+    {
+      "id": 3,
+      "name": "Curva 8",
+      "sector": 2,
+      "desc": "Curva ad alta velocità nella valle, poco grip storicamente.",
+      "speed": "185 km/h",
+      "g": "4.0G",
+      "pointIndex": 45
+    },
+    {
+      "id": 4,
+      "name": "Curva 11",
+      "sector": 2,
+      "desc": "Hairpin centrale, importante per il ritmo sul giro.",
+      "speed": "55 km/h",
+      "g": "2.6G",
+      "pointIndex": 62
+    },
+    {
+      "id": 5,
+      "name": "Curva 14",
+      "sector": 3,
+      "desc": "Sequenza finale tecnica prima del rettilineo.",
+      "speed": "155 km/h",
+      "g": "3.7G",
+      "pointIndex": 82
+    }
+  ],
+  "dna": {
+    "tipo": "Permanente",
+    "usuraGomme": "Media",
+    "importanzaQualifica": "Altissima",
+    "safetyCar": "3 su ultimi 10 GP",
+    "sorpassi": "Rarissimi"
+  },
+  "lapRecord": {
+    "time": "1:16.627",
+    "driver": "Lewis Hamilton",
+    "team": "Mercedes",
+    "year": 2020
+  },
+  "qualiRecord": {
+    "time": "1:13.447",
+    "driver": "Lewis Hamilton",
+    "team": "Mercedes",
+    "year": 2020
+  }
+}

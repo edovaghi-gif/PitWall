@@ -1,0 +1,1800 @@
+{
+  "Sakhir": {
+    "PIA": {
+      "bestLap": "1:29.841",
+      "lapDuration": 89.841
+    },
+    "RUS": {
+      "bestLap": "1:30.009",
+      "lapDuration": 90.009
+    },
+    "LEC": {
+      "bestLap": "1:30.175",
+      "lapDuration": 90.175
+    },
+    "ANT": {
+      "bestLap": "1:30.213",
+      "lapDuration": 90.213
+    },
+    "GAS": {
+      "bestLap": "1:30.216",
+      "lapDuration": 90.216
+    },
+    "NOR": {
+      "bestLap": "1:30.267",
+      "lapDuration": 90.267
+    },
+    "VER": {
+      "bestLap": "1:30.423",
+      "lapDuration": 90.423
+    },
+    "SAI": {
+      "bestLap": "1:30.680",
+      "lapDuration": 90.68
+    },
+    "HAM": {
+      "bestLap": "1:30.772",
+      "lapDuration": 90.772
+    },
+    "TSU": {
+      "bestLap": "1:31.228",
+      "lapDuration": 91.228
+    },
+    "DOO": {
+      "bestLap": "1:31.245",
+      "lapDuration": 91.245
+    },
+    "#6": {
+      "bestLap": "1:31.271",
+      "lapDuration": 91.271
+    },
+    "OCO": {
+      "bestLap": "1:31.594",
+      "lapDuration": 91.594
+    },
+    "ALO": {
+      "bestLap": "1:31.634",
+      "lapDuration": 91.634
+    },
+    "HUL": {
+      "bestLap": "1:31.693",
+      "lapDuration": 91.693
+    },
+    "ALB": {
+      "bestLap": "1:32.040",
+      "lapDuration": 92.04
+    },
+    "LAW": {
+      "bestLap": "1:32.165",
+      "lapDuration": 92.165
+    },
+    "BOR": {
+      "bestLap": "1:32.186",
+      "lapDuration": 92.186
+    },
+    "STR": {
+      "bestLap": "1:32.283",
+      "lapDuration": 92.283
+    },
+    "BEA": {
+      "bestLap": "1:32.373",
+      "lapDuration": 92.373
+    }
+  },
+  "Jeddah": {
+    "VER": {
+      "bestLap": "1:27.294",
+      "lapDuration": 87.294
+    },
+    "PIA": {
+      "bestLap": "1:27.304",
+      "lapDuration": 87.304
+    },
+    "RUS": {
+      "bestLap": "1:27.407",
+      "lapDuration": 87.407
+    },
+    "NOR": {
+      "bestLap": "1:27.481",
+      "lapDuration": 87.481
+    },
+    "LEC": {
+      "bestLap": "1:27.670",
+      "lapDuration": 87.67
+    },
+    "ANT": {
+      "bestLap": "1:27.798",
+      "lapDuration": 87.798
+    },
+    "TSU": {
+      "bestLap": "1:27.990",
+      "lapDuration": 87.99
+    },
+    "SAI": {
+      "bestLap": "1:28.024",
+      "lapDuration": 88.024
+    },
+    "GAS": {
+      "bestLap": "1:28.025",
+      "lapDuration": 88.025
+    },
+    "HAM": {
+      "bestLap": "1:28.102",
+      "lapDuration": 88.102
+    },
+    "ALB": {
+      "bestLap": "1:28.109",
+      "lapDuration": 88.109
+    },
+    "LAW": {
+      "bestLap": "1:28.191",
+      "lapDuration": 88.191
+    },
+    "ALO": {
+      "bestLap": "1:28.303",
+      "lapDuration": 88.303
+    },
+    "#6": {
+      "bestLap": "1:28.418",
+      "lapDuration": 88.418
+    },
+    "BEA": {
+      "bestLap": "1:28.536",
+      "lapDuration": 88.536
+    },
+    "STR": {
+      "bestLap": "1:28.645",
+      "lapDuration": 88.645
+    },
+    "DOO": {
+      "bestLap": "1:28.739",
+      "lapDuration": 88.739
+    },
+    "HUL": {
+      "bestLap": "1:28.782",
+      "lapDuration": 88.782
+    },
+    "OCO": {
+      "bestLap": "1:29.092",
+      "lapDuration": 89.092
+    },
+    "BOR": {
+      "bestLap": "1:29.462",
+      "lapDuration": 89.462
+    }
+  },
+  "Melbourne": {
+    "NOR": {
+      "bestLap": "1:15.096",
+      "lapDuration": 75.096
+    },
+    "PIA": {
+      "bestLap": "1:15.180",
+      "lapDuration": 75.18
+    },
+    "VER": {
+      "bestLap": "1:15.481",
+      "lapDuration": 75.481
+    },
+    "RUS": {
+      "bestLap": "1:15.546",
+      "lapDuration": 75.546
+    },
+    "TSU": {
+      "bestLap": "1:15.670",
+      "lapDuration": 75.67
+    },
+    "ALB": {
+      "bestLap": "1:15.737",
+      "lapDuration": 75.737
+    },
+    "LEC": {
+      "bestLap": "1:15.755",
+      "lapDuration": 75.755
+    },
+    "HAM": {
+      "bestLap": "1:15.919",
+      "lapDuration": 75.919
+    },
+    "SAI": {
+      "bestLap": "1:15.931",
+      "lapDuration": 75.931
+    },
+    "GAS": {
+      "bestLap": "1:15.980",
+      "lapDuration": 75.98
+    },
+    "#6": {
+      "bestLap": "1:16.175",
+      "lapDuration": 76.175
+    },
+    "ALO": {
+      "bestLap": "1:16.288",
+      "lapDuration": 76.288
+    },
+    "DOO": {
+      "bestLap": "1:16.315",
+      "lapDuration": 76.315
+    },
+    "STR": {
+      "bestLap": "1:16.369",
+      "lapDuration": 76.369
+    },
+    "BOR": {
+      "bestLap": "1:16.516",
+      "lapDuration": 76.516
+    },
+    "ANT": {
+      "bestLap": "1:16.525",
+      "lapDuration": 76.525
+    },
+    "HUL": {
+      "bestLap": "1:16.579",
+      "lapDuration": 76.579
+    },
+    "LAW": {
+      "bestLap": "1:17.094",
+      "lapDuration": 77.094
+    },
+    "OCO": {
+      "bestLap": "1:17.147",
+      "lapDuration": 77.147
+    }
+  },
+  "Suzuka": {
+    "VER": {
+      "bestLap": "1:26.983",
+      "lapDuration": 86.983
+    },
+    "NOR": {
+      "bestLap": "1:26.995",
+      "lapDuration": 86.995
+    },
+    "PIA": {
+      "bestLap": "1:27.027",
+      "lapDuration": 87.027
+    },
+    "LEC": {
+      "bestLap": "1:27.299",
+      "lapDuration": 87.299
+    },
+    "RUS": {
+      "bestLap": "1:27.318",
+      "lapDuration": 87.318
+    },
+    "ANT": {
+      "bestLap": "1:27.555",
+      "lapDuration": 87.555
+    },
+    "#6": {
+      "bestLap": "1:27.569",
+      "lapDuration": 87.569
+    },
+    "HAM": {
+      "bestLap": "1:27.610",
+      "lapDuration": 87.61
+    },
+    "ALB": {
+      "bestLap": "1:27.615",
+      "lapDuration": 87.615
+    },
+    "BEA": {
+      "bestLap": "1:27.711",
+      "lapDuration": 87.711
+    },
+    "GAS": {
+      "bestLap": "1:27.822",
+      "lapDuration": 87.822
+    },
+    "SAI": {
+      "bestLap": "1:27.836",
+      "lapDuration": 87.836
+    },
+    "ALO": {
+      "bestLap": "1:27.897",
+      "lapDuration": 87.897
+    },
+    "LAW": {
+      "bestLap": "1:27.906",
+      "lapDuration": 87.906
+    },
+    "TSU": {
+      "bestLap": "1:27.967",
+      "lapDuration": 87.967
+    },
+    "HUL": {
+      "bestLap": "1:28.570",
+      "lapDuration": 88.57
+    },
+    "BOR": {
+      "bestLap": "1:28.622",
+      "lapDuration": 88.622
+    },
+    "OCO": {
+      "bestLap": "1:28.696",
+      "lapDuration": 88.696
+    },
+    "DOO": {
+      "bestLap": "1:28.877",
+      "lapDuration": 88.877
+    },
+    "STR": {
+      "bestLap": "1:29.271",
+      "lapDuration": 89.271
+    }
+  },
+  "Shanghai": {
+    "HAM": {
+      "bestLap": "1:30.849",
+      "lapDuration": 90.849
+    },
+    "VER": {
+      "bestLap": "1:30.867",
+      "lapDuration": 90.867
+    },
+    "PIA": {
+      "bestLap": "1:30.929",
+      "lapDuration": 90.929
+    },
+    "LEC": {
+      "bestLap": "1:31.057",
+      "lapDuration": 91.057
+    },
+    "RUS": {
+      "bestLap": "1:31.169",
+      "lapDuration": 91.169
+    },
+    "NOR": {
+      "bestLap": "1:31.174",
+      "lapDuration": 91.174
+    },
+    "ANT": {
+      "bestLap": "1:31.475",
+      "lapDuration": 91.475
+    },
+    "ALB": {
+      "bestLap": "1:31.539",
+      "lapDuration": 91.539
+    },
+    "STR": {
+      "bestLap": "1:31.742",
+      "lapDuration": 91.742
+    },
+    "TSU": {
+      "bestLap": "1:31.773",
+      "lapDuration": 91.773
+    },
+    "ALO": {
+      "bestLap": "1:31.815",
+      "lapDuration": 91.815
+    },
+    "BEA": {
+      "bestLap": "1:31.978",
+      "lapDuration": 91.978
+    },
+    "#6": {
+      "bestLap": "1:32.171",
+      "lapDuration": 92.171
+    },
+    "SAI": {
+      "bestLap": "1:32.325",
+      "lapDuration": 92.325
+    },
+    "BOR": {
+      "bestLap": "1:32.539",
+      "lapDuration": 92.539
+    },
+    "DOO": {
+      "bestLap": "1:32.575",
+      "lapDuration": 92.575
+    },
+    "GAS": {
+      "bestLap": "1:32.640",
+      "lapDuration": 92.64
+    },
+    "OCO": {
+      "bestLap": "1:32.651",
+      "lapDuration": 92.651
+    },
+    "HUL": {
+      "bestLap": "1:32.675",
+      "lapDuration": 92.675
+    },
+    "LAW": {
+      "bestLap": "1:32.729",
+      "lapDuration": 92.729
+    }
+  },
+  "Miami": {
+    "ANT": {
+      "bestLap": "1:26.482",
+      "lapDuration": 86.482
+    },
+    "PIA": {
+      "bestLap": "1:26.527",
+      "lapDuration": 86.527
+    },
+    "NOR": {
+      "bestLap": "1:26.582",
+      "lapDuration": 86.582
+    },
+    "VER": {
+      "bestLap": "1:26.737",
+      "lapDuration": 86.737
+    },
+    "RUS": {
+      "bestLap": "1:26.791",
+      "lapDuration": 86.791
+    },
+    "LEC": {
+      "bestLap": "1:26.808",
+      "lapDuration": 86.808
+    },
+    "HAM": {
+      "bestLap": "1:27.030",
+      "lapDuration": 87.03
+    },
+    "ALB": {
+      "bestLap": "1:27.193",
+      "lapDuration": 87.193
+    },
+    "#6": {
+      "bestLap": "1:27.543",
+      "lapDuration": 87.543
+    },
+    "ALO": {
+      "bestLap": "1:27.766",
+      "lapDuration": 87.766
+    },
+    "HUL": {
+      "bestLap": "1:27.850",
+      "lapDuration": 87.85
+    },
+    "SAI": {
+      "bestLap": "1:27.899",
+      "lapDuration": 87.899
+    },
+    "OCO": {
+      "bestLap": "1:28.070",
+      "lapDuration": 88.07
+    },
+    "GAS": {
+      "bestLap": "1:28.167",
+      "lapDuration": 88.167
+    },
+    "LAW": {
+      "bestLap": "1:28.375",
+      "lapDuration": 88.375
+    },
+    "STR": {
+      "bestLap": "1:29.028",
+      "lapDuration": 89.028
+    },
+    "DOO": {
+      "bestLap": "1:29.171",
+      "lapDuration": 89.171
+    },
+    "TSU": {
+      "bestLap": "1:29.246",
+      "lapDuration": 89.246
+    },
+    "BOR": {
+      "bestLap": "1:29.312",
+      "lapDuration": 89.312
+    },
+    "BEA": {
+      "bestLap": "1:29.825",
+      "lapDuration": 89.825
+    }
+  },
+  "Imola": {
+    "PIA": {
+      "bestLap": "1:14.670",
+      "lapDuration": 74.67
+    },
+    "VER": {
+      "bestLap": "1:14.704",
+      "lapDuration": 74.704
+    },
+    "RUS": {
+      "bestLap": "1:14.807",
+      "lapDuration": 74.807
+    },
+    "NOR": {
+      "bestLap": "1:14.962",
+      "lapDuration": 74.962
+    },
+    "SAI": {
+      "bestLap": "1:15.198",
+      "lapDuration": 75.198
+    },
+    "ALO": {
+      "bestLap": "1:15.431",
+      "lapDuration": 75.431
+    },
+    "ALB": {
+      "bestLap": "1:15.473",
+      "lapDuration": 75.473
+    },
+    "STR": {
+      "bestLap": "1:15.497",
+      "lapDuration": 75.497
+    },
+    "GAS": {
+      "bestLap": "1:15.505",
+      "lapDuration": 75.505
+    },
+    "#6": {
+      "bestLap": "1:15.510",
+      "lapDuration": 75.51
+    },
+    "LEC": {
+      "bestLap": "1:15.604",
+      "lapDuration": 75.604
+    },
+    "HAM": {
+      "bestLap": "1:15.765",
+      "lapDuration": 75.765
+    },
+    "ANT": {
+      "bestLap": "1:15.772",
+      "lapDuration": 75.772
+    },
+    "BEA": {
+      "bestLap": "1:16.077",
+      "lapDuration": 76.077
+    },
+    "COL": {
+      "bestLap": "1:16.256",
+      "lapDuration": 76.256
+    },
+    "BOR": {
+      "bestLap": "1:16.260",
+      "lapDuration": 76.26
+    },
+    "LAW": {
+      "bestLap": "1:16.379",
+      "lapDuration": 76.379
+    },
+    "HUL": {
+      "bestLap": "1:16.518",
+      "lapDuration": 76.518
+    },
+    "OCO": {
+      "bestLap": "1:16.613",
+      "lapDuration": 76.613
+    }
+  },
+  "Monte Carlo": {
+    "NOR": {
+      "bestLap": "1:09.954",
+      "lapDuration": 69.954
+    },
+    "LEC": {
+      "bestLap": "1:10.063",
+      "lapDuration": 70.063
+    },
+    "PIA": {
+      "bestLap": "1:10.129",
+      "lapDuration": 70.129
+    },
+    "HAM": {
+      "bestLap": "1:10.382",
+      "lapDuration": 70.382
+    },
+    "VER": {
+      "bestLap": "1:10.669",
+      "lapDuration": 70.669
+    },
+    "ALB": {
+      "bestLap": "1:10.732",
+      "lapDuration": 70.732
+    },
+    "#6": {
+      "bestLap": "1:10.923",
+      "lapDuration": 70.923
+    },
+    "ALO": {
+      "bestLap": "1:10.924",
+      "lapDuration": 70.924
+    },
+    "OCO": {
+      "bestLap": "1:10.942",
+      "lapDuration": 70.942
+    },
+    "LAW": {
+      "bestLap": "1:11.129",
+      "lapDuration": 71.129
+    },
+    "SAI": {
+      "bestLap": "1:11.362",
+      "lapDuration": 71.362
+    },
+    "TSU": {
+      "bestLap": "1:11.415",
+      "lapDuration": 71.415
+    },
+    "RUS": {
+      "bestLap": "1:11.507",
+      "lapDuration": 71.507
+    },
+    "HUL": {
+      "bestLap": "1:11.596",
+      "lapDuration": 71.596
+    },
+    "ANT": {
+      "bestLap": "1:11.880",
+      "lapDuration": 71.88
+    },
+    "BOR": {
+      "bestLap": "1:11.902",
+      "lapDuration": 71.902
+    },
+    "BEA": {
+      "bestLap": "1:11.979",
+      "lapDuration": 71.979
+    },
+    "GAS": {
+      "bestLap": "1:11.994",
+      "lapDuration": 71.994
+    },
+    "STR": {
+      "bestLap": "1:12.563",
+      "lapDuration": 72.563
+    },
+    "COL": {
+      "bestLap": "1:12.597",
+      "lapDuration": 72.597
+    }
+  },
+  "Catalunya": {
+    "PIA": {
+      "bestLap": "1:11.546",
+      "lapDuration": 71.546
+    },
+    "NOR": {
+      "bestLap": "1:11.755",
+      "lapDuration": 71.755
+    },
+    "VER": {
+      "bestLap": "1:11.848",
+      "lapDuration": 71.848
+    },
+    "RUS": {
+      "bestLap": "1:11.848",
+      "lapDuration": 71.848
+    },
+    "HAM": {
+      "bestLap": "1:12.045",
+      "lapDuration": 72.045
+    },
+    "ANT": {
+      "bestLap": "1:12.111",
+      "lapDuration": 72.111
+    },
+    "LEC": {
+      "bestLap": "1:12.131",
+      "lapDuration": 72.131
+    },
+    "GAS": {
+      "bestLap": "1:12.199",
+      "lapDuration": 72.199
+    },
+    "#6": {
+      "bestLap": "1:12.252",
+      "lapDuration": 72.252
+    },
+    "ALO": {
+      "bestLap": "1:12.284",
+      "lapDuration": 72.284
+    },
+    "ALB": {
+      "bestLap": "1:12.641",
+      "lapDuration": 72.641
+    },
+    "BOR": {
+      "bestLap": "1:12.756",
+      "lapDuration": 72.756
+    },
+    "LAW": {
+      "bestLap": "1:12.763",
+      "lapDuration": 72.763
+    },
+    "STR": {
+      "bestLap": "1:13.038",
+      "lapDuration": 73.038
+    },
+    "BEA": {
+      "bestLap": "1:13.074",
+      "lapDuration": 73.074
+    },
+    "HUL": {
+      "bestLap": "1:13.190",
+      "lapDuration": 73.19
+    },
+    "OCO": {
+      "bestLap": "1:13.201",
+      "lapDuration": 73.201
+    },
+    "SAI": {
+      "bestLap": "1:13.203",
+      "lapDuration": 73.203
+    },
+    "COL": {
+      "bestLap": "1:13.334",
+      "lapDuration": 73.334
+    },
+    "TSU": {
+      "bestLap": "1:13.385",
+      "lapDuration": 73.385
+    }
+  },
+  "Montreal": {
+    "RUS": {
+      "bestLap": "1:10.899",
+      "lapDuration": 70.899
+    },
+    "VER": {
+      "bestLap": "1:11.059",
+      "lapDuration": 71.059
+    },
+    "PIA": {
+      "bestLap": "1:11.120",
+      "lapDuration": 71.12
+    },
+    "ANT": {
+      "bestLap": "1:11.391",
+      "lapDuration": 71.391
+    },
+    "HAM": {
+      "bestLap": "1:11.526",
+      "lapDuration": 71.526
+    },
+    "ALO": {
+      "bestLap": "1:11.586",
+      "lapDuration": 71.586
+    },
+    "NOR": {
+      "bestLap": "1:11.599",
+      "lapDuration": 71.599
+    },
+    "LEC": {
+      "bestLap": "1:11.626",
+      "lapDuration": 71.626
+    },
+    "#6": {
+      "bestLap": "1:11.867",
+      "lapDuration": 71.867
+    },
+    "ALB": {
+      "bestLap": "1:11.892",
+      "lapDuration": 71.892
+    },
+    "TSU": {
+      "bestLap": "1:12.102",
+      "lapDuration": 72.102
+    },
+    "COL": {
+      "bestLap": "1:12.142",
+      "lapDuration": 72.142
+    },
+    "HUL": {
+      "bestLap": "1:12.183",
+      "lapDuration": 72.183
+    },
+    "BEA": {
+      "bestLap": "1:12.306",
+      "lapDuration": 72.306
+    },
+    "OCO": {
+      "bestLap": "1:12.378",
+      "lapDuration": 72.378
+    },
+    "BOR": {
+      "bestLap": "1:12.385",
+      "lapDuration": 72.385
+    },
+    "SAI": {
+      "bestLap": "1:12.398",
+      "lapDuration": 72.398
+    },
+    "STR": {
+      "bestLap": "1:12.517",
+      "lapDuration": 72.517
+    },
+    "LAW": {
+      "bestLap": "1:12.525",
+      "lapDuration": 72.525
+    },
+    "GAS": {
+      "bestLap": "1:12.667",
+      "lapDuration": 72.667
+    }
+  },
+  "Spielberg": {
+    "NOR": {
+      "bestLap": "1:03.971",
+      "lapDuration": 63.971
+    },
+    "LEC": {
+      "bestLap": "1:04.492",
+      "lapDuration": 64.492
+    },
+    "PIA": {
+      "bestLap": "1:04.554",
+      "lapDuration": 64.554
+    },
+    "HAM": {
+      "bestLap": "1:04.582",
+      "lapDuration": 64.582
+    },
+    "RUS": {
+      "bestLap": "1:04.763",
+      "lapDuration": 64.763
+    },
+    "VER": {
+      "bestLap": "1:04.836",
+      "lapDuration": 64.836
+    },
+    "BOR": {
+      "bestLap": "1:04.846",
+      "lapDuration": 64.846
+    },
+    "GAS": {
+      "bestLap": "1:04.846",
+      "lapDuration": 64.846
+    },
+    "LAW": {
+      "bestLap": "1:04.926",
+      "lapDuration": 64.926
+    },
+    "ANT": {
+      "bestLap": "1:05.052",
+      "lapDuration": 65.052
+    },
+    "#6": {
+      "bestLap": "1:05.063",
+      "lapDuration": 65.063
+    },
+    "ALO": {
+      "bestLap": "1:05.128",
+      "lapDuration": 65.128
+    },
+    "ALB": {
+      "bestLap": "1:05.143",
+      "lapDuration": 65.143
+    },
+    "BEA": {
+      "bestLap": "1:05.218",
+      "lapDuration": 65.218
+    },
+    "COL": {
+      "bestLap": "1:05.278",
+      "lapDuration": 65.278
+    },
+    "STR": {
+      "bestLap": "1:05.329",
+      "lapDuration": 65.329
+    },
+    "OCO": {
+      "bestLap": "1:05.364",
+      "lapDuration": 65.364
+    },
+    "TSU": {
+      "bestLap": "1:05.369",
+      "lapDuration": 65.369
+    },
+    "SAI": {
+      "bestLap": "1:05.582",
+      "lapDuration": 65.582
+    },
+    "HUL": {
+      "bestLap": "1:05.606",
+      "lapDuration": 65.606
+    }
+  },
+  "Silverstone": {
+    "VER": {
+      "bestLap": "1:24.892",
+      "lapDuration": 84.892
+    },
+    "PIA": {
+      "bestLap": "1:24.995",
+      "lapDuration": 84.995
+    },
+    "NOR": {
+      "bestLap": "1:25.010",
+      "lapDuration": 85.01
+    },
+    "RUS": {
+      "bestLap": "1:25.029",
+      "lapDuration": 85.029
+    },
+    "HAM": {
+      "bestLap": "1:25.084",
+      "lapDuration": 85.084
+    },
+    "LEC": {
+      "bestLap": "1:25.121",
+      "lapDuration": 85.121
+    },
+    "ANT": {
+      "bestLap": "1:25.374",
+      "lapDuration": 85.374
+    },
+    "BEA": {
+      "bestLap": "1:25.471",
+      "lapDuration": 85.471
+    },
+    "ALO": {
+      "bestLap": "1:25.593",
+      "lapDuration": 85.593
+    },
+    "GAS": {
+      "bestLap": "1:25.711",
+      "lapDuration": 85.711
+    },
+    "SAI": {
+      "bestLap": "1:25.746",
+      "lapDuration": 85.746
+    },
+    "TSU": {
+      "bestLap": "1:25.826",
+      "lapDuration": 85.826
+    },
+    "#6": {
+      "bestLap": "1:25.864",
+      "lapDuration": 85.864
+    },
+    "ALB": {
+      "bestLap": "1:25.889",
+      "lapDuration": 85.889
+    },
+    "OCO": {
+      "bestLap": "1:25.950",
+      "lapDuration": 85.95
+    },
+    "LAW": {
+      "bestLap": "1:26.440",
+      "lapDuration": 86.44
+    },
+    "BOR": {
+      "bestLap": "1:26.446",
+      "lapDuration": 86.446
+    },
+    "STR": {
+      "bestLap": "1:26.504",
+      "lapDuration": 86.504
+    },
+    "HUL": {
+      "bestLap": "1:26.574",
+      "lapDuration": 86.574
+    },
+    "COL": {
+      "bestLap": "1:27.060",
+      "lapDuration": 87.06
+    }
+  },
+  "Hungaroring": {
+    "NOR": {
+      "bestLap": "1:14.890",
+      "lapDuration": 74.89
+    },
+    "PIA": {
+      "bestLap": "1:14.941",
+      "lapDuration": 74.941
+    },
+    "STR": {
+      "bestLap": "1:15.129",
+      "lapDuration": 75.129
+    },
+    "RUS": {
+      "bestLap": "1:15.201",
+      "lapDuration": 75.201
+    },
+    "ALO": {
+      "bestLap": "1:15.281",
+      "lapDuration": 75.281
+    },
+    "LEC": {
+      "bestLap": "1:15.372",
+      "lapDuration": 75.372
+    },
+    "#6": {
+      "bestLap": "1:15.469",
+      "lapDuration": 75.469
+    },
+    "VER": {
+      "bestLap": "1:15.547",
+      "lapDuration": 75.547
+    },
+    "BOR": {
+      "bestLap": "1:15.586",
+      "lapDuration": 75.586
+    },
+    "LAW": {
+      "bestLap": "1:15.630",
+      "lapDuration": 75.63
+    },
+    "SAI": {
+      "bestLap": "1:15.652",
+      "lapDuration": 75.652
+    },
+    "ANT": {
+      "bestLap": "1:15.693",
+      "lapDuration": 75.693
+    },
+    "BEA": {
+      "bestLap": "1:15.694",
+      "lapDuration": 75.694
+    },
+    "HAM": {
+      "bestLap": "1:15.702",
+      "lapDuration": 75.702
+    },
+    "COL": {
+      "bestLap": "1:15.875",
+      "lapDuration": 75.875
+    },
+    "TSU": {
+      "bestLap": "1:15.899",
+      "lapDuration": 75.899
+    },
+    "GAS": {
+      "bestLap": "1:15.966",
+      "lapDuration": 75.966
+    },
+    "OCO": {
+      "bestLap": "1:16.023",
+      "lapDuration": 76.023
+    },
+    "HUL": {
+      "bestLap": "1:16.081",
+      "lapDuration": 76.081
+    },
+    "ALB": {
+      "bestLap": "1:16.223",
+      "lapDuration": 76.223
+    }
+  },
+  "Spa-Francorchamps": {
+    "PIA": {
+      "bestLap": "1:40.510",
+      "lapDuration": 100.51
+    },
+    "VER": {
+      "bestLap": "1:40.987",
+      "lapDuration": 100.987
+    },
+    "NOR": {
+      "bestLap": "1:41.128",
+      "lapDuration": 101.128
+    },
+    "LEC": {
+      "bestLap": "1:41.278",
+      "lapDuration": 101.278
+    },
+    "OCO": {
+      "bestLap": "1:41.565",
+      "lapDuration": 101.565
+    },
+    "SAI": {
+      "bestLap": "1:41.761",
+      "lapDuration": 101.761
+    },
+    "BEA": {
+      "bestLap": "1:41.857",
+      "lapDuration": 101.857
+    },
+    "BOR": {
+      "bestLap": "1:41.901",
+      "lapDuration": 101.901
+    },
+    "GAS": {
+      "bestLap": "1:41.949",
+      "lapDuration": 101.949
+    },
+    "#6": {
+      "bestLap": "1:41.971",
+      "lapDuration": 101.971
+    },
+    "LAW": {
+      "bestLap": "1:42.169",
+      "lapDuration": 102.169
+    },
+    "TSU": {
+      "bestLap": "1:42.184",
+      "lapDuration": 102.184
+    },
+    "RUS": {
+      "bestLap": "1:42.330",
+      "lapDuration": 102.33
+    },
+    "ALO": {
+      "bestLap": "1:42.427",
+      "lapDuration": 102.427
+    },
+    "STR": {
+      "bestLap": "1:42.736",
+      "lapDuration": 102.736
+    },
+    "ALB": {
+      "bestLap": "1:43.212",
+      "lapDuration": 103.212
+    },
+    "HUL": {
+      "bestLap": "1:43.217",
+      "lapDuration": 103.217
+    },
+    "HAM": {
+      "bestLap": "1:43.408",
+      "lapDuration": 103.408
+    },
+    "COL": {
+      "bestLap": "1:43.587",
+      "lapDuration": 103.587
+    },
+    "ANT": {
+      "bestLap": "1:45.394",
+      "lapDuration": 105.394
+    }
+  },
+  "Zandvoort": {
+    "PIA": {
+      "bestLap": "1:08.662",
+      "lapDuration": 68.662
+    },
+    "NOR": {
+      "bestLap": "1:08.674",
+      "lapDuration": 68.674
+    },
+    "VER": {
+      "bestLap": "1:08.925",
+      "lapDuration": 68.925
+    },
+    "#6": {
+      "bestLap": "1:09.208",
+      "lapDuration": 69.208
+    },
+    "RUS": {
+      "bestLap": "1:09.255",
+      "lapDuration": 69.255
+    },
+    "HAM": {
+      "bestLap": "1:09.261",
+      "lapDuration": 69.261
+    },
+    "LEC": {
+      "bestLap": "1:09.304",
+      "lapDuration": 69.304
+    },
+    "ALO": {
+      "bestLap": "1:09.366",
+      "lapDuration": 69.366
+    },
+    "LAW": {
+      "bestLap": "1:09.383",
+      "lapDuration": 69.383
+    },
+    "SAI": {
+      "bestLap": "1:09.472",
+      "lapDuration": 69.472
+    },
+    "ANT": {
+      "bestLap": "1:09.493",
+      "lapDuration": 69.493
+    },
+    "BOR": {
+      "bestLap": "1:09.622",
+      "lapDuration": 69.622
+    },
+    "TSU": {
+      "bestLap": "1:09.622",
+      "lapDuration": 69.622
+    },
+    "GAS": {
+      "bestLap": "1:09.637",
+      "lapDuration": 69.637
+    },
+    "ALB": {
+      "bestLap": "1:09.652",
+      "lapDuration": 69.652
+    },
+    "COL": {
+      "bestLap": "1:10.104",
+      "lapDuration": 70.104
+    },
+    "HUL": {
+      "bestLap": "1:10.195",
+      "lapDuration": 70.195
+    },
+    "OCO": {
+      "bestLap": "1:10.197",
+      "lapDuration": 70.197
+    },
+    "BEA": {
+      "bestLap": "1:10.262",
+      "lapDuration": 70.262
+    },
+    "STR": {
+      "bestLap": "1:32.046",
+      "lapDuration": 92.046
+    }
+  },
+  "Monza": {
+    "VER": {
+      "bestLap": "1:18.792",
+      "lapDuration": 78.792
+    },
+    "NOR": {
+      "bestLap": "1:18.869",
+      "lapDuration": 78.869
+    },
+    "PIA": {
+      "bestLap": "1:18.982",
+      "lapDuration": 78.982
+    },
+    "LEC": {
+      "bestLap": "1:19.007",
+      "lapDuration": 79.007
+    },
+    "HAM": {
+      "bestLap": "1:19.124",
+      "lapDuration": 79.124
+    },
+    "RUS": {
+      "bestLap": "1:19.157",
+      "lapDuration": 79.157
+    },
+    "ANT": {
+      "bestLap": "1:19.200",
+      "lapDuration": 79.2
+    },
+    "BOR": {
+      "bestLap": "1:19.323",
+      "lapDuration": 79.323
+    },
+    "ALO": {
+      "bestLap": "1:19.362",
+      "lapDuration": 79.362
+    },
+    "TSU": {
+      "bestLap": "1:19.433",
+      "lapDuration": 79.433
+    },
+    "BEA": {
+      "bestLap": "1:19.446",
+      "lapDuration": 79.446
+    },
+    "HUL": {
+      "bestLap": "1:19.498",
+      "lapDuration": 79.498
+    },
+    "SAI": {
+      "bestLap": "1:19.528",
+      "lapDuration": 79.528
+    },
+    "ALB": {
+      "bestLap": "1:19.583",
+      "lapDuration": 79.583
+    },
+    "OCO": {
+      "bestLap": "1:19.707",
+      "lapDuration": 79.707
+    },
+    "#6": {
+      "bestLap": "1:19.917",
+      "lapDuration": 79.917
+    },
+    "STR": {
+      "bestLap": "1:19.948",
+      "lapDuration": 79.948
+    },
+    "COL": {
+      "bestLap": "1:19.992",
+      "lapDuration": 79.992
+    },
+    "GAS": {
+      "bestLap": "1:20.103",
+      "lapDuration": 80.103
+    },
+    "LAW": {
+      "bestLap": "1:20.279",
+      "lapDuration": 80.279
+    }
+  },
+  "Baku": {},
+  "Singapore": {
+    "RUS": {
+      "bestLap": "1:29.158",
+      "lapDuration": 89.158
+    },
+    "VER": {
+      "bestLap": "1:29.340",
+      "lapDuration": 89.34
+    },
+    "PIA": {
+      "bestLap": "1:29.524",
+      "lapDuration": 89.524
+    },
+    "ANT": {
+      "bestLap": "1:29.537",
+      "lapDuration": 89.537
+    },
+    "NOR": {
+      "bestLap": "1:29.586",
+      "lapDuration": 89.586
+    },
+    "HAM": {
+      "bestLap": "1:29.688",
+      "lapDuration": 89.688
+    },
+    "LEC": {
+      "bestLap": "1:29.784",
+      "lapDuration": 89.784
+    },
+    "#6": {
+      "bestLap": "1:29.846",
+      "lapDuration": 89.846
+    },
+    "BEA": {
+      "bestLap": "1:29.868",
+      "lapDuration": 89.868
+    },
+    "ALO": {
+      "bestLap": "1:29.955",
+      "lapDuration": 89.955
+    },
+    "HUL": {
+      "bestLap": "1:30.141",
+      "lapDuration": 90.141
+    },
+    "ALB": {
+      "bestLap": "1:30.202",
+      "lapDuration": 90.202
+    },
+    "SAI": {
+      "bestLap": "1:30.235",
+      "lapDuration": 90.235
+    },
+    "LAW": {
+      "bestLap": "1:30.320",
+      "lapDuration": 90.32
+    },
+    "TSU": {
+      "bestLap": "1:30.353",
+      "lapDuration": 90.353
+    },
+    "BOR": {
+      "bestLap": "1:30.820",
+      "lapDuration": 90.82
+    },
+    "STR": {
+      "bestLap": "1:30.949",
+      "lapDuration": 90.949
+    },
+    "COL": {
+      "bestLap": "1:30.982",
+      "lapDuration": 90.982
+    },
+    "OCO": {
+      "bestLap": "1:30.989",
+      "lapDuration": 90.989
+    },
+    "GAS": {
+      "bestLap": "1:31.261",
+      "lapDuration": 91.261
+    }
+  },
+  "Austin": {
+    "VER": {
+      "bestLap": "1:32.143",
+      "lapDuration": 92.143
+    },
+    "NOR": {
+      "bestLap": "1:32.214",
+      "lapDuration": 92.214
+    },
+    "PIA": {
+      "bestLap": "1:32.523",
+      "lapDuration": 92.523
+    },
+    "HUL": {
+      "bestLap": "1:32.645",
+      "lapDuration": 92.645
+    },
+    "RUS": {
+      "bestLap": "1:32.888",
+      "lapDuration": 92.888
+    },
+    "ALO": {
+      "bestLap": "1:32.910",
+      "lapDuration": 92.91
+    },
+    "SAI": {
+      "bestLap": "1:32.911",
+      "lapDuration": 92.911
+    },
+    "HAM": {
+      "bestLap": "1:33.035",
+      "lapDuration": 93.035
+    },
+    "ALB": {
+      "bestLap": "1:33.099",
+      "lapDuration": 93.099
+    },
+    "LEC": {
+      "bestLap": "1:33.104",
+      "lapDuration": 93.104
+    },
+    "ANT": {
+      "bestLap": "1:34.018",
+      "lapDuration": 94.018
+    },
+    "#6": {
+      "bestLap": "1:34.241",
+      "lapDuration": 94.241
+    },
+    "GAS": {
+      "bestLap": "1:34.258",
+      "lapDuration": 94.258
+    },
+    "LAW": {
+      "bestLap": "1:34.316",
+      "lapDuration": 94.316
+    },
+    "STR": {
+      "bestLap": "1:34.394",
+      "lapDuration": 94.394
+    },
+    "BEA": {
+      "bestLap": "1:35.159",
+      "lapDuration": 95.159
+    },
+    "COL": {
+      "bestLap": "1:35.246",
+      "lapDuration": 95.246
+    },
+    "TSU": {
+      "bestLap": "1:35.259",
+      "lapDuration": 95.259
+    },
+    "OCO": {
+      "bestLap": "1:36.003",
+      "lapDuration": 96.003
+    },
+    "BOR": {
+      "bestLap": "1:36.313",
+      "lapDuration": 96.313
+    }
+  },
+  "Mexico City": {
+    "NOR": {
+      "bestLap": "1:15.586",
+      "lapDuration": 75.586
+    },
+    "LEC": {
+      "bestLap": "1:15.848",
+      "lapDuration": 75.848
+    },
+    "HAM": {
+      "bestLap": "1:15.938",
+      "lapDuration": 75.938
+    },
+    "RUS": {
+      "bestLap": "1:16.034",
+      "lapDuration": 76.034
+    },
+    "VER": {
+      "bestLap": "1:16.070",
+      "lapDuration": 76.07
+    },
+    "ANT": {
+      "bestLap": "1:16.118",
+      "lapDuration": 76.118
+    },
+    "SAI": {
+      "bestLap": "1:16.172",
+      "lapDuration": 76.172
+    },
+    "PIA": {
+      "bestLap": "1:16.174",
+      "lapDuration": 76.174
+    },
+    "#6": {
+      "bestLap": "1:16.252",
+      "lapDuration": 76.252
+    },
+    "BEA": {
+      "bestLap": "1:16.460",
+      "lapDuration": 76.46
+    },
+    "TSU": {
+      "bestLap": "1:16.816",
+      "lapDuration": 76.816
+    },
+    "OCO": {
+      "bestLap": "1:16.837",
+      "lapDuration": 76.837
+    },
+    "LAW": {
+      "bestLap": "1:16.961",
+      "lapDuration": 76.961
+    },
+    "HUL": {
+      "bestLap": "1:17.016",
+      "lapDuration": 77.016
+    },
+    "ALO": {
+      "bestLap": "1:17.103",
+      "lapDuration": 77.103
+    },
+    "BOR": {
+      "bestLap": "1:17.412",
+      "lapDuration": 77.412
+    },
+    "ALB": {
+      "bestLap": "1:17.490",
+      "lapDuration": 77.49
+    },
+    "GAS": {
+      "bestLap": "1:17.546",
+      "lapDuration": 77.546
+    },
+    "STR": {
+      "bestLap": "1:17.606",
+      "lapDuration": 77.606
+    },
+    "COL": {
+      "bestLap": "1:17.670",
+      "lapDuration": 77.67
+    }
+  },
+  "Interlagos": {
+    "NOR": {
+      "bestLap": "1:09.243",
+      "lapDuration": 69.243
+    },
+    "ALO": {
+      "bestLap": "1:09.330",
+      "lapDuration": 69.33
+    },
+    "ANT": {
+      "bestLap": "1:09.340",
+      "lapDuration": 69.34
+    },
+    "RUS": {
+      "bestLap": "1:09.384",
+      "lapDuration": 69.384
+    },
+    "PIA": {
+      "bestLap": "1:09.416",
+      "lapDuration": 69.416
+    },
+    "VER": {
+      "bestLap": "1:09.580",
+      "lapDuration": 69.58
+    },
+    "#6": {
+      "bestLap": "1:09.608",
+      "lapDuration": 69.608
+    },
+    "STR": {
+      "bestLap": "1:09.647",
+      "lapDuration": 69.647
+    },
+    "LEC": {
+      "bestLap": "1:09.725",
+      "lapDuration": 69.725
+    },
+    "HUL": {
+      "bestLap": "1:09.735",
+      "lapDuration": 69.735
+    },
+    "HAM": {
+      "bestLap": "1:09.811",
+      "lapDuration": 69.811
+    },
+    "ALB": {
+      "bestLap": "1:09.813",
+      "lapDuration": 69.813
+    },
+    "GAS": {
+      "bestLap": "1:09.852",
+      "lapDuration": 69.852
+    },
+    "BOR": {
+      "bestLap": "1:09.923",
+      "lapDuration": 69.923
+    },
+    "BEA": {
+      "bestLap": "1:09.946",
+      "lapDuration": 69.946
+    },
+    "COL": {
+      "bestLap": "1:10.441",
+      "lapDuration": 70.441
+    },
+    "LAW": {
+      "bestLap": "1:10.666",
+      "lapDuration": 70.666
+    },
+    "TSU": {
+      "bestLap": "1:10.692",
+      "lapDuration": 70.692
+    },
+    "OCO": {
+      "bestLap": "1:10.872",
+      "lapDuration": 70.872
+    },
+    "SAI": {
+      "bestLap": "1:11.120",
+      "lapDuration": 71.12
+    }
+  },
+  "Las Vegas": {
+    "NOR": {
+      "bestLap": "1:47.934",
+      "lapDuration": 107.934
+    },
+    "VER": {
+      "bestLap": "1:48.257",
+      "lapDuration": 108.257
+    },
+    "SAI": {
+      "bestLap": "1:48.296",
+      "lapDuration": 108.296
+    },
+    "RUS": {
+      "bestLap": "1:48.803",
+      "lapDuration": 108.803
+    },
+    "PIA": {
+      "bestLap": "1:48.961",
+      "lapDuration": 108.961
+    },
+    "LAW": {
+      "bestLap": "1:49.062",
+      "lapDuration": 109.062
+    },
+    "ALO": {
+      "bestLap": "1:49.466",
+      "lapDuration": 109.466
+    },
+    "#6": {
+      "bestLap": "1:49.554",
+      "lapDuration": 109.554
+    },
+    "LEC": {
+      "bestLap": "1:49.872",
+      "lapDuration": 109.872
+    },
+    "GAS": {
+      "bestLap": "1:51.540",
+      "lapDuration": 111.54
+    },
+    "HUL": {
+      "bestLap": "1:52.781",
+      "lapDuration": 112.781
+    },
+    "STR": {
+      "bestLap": "1:52.850",
+      "lapDuration": 112.85
+    },
+    "OCO": {
+      "bestLap": "1:52.987",
+      "lapDuration": 112.987
+    },
+    "BEA": {
+      "bestLap": "1:53.094",
+      "lapDuration": 113.094
+    },
+    "COL": {
+      "bestLap": "1:53.683",
+      "lapDuration": 113.683
+    },
+    "ALB": {
+      "bestLap": "1:56.220",
+      "lapDuration": 116.22
+    },
+    "ANT": {
+      "bestLap": "1:56.314",
+      "lapDuration": 116.314
+    },
+    "BOR": {
+      "bestLap": "1:56.674",
+      "lapDuration": 116.674
+    },
+    "TSU": {
+      "bestLap": "1:56.798",
+      "lapDuration": 116.798
+    },
+    "HAM": {
+      "bestLap": "1:57.115",
+      "lapDuration": 117.115
+    }
+  },
+  "Lusail": {
+    "PIA": {
+      "bestLap": "1:20.055",
+      "lapDuration": 80.055
+    },
+    "RUS": {
+      "bestLap": "1:20.087",
+      "lapDuration": 80.087
+    },
+    "NOR": {
+      "bestLap": "1:20.285",
+      "lapDuration": 80.285
+    },
+    "ALO": {
+      "bestLap": "1:20.450",
+      "lapDuration": 80.45
+    },
+    "TSU": {
+      "bestLap": "1:20.519",
+      "lapDuration": 80.519
+    },
+    "VER": {
+      "bestLap": "1:20.528",
+      "lapDuration": 80.528
+    },
+    "ANT": {
+      "bestLap": "1:20.532",
+      "lapDuration": 80.532
+    },
+    "SAI": {
+      "bestLap": "1:20.542",
+      "lapDuration": 80.542
+    },
+    "LEC": {
+      "bestLap": "1:20.622",
+      "lapDuration": 80.622
+    },
+    "ALB": {
+      "bestLap": "1:20.788",
+      "lapDuration": 80.788
+    },
+    "#6": {
+      "bestLap": "1:21.277",
+      "lapDuration": 81.277
+    },
+    "HUL": {
+      "bestLap": "1:21.327",
+      "lapDuration": 81.327
+    },
+    "BEA": {
+      "bestLap": "1:21.494",
+      "lapDuration": 81.494
+    },
+    "BOR": {
+      "bestLap": "1:21.567",
+      "lapDuration": 81.567
+    },
+    "OCO": {
+      "bestLap": "1:21.666",
+      "lapDuration": 81.666
+    },
+    "STR": {
+      "bestLap": "1:21.807",
+      "lapDuration": 81.807
+    },
+    "LAW": {
+      "bestLap": "1:21.851",
+      "lapDuration": 81.851
+    },
+    "HAM": {
+      "bestLap": "1:22.043",
+      "lapDuration": 82.043
+    },
+    "GAS": {
+      "bestLap": "1:22.112",
+      "lapDuration": 82.112
+    },
+    "COL": {
+      "bestLap": "1:22.364",
+      "lapDuration": 82.364
+    }
+  },
+  "Yas Marina Circuit": {}
+}

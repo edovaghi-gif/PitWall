@@ -1,0 +1,69 @@
+{
+  "name": "Miami International Autodrome",
+  "corners": [
+    {
+      "id": 1,
+      "name": "Curva 1",
+      "sector": 1,
+      "desc": "Prima frenata pesante dopo il lancio dal rettilineo principale.",
+      "speed": "90 km/h",
+      "g": "3.7G",
+      "pointIndex": 5
+    },
+    {
+      "id": 2,
+      "name": "Curva 4",
+      "sector": 1,
+      "desc": "Sequenza tecnica attorno allo stadio Hard Rock.",
+      "speed": "145 km/h",
+      "g": "3.4G",
+      "pointIndex": 20
+    },
+    {
+      "id": 3,
+      "name": "Curva 11",
+      "sector": 2,
+      "desc": "Chicane sul lungomare artificiale, zona di sorpasso.",
+      "speed": "95 km/h",
+      "g": "3.2G",
+      "pointIndex": 45
+    },
+    {
+      "id": 4,
+      "name": "Curva 14",
+      "sector": 2,
+      "desc": "Curva veloce che porta al back straight.",
+      "speed": "225 km/h",
+      "g": "4.0G",
+      "pointIndex": 62
+    },
+    {
+      "id": 5,
+      "name": "Curva 17",
+      "sector": 3,
+      "desc": "Ultima chicane, spesso teatro di contatti nelle ultime fasi.",
+      "speed": "105 km/h",
+      "g": "3.3G",
+      "pointIndex": 82
+    }
+  ],
+  "dna": {
+    "tipo": "Semi-cittadino",
+    "usuraGomme": "Media",
+    "importanzaQualifica": "Alta",
+    "safetyCar": "5 su ultimi 10 GP",
+    "sorpassi": "Medi"
+  },
+  "lapRecord": {
+    "time": "1:29.708",
+    "driver": "Max Verstappen",
+    "team": "Red Bull",
+    "year": 2023
+  },
+  "qualiRecord": {
+    "time": "1:26.204",
+    "driver": "Max Verstappen",
+    "team": "Red Bull",
+    "year": 2025
+  }
+}

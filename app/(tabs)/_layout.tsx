@@ -1,33 +1,57 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Tabs } from "expo-router";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: "#E10600",
+        tabBarInactiveTintColor: "#555555",
+        tabBarStyle: {
+          backgroundColor: "#0A0A0A",
+          borderTopWidth: 0.5,
+          borderTopColor: "#2A2A2A",
+        },
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+      }}
+    >
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          tabBarLabel: "Home",
+          tabBarIcon: ({ focused }) => (
+            <Ionicons name={focused ? "home" : "home-outline"} size={22} color={focused ? "#E10600" : "#555555"} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="circuito"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          tabBarLabel: "Circuito",
+          title: "",
+          tabBarIcon: ({ focused }) => (
+            <Ionicons name={focused ? "map" : "map-outline"} size={22} color={focused ? "#E10600" : "#555555"} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="headtohead"
+        options={{
+          tabBarLabel: "Head to Head",
+          title: "",
+          tabBarIcon: ({ focused }) => (
+            <Ionicons name={focused ? "bar-chart" : "bar-chart-outline"} size={22} color={focused ? "#E10600" : "#555555"} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="prediction"
+        options={{
+          tabBarLabel: "Prediction",
+          title: "",
+          tabBarIcon: ({ focused }) => (
+            <Ionicons name={focused ? "trophy" : "trophy-outline"} size={22} color={focused ? "#E10600" : "#555555"} />
+          ),
         }}
       />
     </Tabs>

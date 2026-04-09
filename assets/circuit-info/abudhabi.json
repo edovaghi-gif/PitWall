@@ -1,0 +1,69 @@
+{
+  "name": "Yas Marina Circuit",
+  "corners": [
+    {
+      "id": 1,
+      "name": "Curva 1",
+      "sector": 1,
+      "desc": "Prima frenata pesante, zona di sorpasso al via.",
+      "speed": "90 km/h",
+      "g": "3.6G",
+      "pointIndex": 5
+    },
+    {
+      "id": 2,
+      "name": "Curva 6",
+      "sector": 1,
+      "desc": "Chicane tecnica vicino all'hotel Yas Viceroy.",
+      "speed": "115 km/h",
+      "g": "3.3G",
+      "pointIndex": 22
+    },
+    {
+      "id": 3,
+      "name": "Curva 9",
+      "sector": 2,
+      "desc": "Hairpin lento che porta sul tunnel sotto l'hotel.",
+      "speed": "60 km/h",
+      "g": "2.7G",
+      "pointIndex": 42
+    },
+    {
+      "id": 4,
+      "name": "Curva 17",
+      "sector": 2,
+      "desc": "Sequenza veloce sul lungomare di Yas Island.",
+      "speed": "255 km/h",
+      "g": "4.5G",
+      "pointIndex": 65
+    },
+    {
+      "id": 5,
+      "name": "Curva 21",
+      "sector": 3,
+      "desc": "Ultima curva della stagione, sempre carica di emozione.",
+      "speed": "95 km/h",
+      "g": "3.2G",
+      "pointIndex": 85
+    }
+  ],
+  "dna": {
+    "tipo": "Permanente",
+    "usuraGomme": "Media",
+    "importanzaQualifica": "Alta",
+    "safetyCar": "3 su ultimi 10 GP",
+    "sorpassi": "Medi"
+  },
+  "lapRecord": {
+    "time": "1:25.637",
+    "driver": "Kevin Magnussen",
+    "team": "Haas",
+    "year": 2024
+  },
+  "qualiRecord": {
+    "time": "1:22.109",
+    "driver": "Max Verstappen",
+    "team": "Red Bull",
+    "year": 2021
+  }
+}

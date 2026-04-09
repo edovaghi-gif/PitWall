@@ -1,0 +1,69 @@
+{
+  "name": "Circuit de Spa-Francorchamps",
+  "corners": [
+    {
+      "id": 1,
+      "name": "La Source",
+      "sector": 1,
+      "desc": "Hairpin di apertura, zona di sorpasso al via.",
+      "speed": "70 km/h",
+      "g": "2.9G",
+      "pointIndex": 5
+    },
+    {
+      "id": 2,
+      "name": "Eau Rouge - Raidillon",
+      "sector": 1,
+      "desc": "La curva più famosa della F1. Muro verso il cielo a 300 km/h.",
+      "speed": "305 km/h",
+      "g": "5.6G",
+      "pointIndex": 18
+    },
+    {
+      "id": 3,
+      "name": "Pouhon",
+      "sector": 2,
+      "desc": "Doppia sinistra ad alta velocità, richiede enorme coraggio.",
+      "speed": "265 km/h",
+      "g": "4.9G",
+      "pointIndex": 45
+    },
+    {
+      "id": 4,
+      "name": "Stavelot",
+      "sector": 2,
+      "desc": "Curva veloce prima del bus stop, zona rischiosa con pioggia.",
+      "speed": "235 km/h",
+      "g": "4.5G",
+      "pointIndex": 62
+    },
+    {
+      "id": 5,
+      "name": "Bus Stop",
+      "sector": 3,
+      "desc": "Ultima chicane, sorpassi e contatti frequenti nelle ultime tornate.",
+      "speed": "85 km/h",
+      "g": "3.4G",
+      "pointIndex": 85
+    }
+  ],
+  "dna": {
+    "tipo": "Permanente",
+    "usuraGomme": "Alta",
+    "importanzaQualifica": "Alta",
+    "safetyCar": "6 su ultimi 10 GP",
+    "sorpassi": "Frequenti"
+  },
+  "lapRecord": {
+    "time": "1:44.701",
+    "driver": "Sergio Pérez",
+    "team": "Red Bull",
+    "year": 2024
+  },
+  "qualiRecord": {
+    "time": "1:40.562",
+    "driver": "Lando Norris",
+    "team": "McLaren",
+    "year": 2025
+  }
+}

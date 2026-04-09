@@ -1,0 +1,69 @@
+{
+  "name": "Autodromo Jose Carlos Pace",
+  "corners": [
+    {
+      "id": 1,
+      "name": "Curva 1",
+      "sector": 1,
+      "desc": "Staccata in discesa all'apertura del giro, spesso caotica.",
+      "speed": "85 km/h",
+      "g": "3.6G",
+      "pointIndex": 5
+    },
+    {
+      "id": 2,
+      "name": "Curva S",
+      "sector": 1,
+      "desc": "La famosa S di Senna, sequenza veloce e tecnica.",
+      "speed": "225 km/h",
+      "g": "4.5G",
+      "pointIndex": 20
+    },
+    {
+      "id": 3,
+      "name": "Descida do Lago",
+      "sector": 2,
+      "desc": "Discesa veloce verso il lago, molto impegnativa.",
+      "speed": "285 km/h",
+      "g": "4.8G",
+      "pointIndex": 45
+    },
+    {
+      "id": 4,
+      "name": "Curva do Sol",
+      "sector": 2,
+      "desc": "Curva lenta che porta sul rettilineo opposto.",
+      "speed": "95 km/h",
+      "g": "3.3G",
+      "pointIndex": 62
+    },
+    {
+      "id": 5,
+      "name": "Mergulho",
+      "sector": 3,
+      "desc": "Tuffo finale verso il traguardo, adrenalina pura.",
+      "speed": "195 km/h",
+      "g": "4.1G",
+      "pointIndex": 82
+    }
+  ],
+  "dna": {
+    "tipo": "Permanente",
+    "usuraGomme": "Alta",
+    "importanzaQualifica": "Alta",
+    "safetyCar": "6 su ultimi 10 GP",
+    "sorpassi": "Frequenti"
+  },
+  "lapRecord": {
+    "time": "1:10.540",
+    "driver": "Valtteri Bottas",
+    "team": "Mercedes",
+    "year": 2018
+  },
+  "qualiRecord": {
+    "time": "1:07.281",
+    "driver": "Lewis Hamilton",
+    "team": "Mercedes",
+    "year": 2018
+  }
+}

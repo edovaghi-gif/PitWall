@@ -1,0 +1,69 @@
+{
+  "name": "Circuit of the Americas",
+  "corners": [
+    {
+      "id": 1,
+      "name": "Curva 1",
+      "sector": 1,
+      "desc": "Il punto più alto del circuito, cieco e adrenalinico al massimo.",
+      "speed": "75 km/h",
+      "g": "3.5G",
+      "pointIndex": 5
+    },
+    {
+      "id": 2,
+      "name": "Esse Curves",
+      "sector": 1,
+      "desc": "Replica delle esse di Suzuka, altissima velocità.",
+      "speed": "265 km/h",
+      "g": "5.0G",
+      "pointIndex": 18
+    },
+    {
+      "id": 3,
+      "name": "Curva 11",
+      "sector": 2,
+      "desc": "Hairpin lento in fondo al rettilineo, zona di sorpasso principale.",
+      "speed": "65 km/h",
+      "g": "3.0G",
+      "pointIndex": 45
+    },
+    {
+      "id": 4,
+      "name": "Curva 16",
+      "sector": 2,
+      "desc": "Curva parabolica ispirata a Hockenheim.",
+      "speed": "185 km/h",
+      "g": "4.2G",
+      "pointIndex": 65
+    },
+    {
+      "id": 5,
+      "name": "Curva 19",
+      "sector": 3,
+      "desc": "Sequenza finale veloce prima dell'ultimo rettilineo.",
+      "speed": "225 km/h",
+      "g": "4.5G",
+      "pointIndex": 82
+    }
+  ],
+  "dna": {
+    "tipo": "Permanente",
+    "usuraGomme": "Alta",
+    "importanzaQualifica": "Media",
+    "safetyCar": "4 su ultimi 10 GP",
+    "sorpassi": "Frequenti"
+  },
+  "lapRecord": {
+    "time": "1:36.169",
+    "driver": "Charles Leclerc",
+    "team": "Ferrari",
+    "year": 2019
+  },
+  "qualiRecord": {
+    "time": "1:32.029",
+    "driver": "Valtteri Bottas",
+    "team": "Mercedes",
+    "year": 2019
+  }
+}

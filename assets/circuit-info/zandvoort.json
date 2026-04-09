@@ -1,0 +1,69 @@
+{
+  "name": "Circuit Zandvoort",
+  "corners": [
+    {
+      "id": 1,
+      "name": "Tarzan",
+      "sector": 1,
+      "desc": "Hairpin di apertura, unica zona di vero sorpasso.",
+      "speed": "75 km/h",
+      "g": "3.2G",
+      "pointIndex": 5
+    },
+    {
+      "id": 2,
+      "name": "Hugenholtzbocht",
+      "sector": 1,
+      "desc": "Curva veloce sul lato nord del circuito.",
+      "speed": "245 km/h",
+      "g": "4.6G",
+      "pointIndex": 22
+    },
+    {
+      "id": 3,
+      "name": "Scheivlak",
+      "sector": 2,
+      "desc": "Esse tecnica nel settore centrale, grip variabile.",
+      "speed": "195 km/h",
+      "g": "4.1G",
+      "pointIndex": 45
+    },
+    {
+      "id": 4,
+      "name": "Hugenholtz",
+      "sector": 2,
+      "desc": "Curva sopraelevata unica nel calendario — 18° di banking.",
+      "speed": "235 km/h",
+      "g": "5.8G",
+      "pointIndex": 62
+    },
+    {
+      "id": 5,
+      "name": "Arie Luyendyk",
+      "sector": 3,
+      "desc": "Seconda curva sopraelevata, spettacolare per il pubblico.",
+      "speed": "185 km/h",
+      "g": "4.8G",
+      "pointIndex": 82
+    }
+  ],
+  "dna": {
+    "tipo": "Permanente",
+    "usuraGomme": "Alta",
+    "importanzaQualifica": "Altissima",
+    "safetyCar": "4 su ultimi 10 GP",
+    "sorpassi": "Rarissimi"
+  },
+  "lapRecord": {
+    "time": "1:11.097",
+    "driver": "Lewis Hamilton",
+    "team": "Mercedes",
+    "year": 2021
+  },
+  "qualiRecord": {
+    "time": "1:08.662",
+    "driver": "Oscar Piastri",
+    "team": "McLaren",
+    "year": 2025
+  }
+}

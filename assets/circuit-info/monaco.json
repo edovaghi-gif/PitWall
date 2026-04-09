@@ -1,0 +1,78 @@
+{
+  "name": "Circuit de Monaco",
+  "corners": [
+    {
+      "id": 1,
+      "name": "Sainte Devote",
+      "sector": 1,
+      "desc": "Prima curva del GP, spesso teatro di incidenti al via.",
+      "speed": "65 km/h",
+      "g": "3.2G",
+      "pointIndex": 5
+    },
+    {
+      "id": 2,
+      "name": "Massenet",
+      "sector": 1,
+      "desc": "Curva veloce in salita verso il Casino.",
+      "speed": "120 km/h",
+      "g": "2.8G",
+      "pointIndex": 18
+    },
+    {
+      "id": 3,
+      "name": "Casino",
+      "sector": 2,
+      "desc": "La curva più famosa di Monaco, davanti al Casino.",
+      "speed": "75 km/h",
+      "g": "3.1G",
+      "pointIndex": 32
+    },
+    {
+      "id": 4,
+      "name": "Tunnel",
+      "sector": 2,
+      "desc": "L'unico tunnel della F1. Da buio a luce in un secondo.",
+      "speed": "290 km/h",
+      "g": "1.2G",
+      "pointIndex": 52
+    },
+    {
+      "id": 5,
+      "name": "Nouvelle Chicane",
+      "sector": 3,
+      "desc": "La frenata più brusca del circuito.",
+      "speed": "55 km/h",
+      "g": "3.8G",
+      "pointIndex": 65
+    },
+    {
+      "id": 6,
+      "name": "Rascasse",
+      "sector": 3,
+      "desc": "La curva più lenta di Monaco — il 'parcheggio' di Schumacher nel 2006.",
+      "speed": "45 km/h",
+      "g": "2.5G",
+      "pointIndex": 82
+    }
+  ],
+  "dna": {
+    "tipo": "Cittadino",
+    "usuraGomme": "Bassa",
+    "importanzaQualifica": "Altissima",
+    "safetyCar": "8 su ultimi 10 GP",
+    "sorpassi": "Rarissimi"
+  },
+  "lapRecord": {
+    "time": "1:12.909",
+    "driver": "Lewis Hamilton",
+    "team": "Mercedes",
+    "year": 2021
+  },
+  "qualiRecord": {
+    "time": "1:09.954",
+    "driver": "Lando Norris",
+    "team": "McLaren",
+    "year": 2025
+  }
+}

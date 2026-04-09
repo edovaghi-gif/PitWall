@@ -1,0 +1,69 @@
+{
+  "name": "Albert Park Circuit",
+  "corners": [
+    {
+      "id": 1,
+      "name": "Curva 1",
+      "sector": 1,
+      "desc": "Staccata di apertura, spesso caotica al via con 20 macchine.",
+      "speed": "85 km/h",
+      "g": "3.6G",
+      "pointIndex": 5
+    },
+    {
+      "id": 2,
+      "name": "Curva 3",
+      "sector": 1,
+      "desc": "Sequenza veloce tra i platani del parco, molto tecnica.",
+      "speed": "220 km/h",
+      "g": "4.2G",
+      "pointIndex": 18
+    },
+    {
+      "id": 3,
+      "name": "Curva 9",
+      "sector": 2,
+      "desc": "Curva lenta che immette sul lungo rettilineo, ideale per il DRS.",
+      "speed": "70 km/h",
+      "g": "2.8G",
+      "pointIndex": 42
+    },
+    {
+      "id": 4,
+      "name": "Curva 12",
+      "sector": 2,
+      "desc": "Chicane ad alta velocità sul bordo del lago.",
+      "speed": "175 km/h",
+      "g": "3.7G",
+      "pointIndex": 60
+    },
+    {
+      "id": 5,
+      "name": "Curva 15",
+      "sector": 3,
+      "desc": "Ultima curva lenta prima del traguardo, zona di sorpasso.",
+      "speed": "80 km/h",
+      "g": "3.0G",
+      "pointIndex": 80
+    }
+  ],
+  "dna": {
+    "tipo": "Semi-cittadino",
+    "usuraGomme": "Media",
+    "importanzaQualifica": "Alta",
+    "safetyCar": "6 su ultimi 10 GP",
+    "sorpassi": "Medi"
+  },
+  "lapRecord": {
+    "time": "1:19.813",
+    "driver": "Charles Leclerc",
+    "team": "Ferrari",
+    "year": 2024
+  },
+  "qualiRecord": {
+    "time": "1:15.096",
+    "driver": "Lando Norris",
+    "team": "McLaren",
+    "year": 2025
+  }
+}

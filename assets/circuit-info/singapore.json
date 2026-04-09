@@ -1,0 +1,69 @@
+{
+  "name": "Marina Bay Street Circuit",
+  "corners": [
+    {
+      "id": 1,
+      "name": "Curva 1",
+      "sector": 1,
+      "desc": "Prima curva notturna della F1, sempre piena di azione al via.",
+      "speed": "80 km/h",
+      "g": "3.4G",
+      "pointIndex": 5
+    },
+    {
+      "id": 2,
+      "name": "Anderson Bridge",
+      "sector": 1,
+      "desc": "Stretto ponte storico, macchine a pochi centimetri dai guard rail.",
+      "speed": "145 km/h",
+      "g": "3.8G",
+      "pointIndex": 22
+    },
+    {
+      "id": 3,
+      "name": "Curva 10",
+      "sector": 2,
+      "desc": "Hairpin lento sul lungomare illuminato.",
+      "speed": "55 km/h",
+      "g": "2.5G",
+      "pointIndex": 45
+    },
+    {
+      "id": 4,
+      "name": "Raffles Boulevard",
+      "sector": 2,
+      "desc": "Rettilineo cittadino con chicane tecnica.",
+      "speed": "195 km/h",
+      "g": "3.9G",
+      "pointIndex": 65
+    },
+    {
+      "id": 5,
+      "name": "Curva 23",
+      "sector": 3,
+      "desc": "Ultima curva prima del traguardo, spesso decisiva.",
+      "speed": "90 km/h",
+      "g": "3.2G",
+      "pointIndex": 85
+    }
+  ],
+  "dna": {
+    "tipo": "Cittadino",
+    "usuraGomme": "Bassa",
+    "importanzaQualifica": "Altissima",
+    "safetyCar": "9 su ultimi 10 GP",
+    "sorpassi": "Rarissimi"
+  },
+  "lapRecord": {
+    "time": "1:33.808",
+    "driver": "Lewis Hamilton",
+    "team": "Ferrari",
+    "year": 2025
+  },
+  "qualiRecord": {
+    "time": "1:29.158",
+    "driver": "George Russell",
+    "team": "Mercedes",
+    "year": 2025
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "name": "Red Bull Ring",
+  "corners": [
+    {
+      "id": 1,
+      "name": "Curva 1",
+      "sector": 1,
+      "desc": "Staccata in discesa dal rettilineo di partenza, zona calda al via.",
+      "speed": "90 km/h",
+      "g": "3.7G",
+      "pointIndex": 5
+    },
+    {
+      "id": 2,
+      "name": "Curva 2",
+      "sector": 1,
+      "desc": "Curva veloce in salita dopo la prima staccata.",
+      "speed": "215 km/h",
+      "g": "4.3G",
+      "pointIndex": 18
+    },
+    {
+      "id": 3,
+      "name": "Curva 3",
+      "sector": 2,
+      "desc": "Chicane lenta nel settore centrale, zona di sorpasso.",
+      "speed": "85 km/h",
+      "g": "3.2G",
+      "pointIndex": 40
+    },
+    {
+      "id": 4,
+      "name": "Curva 6",
+      "sector": 2,
+      "desc": "Curva a destra veloce che porta sul rettilineo opposto.",
+      "speed": "195 km/h",
+      "g": "4.1G",
+      "pointIndex": 62
+    },
+    {
+      "id": 5,
+      "name": "Curva 9",
+      "sector": 3,
+      "desc": "Ultima curva, frenata pesante prima del rettilineo finale.",
+      "speed": "75 km/h",
+      "g": "3.5G",
+      "pointIndex": 82
+    }
+  ],
+  "dna": {
+    "tipo": "Permanente",
+    "usuraGomme": "Molto Alta",
+    "importanzaQualifica": "Bassa",
+    "safetyCar": "3 su ultimi 10 GP",
+    "sorpassi": "Frequenti"
+  },
+  "lapRecord": {
+    "time": "1:05.619",
+    "driver": "Carlos Sainz",
+    "team": "McLaren",
+    "year": 2020
+  },
+  "qualiRecord": {
+    "time": "1:02.939",
+    "driver": "Valtteri Bottas",
+    "team": "Mercedes",
+    "year": 2020
+  }
+}

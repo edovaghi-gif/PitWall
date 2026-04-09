@@ -1,0 +1,69 @@
+{
+  "name": "Silverstone Circuit",
+  "corners": [
+    {
+      "id": 1,
+      "name": "Copse",
+      "sector": 1,
+      "desc": "Curva ad alta velocità che apre il giro, leggendaria per il coraggio richiesto.",
+      "speed": "285 km/h",
+      "g": "5.1G",
+      "pointIndex": 8
+    },
+    {
+      "id": 2,
+      "name": "Maggotts-Becketts",
+      "sector": 1,
+      "desc": "La sequenza di esse più rapida e impegnativa di tutta la F1.",
+      "speed": "265 km/h",
+      "g": "5.5G",
+      "pointIndex": 22
+    },
+    {
+      "id": 3,
+      "name": "Stowe",
+      "sector": 2,
+      "desc": "Curva veloce con una delle frenate più intense del calendario.",
+      "speed": "195 km/h",
+      "g": "4.3G",
+      "pointIndex": 48
+    },
+    {
+      "id": 4,
+      "name": "Club",
+      "sector": 2,
+      "desc": "Curva lenta che porta sul rettilineo di partenza.",
+      "speed": "115 km/h",
+      "g": "3.4G",
+      "pointIndex": 65
+    },
+    {
+      "id": 5,
+      "name": "Abbey",
+      "sector": 3,
+      "desc": "Esse veloce all'inizio del giro, spesso ventosissima.",
+      "speed": "245 km/h",
+      "g": "4.7G",
+      "pointIndex": 82
+    }
+  ],
+  "dna": {
+    "tipo": "Permanente",
+    "usuraGomme": "Molto Alta",
+    "importanzaQualifica": "Media",
+    "safetyCar": "4 su ultimi 10 GP",
+    "sorpassi": "Frequenti"
+  },
+  "lapRecord": {
+    "time": "1:27.097",
+    "driver": "Max Verstappen",
+    "team": "Red Bull",
+    "year": 2020
+  },
+  "qualiRecord": {
+    "time": "1:18.233",
+    "driver": "Kimi Räikkönen",
+    "team": "McLaren",
+    "year": 2004
+  }
+}

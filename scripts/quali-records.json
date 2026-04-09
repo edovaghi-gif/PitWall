@@ -1,0 +1,170 @@
+{
+  "albert_park": {
+    "circuit": "Albert Park Grand Prix Circuit",
+    "driver": "Lando Norris",
+    "team": "McLaren",
+    "time": "1:15.096",
+    "year": 2025
+  },
+  "shanghai": {
+    "circuit": "Shanghai International Circuit",
+    "driver": "Oscar Piastri",
+    "team": "McLaren",
+    "time": "1:30.641",
+    "year": 2025
+  },
+  "suzuka": {
+    "circuit": "Suzuka Circuit",
+    "driver": "Max Verstappen",
+    "team": "Red Bull",
+    "time": "1:26.983",
+    "year": 2025
+  },
+  "bahrain": {
+    "circuit": "Bahrain International Circuit",
+    "driver": "Lewis Hamilton",
+    "team": "Mercedes",
+    "time": "1:27.264",
+    "year": 2020
+  },
+  "jeddah": {
+    "circuit": "Jeddah Corniche Circuit",
+    "driver": "Max Verstappen",
+    "team": "Red Bull",
+    "time": "1:27.294",
+    "year": 2025
+  },
+  "miami": {
+    "circuit": "Miami International Autodrome",
+    "driver": "Max Verstappen",
+    "team": "Red Bull",
+    "time": "1:26.204",
+    "year": 2025
+  },
+  "imola": {
+    "circuit": "Autodromo Enzo e Dino Ferrari",
+    "driver": "Valtteri Bottas",
+    "team": "Mercedes",
+    "time": "1:13.609",
+    "year": 2020
+  },
+  "monaco": {
+    "circuit": "Circuit de Monaco",
+    "driver": "Lando Norris",
+    "team": "McLaren",
+    "time": "1:09.954",
+    "year": 2025
+  },
+  "catalunya": {
+    "circuit": "Circuit de Barcelona-Catalunya",
+    "driver": "Lando Norris",
+    "team": "McLaren",
+    "time": "1:11.383",
+    "year": 2024
+  },
+  "villeneuve": {
+    "circuit": "Circuit Gilles Villeneuve",
+    "driver": "Sebastian Vettel",
+    "team": "Ferrari",
+    "time": "1:10.240",
+    "year": 2019
+  },
+  "red_bull_ring": {
+    "circuit": "Red Bull Ring",
+    "driver": "Valtteri Bottas",
+    "team": "Mercedes",
+    "time": "1:02.939",
+    "year": 2020
+  },
+  "silverstone": {
+    "circuit": "Silverstone Circuit",
+    "driver": "Kimi Räikkönen",
+    "team": "McLaren",
+    "time": "1:18.233",
+    "year": 2004
+  },
+  "spa": {
+    "circuit": "Circuit de Spa-Francorchamps",
+    "driver": "Lando Norris",
+    "team": "McLaren",
+    "time": "1:40.562",
+    "year": 2025
+  },
+  "hungaroring": {
+    "circuit": "Hungaroring",
+    "driver": "Lewis Hamilton",
+    "team": "Mercedes",
+    "time": "1:13.447",
+    "year": 2020
+  },
+  "zandvoort": {
+    "circuit": "Circuit Park Zandvoort",
+    "driver": "Oscar Piastri",
+    "team": "McLaren",
+    "time": "1:08.662",
+    "year": 2025
+  },
+  "monza": {
+    "circuit": "Autodromo Nazionale di Monza",
+    "driver": "Max Verstappen",
+    "team": "Red Bull",
+    "time": "1:18.792",
+    "year": 2025
+  },
+  "baku": {
+    "circuit": "Baku City Circuit",
+    "driver": "Charles Leclerc",
+    "team": "Ferrari",
+    "time": "1:40.203",
+    "year": 2023
+  },
+  "marina_bay": {
+    "circuit": "Marina Bay Street Circuit",
+    "driver": "George Russell",
+    "team": "Mercedes",
+    "time": "1:29.158",
+    "year": 2025
+  },
+  "americas": {
+    "circuit": "Circuit of the Americas",
+    "driver": "Valtteri Bottas",
+    "team": "Mercedes",
+    "time": "1:32.029",
+    "year": 2019
+  },
+  "rodriguez": {
+    "circuit": "Autódromo Hermanos Rodríguez",
+    "driver": "Max Verstappen",
+    "team": "Red Bull",
+    "time": "1:14.758",
+    "year": 2019
+  },
+  "interlagos": {
+    "circuit": "Autódromo José Carlos Pace",
+    "driver": "Lewis Hamilton",
+    "team": "Mercedes",
+    "time": "1:07.281",
+    "year": 2018
+  },
+  "vegas": {
+    "circuit": "Las Vegas Strip Street Circuit",
+    "driver": "George Russell",
+    "team": "Mercedes",
+    "time": "1:32.312",
+    "year": 2024
+  },
+  "losail": {
+    "circuit": "Losail International Circuit",
+    "driver": "Oscar Piastri",
+    "team": "McLaren",
+    "time": "1:19.387",
+    "year": 2025
+  },
+  "yas_marina": {
+    "circuit": "Yas Marina Circuit",
+    "driver": "Max Verstappen",
+    "team": "Red Bull",
+    "time": "1:22.109",
+    "year": 2021
+  }
+}

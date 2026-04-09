@@ -1,0 +1,69 @@
+{
+  "name": "Circuit de Barcelona-Catalunya",
+  "corners": [
+    {
+      "id": 1,
+      "name": "Curva 1",
+      "sector": 1,
+      "desc": "Prima frenata, sorpasso difficile ma possibile con DRS.",
+      "speed": "90 km/h",
+      "g": "3.7G",
+      "pointIndex": 5
+    },
+    {
+      "id": 2,
+      "name": "Curva 3",
+      "sector": 1,
+      "desc": "Ramsés, curva veloce in salita che testa il bilanciamento.",
+      "speed": "195 km/h",
+      "g": "4.3G",
+      "pointIndex": 20
+    },
+    {
+      "id": 3,
+      "name": "Curva 5",
+      "sector": 2,
+      "desc": "Sequenza tecnica nel settore centrale.",
+      "speed": "135 km/h",
+      "g": "3.5G",
+      "pointIndex": 40
+    },
+    {
+      "id": 4,
+      "name": "Curva 9",
+      "sector": 2,
+      "desc": "Doppia destra, fondamentale per l'assetto della macchina.",
+      "speed": "175 km/h",
+      "g": "4.1G",
+      "pointIndex": 60
+    },
+    {
+      "id": 5,
+      "name": "Curva 13",
+      "sector": 3,
+      "desc": "Chicane finale prima del lungo rettilineo.",
+      "speed": "105 km/h",
+      "g": "3.2G",
+      "pointIndex": 82
+    }
+  ],
+  "dna": {
+    "tipo": "Permanente",
+    "usuraGomme": "Alta",
+    "importanzaQualifica": "Alta",
+    "safetyCar": "3 su ultimi 10 GP",
+    "sorpassi": "Rari"
+  },
+  "lapRecord": {
+    "time": "1:16.330",
+    "driver": "Oscar Piastri",
+    "team": "McLaren",
+    "year": 2025
+  },
+  "qualiRecord": {
+    "time": "1:11.383",
+    "driver": "Lando Norris",
+    "team": "McLaren",
+    "year": 2024
+  }
+}

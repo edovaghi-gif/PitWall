@@ -1,0 +1,69 @@
+{
+  "name": "Lusail International Circuit",
+  "corners": [
+    {
+      "id": 1,
+      "name": "Curva 1",
+      "sector": 1,
+      "desc": "Prima frenata dopo il lungo rettilineo di partenza.",
+      "speed": "95 km/h",
+      "g": "3.8G",
+      "pointIndex": 5
+    },
+    {
+      "id": 2,
+      "name": "Curva 4",
+      "sector": 1,
+      "desc": "Sequenza veloce che testa il carico aerodinamico.",
+      "speed": "225 km/h",
+      "g": "4.4G",
+      "pointIndex": 20
+    },
+    {
+      "id": 3,
+      "name": "Curva 8",
+      "sector": 2,
+      "desc": "Esse tecnica nel settore centrale, grip ottimo.",
+      "speed": "185 km/h",
+      "g": "4.0G",
+      "pointIndex": 45
+    },
+    {
+      "id": 4,
+      "name": "Curva 12",
+      "sector": 2,
+      "desc": "Hairpin lento, zona di sorpasso principale.",
+      "speed": "70 km/h",
+      "g": "3.0G",
+      "pointIndex": 65
+    },
+    {
+      "id": 5,
+      "name": "Curva 15",
+      "sector": 3,
+      "desc": "Sequenza finale veloce prima del rettilineo.",
+      "speed": "235 km/h",
+      "g": "4.6G",
+      "pointIndex": 82
+    }
+  ],
+  "dna": {
+    "tipo": "Permanente",
+    "usuraGomme": "Alta",
+    "importanzaQualifica": "Media",
+    "safetyCar": "3 su ultimi 10 GP",
+    "sorpassi": "Medi"
+  },
+  "lapRecord": {
+    "time": "1:22.384",
+    "driver": "Lando Norris",
+    "team": "McLaren",
+    "year": 2024
+  },
+  "qualiRecord": {
+    "time": "1:19.387",
+    "driver": "Oscar Piastri",
+    "team": "McLaren",
+    "year": 2025
+  }
+}

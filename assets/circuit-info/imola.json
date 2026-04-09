@@ -1,0 +1,69 @@
+{
+  "name": "Autodromo Enzo e Dino Ferrari",
+  "corners": [
+    {
+      "id": 1,
+      "name": "Tamburello",
+      "sector": 1,
+      "desc": "La curva più famosa d'Italia, teatro della tragedia di Senna nel 1994.",
+      "speed": "275 km/h",
+      "g": "4.6G",
+      "pointIndex": 8
+    },
+    {
+      "id": 2,
+      "name": "Villeneuve",
+      "sector": 1,
+      "desc": "Chicane intitolata al grande Gilles, frenata brutale.",
+      "speed": "85 km/h",
+      "g": "3.9G",
+      "pointIndex": 22
+    },
+    {
+      "id": 3,
+      "name": "Piratella",
+      "sector": 2,
+      "desc": "Curva in salita ad alta velocità, cieca e impegnativa.",
+      "speed": "195 km/h",
+      "g": "4.2G",
+      "pointIndex": 45
+    },
+    {
+      "id": 4,
+      "name": "Acque Minerali",
+      "sector": 2,
+      "desc": "Chicane spettacolare immersa nel verde delle colline.",
+      "speed": "110 km/h",
+      "g": "3.6G",
+      "pointIndex": 62
+    },
+    {
+      "id": 5,
+      "name": "Variante Alta",
+      "sector": 3,
+      "desc": "Ultima chicane prima della discesa verso il traguardo.",
+      "speed": "95 km/h",
+      "g": "3.4G",
+      "pointIndex": 82
+    }
+  ],
+  "dna": {
+    "tipo": "Permanente",
+    "usuraGomme": "Bassa",
+    "importanzaQualifica": "Altissima",
+    "safetyCar": "7 su ultimi 10 GP",
+    "sorpassi": "Rarissimi"
+  },
+  "lapRecord": {
+    "time": "1:15.484",
+    "driver": "Lewis Hamilton",
+    "team": "Mercedes",
+    "year": 2020
+  },
+  "qualiRecord": {
+    "time": "1:13.609",
+    "driver": "Valtteri Bottas",
+    "team": "Mercedes",
+    "year": 2020
+  }
+}

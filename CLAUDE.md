@@ -241,3 +241,15 @@ Target sessione buona: ~100–110 punti totali.
 - AsyncStorage key: "onboarding_complete" — se presente salta l'onboarding
 - app/index.tsx controlla la key e fa redirect a /onboarding o /(tabs)/home
 - DEV: per testare l'onboarding, aggiungere temporaneamente await AsyncStorage.removeItem('onboarding_complete') in index.tsx, rimuoverlo dopo il test
+
+---
+
+## GitHub Raw URLs
+
+```
+https://raw.githubusercontent.com/edovaghi-gif/PitWall/main/app/(tabs)/home.tsx
+https://raw.githubusercontent.com/edovaghi-gif/PitWall/main/app/(tabs)/prediction.tsx
+https://raw.githubusercontent.com/edovaghi-gif/PitWall/main/app/(tabs)/headtohead.tsx
+https://raw.githubusercontent.com/edovaghi-gif/PitWall/main/app/(tabs)/circuito.tsx
+https://raw.githubusercontent.com/edovaghi-gif/PitWall/main/app/_layout.tsx
+```

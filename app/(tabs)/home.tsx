@@ -57,7 +57,7 @@ export default function HomeScreen() {
   const [qualifyingDrivers, setQualifyingDrivers] = useState<any[]>([]);
   const [qualiPhase, setQualiPhase] = useState<"Q1" | "Q2" | "Q3" | null>(null);
   const [nextSessionCountdown, setNextSessionCountdown] = useState<string | null>(null);
-  const QUALI_DEV_MODE = true;
+  const QUALI_DEV_MODE = false;
   const [activeQualiPhase, setActiveQualiPhase] = useState<string | null>(QUALI_DEV_MODE ? "Q3" : null);
   const QUALI_DEV_SESSION_KEY = 11249;
   const QUALI_DEV_MAX_LAP = 999;

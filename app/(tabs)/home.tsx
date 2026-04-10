@@ -72,10 +72,12 @@ export default function HomeScreen() {
 
   const [qualiCountdown, setQualiCountdown] = useState<string | null>(null);
   const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
+  const [selectedQPhase, setSelectedQPhase] = useState<"Q1" | "Q2" | "Q3" | null>(null);
   const [flashingDrivers, setFlashingDrivers] = useState<Set<number>>(new Set());
   const driverLapRef = useRef<Record<number, number>>({});
   const flashTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const raceControlRef = useRef<any[]>([]);
+  const lapsRef = useRef<any[]>([]);
   const devQualiPhase = useRef<string | null>(QUALI_DEV_MODE ? "Q3" : null);
 
   useEffect(() => {
@@ -277,6 +279,35 @@ export default function HomeScreen() {
     return `${mins}:${secs}`;
   };
 
+  function getPhaseWindow(phaseNum: number): { start: Date | null; end: Date | null } {
+    const rcData = raceControlRef.current;
+    const startEvent = rcData.find((e: any) => Number(e.qualifying_phase) === phaseNum && e.message?.includes("SESSION STARTED"));
+    const endEvent = rcData.find((e: any) => Number(e.qualifying_phase) === phaseNum && e.message?.includes("SESSION FINISHED"));
+    return {
+      start: startEvent?.date ? new Date(startEvent.date) : null,
+      end: endEvent?.date ? new Date(endEvent.date) : null,
+    };
+  }
+
+  function getBestLapInPhase(driverNumber: number, phaseNum: number, requireWindow: boolean): any | null {
+    const { start, end } = getPhaseWindow(phaseNum);
+    if (requireWindow && !start) return null;
+    let best: any = null;
+    for (const lap of lapsRef.current) {
+      if (lap.driver_number !== driverNumber) continue;
+      if (lap.is_pit_out_lap) continue;
+      if (!lap.lap_duration) continue;
+      if (QUALI_DEV_MODE && lap.lap_number > QUALI_DEV_MAX_LAP) continue;
+      if (start && lap.date_start) {
+        const lapDate = new Date(lap.date_start);
+        if (lapDate < start) continue;
+        if (end && lapDate > end) continue;
+      }
+      if (!best || lap.lap_duration < best.lap_duration) best = lap;
+    }
+    return best;
+  }
+
   async function getCurrentSessionInfo(raceName: string, year: number) {
     const circuitMap: Record<string, string> = {
       "Miami Grand Prix": "Miami",
@@ -394,42 +425,10 @@ export default function HomeScreen() {
     const lapsRes = await fetch(`https://api.openf1.org/v1/laps?session_key=${sessionKey}`);
     const lapsData = await lapsRes.json();
     if (!Array.isArray(lapsData)) return;
+    lapsRef.current = lapsData;
 
     const effectivePhase = devQualiPhase.current ?? qualiPhase;
     setActiveQualiPhase(effectivePhase);
-
-    // Helper: get start/end timestamps for a given phase number from raceControlRef
-    function getPhaseWindow(phaseNum: number): { start: Date | null; end: Date | null } {
-      const rcData = raceControlRef.current;
-      const startEvent = rcData.find((e: any) => Number(e.qualifying_phase) === phaseNum && e.message?.includes("SESSION STARTED"));
-      const endEvent = rcData.find((e: any) => Number(e.qualifying_phase) === phaseNum && e.message?.includes("SESSION FINISHED"));
-      return {
-        start: startEvent?.date ? new Date(startEvent.date) : null,
-        end: endEvent?.date ? new Date(endEvent.date) : null,
-      };
-    }
-
-    // Helper: best lap for a driver in a specific phase.
-    // requireWindow=true: returns null if no phase window available (safe fallback for past phases).
-    // requireWindow=false: includes all laps if no window (current phase behaviour when rc not loaded yet).
-    function getBestLapInPhase(driverNumber: number, phaseNum: number, requireWindow: boolean): any | null {
-      const { start, end } = getPhaseWindow(phaseNum);
-      if (requireWindow && !start) return null;
-      let best: any = null;
-      for (const lap of lapsData) {
-        if (lap.driver_number !== driverNumber) continue;
-        if (lap.is_pit_out_lap) continue;
-        if (!lap.lap_duration) continue;
-        if (QUALI_DEV_MODE && lap.lap_number > QUALI_DEV_MAX_LAP) continue;
-        if (start && lap.date_start) {
-          const lapDate = new Date(lap.date_start);
-          if (lapDate < start) continue;
-          if (end && lapDate > end) continue;
-        }
-        if (!best || lap.lap_duration < best.lap_duration) best = lap;
-      }
-      return best;
-    }
 
     // Determine current phase number from raceControlRef
     let currentPhaseNum: number | null = null;
@@ -551,6 +550,10 @@ export default function HomeScreen() {
     return () => { clearInterval(rcInterval); clearInterval(dataInterval); };
   }, [activeSession]);
 
+  useEffect(() => {
+    setSelectedQPhase(activeQualiPhase as "Q1" | "Q2" | "Q3" | null);
+  }, [activeQualiPhase]);
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -575,30 +578,71 @@ export default function HomeScreen() {
           </Text>
         </View>
         <View style={{ flexDirection: "row", paddingHorizontal: 16, marginBottom: 12, gap: 8 }}>
-          {["Q1", "Q2", "Q3"].map(q => (
-            <View key={q} style={{
-              paddingHorizontal: 12, paddingVertical: 4, borderRadius: 6,
-              backgroundColor: activeQualiPhase === q ? "#E10600" : "#1E1E1E",
-            }}>
-              <Text style={{ color: activeQualiPhase === q ? "#FFFFFF" : "#555555", fontSize: 12, fontWeight: "700" }}>{q}</Text>
-            </View>
-          ))}
+          {["Q1", "Q2", "Q3"].map(q => {
+            const isLive = activeQualiPhase === q;
+            const isSelected = selectedQPhase === q && !isLive;
+            return (
+              <TouchableOpacity
+                key={q}
+                onPress={() => setSelectedQPhase(q as "Q1" | "Q2" | "Q3")}
+                style={{
+                  paddingHorizontal: 12, paddingVertical: 4, borderRadius: 6,
+                  backgroundColor: isLive ? "#E10600" : isSelected ? "#2A2A2A" : "#1E1E1E",
+                  borderWidth: isSelected ? 1 : 0,
+                  borderColor: "#FFFFFF",
+                }}
+              >
+                <Text style={{ color: isLive || isSelected ? "#FFFFFF" : "#555555", fontSize: 12, fontWeight: "700" }}>{q}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
         <ScrollView>
           {(() => {
-            const leaderTime = qualifyingDrivers[0]?.best_lap_duration;
             const circuitShortName = activeSession?.circuit_short_name ?? "";
             const circuitInfo = CIRCUIT_INFO_MAP[circuitShortName] ?? null;
-            const lapRecord = circuitInfo?.lapRecord ?? null;
             const pbData: Record<string, any> = (qualiPb2025 as any)[circuitShortName] ?? {};
-            return qualifyingDrivers.map((driver, index) => {
-              const isEliminated =
-                (activeQualiPhase === "Q1" && index >= 16) ||
-                (activeQualiPhase === "Q2" && index >= 10) ||
-                (activeQualiPhase === "Q3" && index >= 10);
+
+            const isHistoricalView = selectedQPhase !== null && selectedQPhase !== activeQualiPhase;
+            const selectedPhaseNum = selectedQPhase === "Q1" ? 1 : selectedQPhase === "Q2" ? 2 : 3;
+
+            let displayedDrivers: any[];
+            if (isHistoricalView) {
+              displayedDrivers = qualifyingDrivers.map((d: any) => {
+                const participatedInPhase = (d.lap_phase ?? 0) >= selectedPhaseNum;
+                const phaseLap = participatedInPhase ? getBestLapInPhase(d.driver_number, selectedPhaseNum, true) : null;
+                return {
+                  ...d,
+                  display_lap_duration: participatedInPhase ? (phaseLap?.lap_duration ?? null) : d.best_lap_duration,
+                  participated_in_phase: participatedInPhase,
+                };
+              }).sort((a: any, b: any) => {
+                if (a.participated_in_phase && !b.participated_in_phase) return -1;
+                if (!a.participated_in_phase && b.participated_in_phase) return 1;
+                if (!a.display_lap_duration && !b.display_lap_duration) return 0;
+                if (!a.display_lap_duration) return 1;
+                if (!b.display_lap_duration) return -1;
+                return a.display_lap_duration - b.display_lap_duration;
+              });
+            } else {
+              displayedDrivers = qualifyingDrivers.map((d: any) => ({
+                ...d,
+                display_lap_duration: d.best_lap_duration,
+                participated_in_phase: true,
+              }));
+            }
+
+            const leaderTime = displayedDrivers[0]?.display_lap_duration;
+
+            return displayedDrivers.map((driver, index) => {
+              const isEliminated = isHistoricalView
+                ? !driver.participated_in_phase
+                : (activeQualiPhase === "Q1" && index >= 16) ||
+                  (activeQualiPhase === "Q2" && index >= 10) ||
+                  (activeQualiPhase === "Q3" && index >= 10);
               const teamColor = isEliminated ? "#444444" : (`#${driver.team_colour}` || "#FFFFFF");
-              const gap = driver.best_lap_duration && leaderTime
-                ? driver.best_lap_duration - leaderTime
+              const gap = driver.display_lap_duration && leaderTime
+                ? driver.display_lap_duration - leaderTime
                 : null;
               const gapStr = gap !== null
                 ? (index === 0 ? "LEADER" : `+${gap.toFixed(3)}`)
@@ -608,15 +652,15 @@ export default function HomeScreen() {
 
               const qualiRecord = circuitInfo?.qualiRecord ?? null;
               const vsRecord = (() => {
-                if (!driver.best_lap_duration || !qualiRecord?.time) return null;
-                return formatDelta(driver.best_lap_duration - timeToSecs(qualiRecord.time));
+                if (!driver.display_lap_duration || !qualiRecord?.time) return null;
+                return formatDelta(driver.display_lap_duration - timeToSecs(qualiRecord.time));
               })();
 
               const vsPb = (() => {
-                if (!driver.best_lap_duration) return null;
+                if (!driver.display_lap_duration) return null;
                 const pb = pbData[acronym];
                 if (!pb?.lapDuration) return null;
-                return formatDelta(driver.best_lap_duration - pb.lapDuration);
+                return formatDelta(driver.display_lap_duration - pb.lapDuration);
               })();
 
               return (
@@ -641,7 +685,7 @@ export default function HomeScreen() {
                     </View>
                     <View style={{ flexDirection: "row", alignItems: "center", marginLeft: 6 }}>
                       <Text style={{ color: isEliminated ? "#555555" : "#FFFFFF", fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"], minWidth: 72 }}>
-                        {formatLapTime(driver.best_lap_duration)}
+                        {formatLapTime(driver.display_lap_duration)}
                       </Text>
                       <Text style={{ color: isEliminated ? "#444444" : "#999999", fontSize: 10, fontVariant: ["tabular-nums"], marginLeft: 6, minWidth: 44 }}>
                         {index === 0 ? "LEADER" : gapStr}

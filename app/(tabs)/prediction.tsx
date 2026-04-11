@@ -1,8 +1,9 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const logo = require('../../assets/images/PitWall Logo.png');
-import { useNavigation } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const ERGAST = "https://api.jolpi.ca/ergast/f1";
@@ -31,6 +32,7 @@ type Podium = [Driver | null, Driver | null, Driver | null];
 
 export default function PredictionScreen() {
   const navigation = useNavigation();
+  const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [nextRace, setNextRace] = useState<any>(null);
@@ -45,9 +47,30 @@ export default function PredictionScreen() {
   const [raceResultsAvailable, setRaceResultsAvailable] = useState(false);
   const [showScoring, setShowScoring] = useState(false);
   const [scoreBreakdown, setScoreBreakdown] = useState<any>(null);
+  const [scoreHistory, setScoreHistory] = useState<any[]>([]);
+  const [expandedHistoryRound, setExpandedHistoryRound] = useState<string | null>(null);
 
   useEffect(() => {
     navigation.setOptions({ title: "", headerShown: false });
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem("pitwall_scores");
+        const history: any[] = raw ? JSON.parse(raw) : [];
+        if (history.length > 0) {
+          setScoreHistory(history);
+        } else {
+          const testData = [
+            { raceName: "Australian Grand Prix", round: "1", season: "2026", date: "2026-03-16", finalScore: 112, basePoints: 90, multiplier: 1.15, malus: 0, myPodium: [81, 16, 44], realPodium: [81, 16, 44], breakdown: [{ label: "Podio esatto", points: 50, positive: true }, { label: "P1 esatto", points: 20, positive: true }, { label: "P2 esatto", points: 20, positive: true }, { label: "P3 esatto", points: 20, positive: true }, { label: "Bandiera rossa corretta ×1.15", points: null, positive: true }] },
+            { raceName: "Chinese Grand Prix", round: "2", season: "2026", date: "2026-03-23", finalScore: 47, basePoints: 57, multiplier: 1, malus: 10, myPodium: [1, 81, 16], realPodium: [12, 63, 81], breakdown: [{ label: "P1 sbagliato", points: 0, positive: false }, { label: "P2 sbagliato", points: 0, positive: false }, { label: "P3 sul podio", points: 7, positive: true }, { label: "Safety Car sbagliata", points: -5, positive: false }, { label: "Range DNF sbagliato", points: -5, positive: false }] },
+            { raceName: "Japanese Grand Prix", round: "3", season: "2026", date: "2026-03-29", finalScore: 87, basePoints: 77, multiplier: 1.1, malus: 5, myPodium: [12, 63, 81], realPodium: [12, 63, 16], breakdown: [{ label: "P1 esatto", points: 20, positive: true }, { label: "P2 esatto", points: 20, positive: true }, { label: "P3 sbagliato", points: 0, positive: false }, { label: "Safety Car corretta ×1.1", points: null, positive: true }, { label: "Bandiera rossa sbagliata", points: -8, positive: false }] },
+          ];
+          await AsyncStorage.setItem("pitwall_scores", JSON.stringify(testData));
+          setScoreHistory(testData);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -254,6 +277,39 @@ export default function PredictionScreen() {
 
     const finalScore = Math.round(basePoints * multiplier) - malus;
 
+    try {
+      const raw = await AsyncStorage.getItem("pitwall_scores");
+      const history: any[] = raw ? JSON.parse(raw) : [];
+      const myPodiumNames = myPodium.map((num: number) => {
+        const d = drivers.find(dr => parseInt(dr.number) === num);
+        return d?.name ?? `#${num}`;
+      });
+      const record = {
+        raceName: nextRace.raceName,
+        round: nextRace.round,
+        season: nextRace.season,
+        date: nextRace.date,
+        finalScore,
+        breakdown,
+        basePoints,
+        multiplier,
+        malus,
+        myPodium,
+        realPodium: realNumbers,
+        myPodiumNames,
+        savedSafetyCar: safetyCar,
+        savedRedFlag: redFlag,
+        savedDnfRange: dnfRange,
+      };
+      const idx = history.findIndex((r: any) => r.round === nextRace.round && r.season === nextRace.season);
+      if (idx >= 0) history[idx] = record;
+      else history.push(record);
+      await AsyncStorage.setItem("pitwall_scores", JSON.stringify(history));
+      setScoreHistory(history);
+    } catch (e) {
+      console.error(e);
+    }
+
     setScoreBreakdown({ realPodium, breakdown, basePoints, multiplier, malus, finalScore });
     setShowScoring(true);
   };
@@ -301,6 +357,19 @@ export default function PredictionScreen() {
             <View style={styles.navbar}>
               <Image source={logo} style={{ height: 32, width: 160, resizeMode: 'contain' }} />
             </View>
+            {scoreHistory.length > 0 && (
+              <TouchableOpacity
+                onPress={() => router.push('/season-results')}
+                style={{ backgroundColor: "#141414", borderRadius: 12, borderWidth: 0.5, borderColor: "#2A2A2A", borderLeftWidth: 3, borderLeftColor: "#E10600", padding: 12, flexDirection: "row", alignItems: "center" }}
+              >
+                <Text style={{ fontSize: 16, marginRight: 8 }}>🏆</Text>
+                <Text style={{ color: "#999999", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, flex: 1 }}>La mia stagione</Text>
+                <Text style={{ color: "#E10600", fontSize: 20, fontWeight: "800", marginRight: 8 }}>
+                  {scoreHistory.reduce((sum, r) => sum + r.finalScore, 0)} pt
+                </Text>
+                <Text style={{ color: "#555555", fontSize: 16 }}>→</Text>
+              </TouchableOpacity>
+            )}
             {raceCard}
             <Text style={styles.sectionTitle}>Seleziona il podio</Text>
             <View style={styles.podiumRow}>
@@ -365,6 +434,7 @@ export default function PredictionScreen() {
                 );
               })}
             </View>
+
           </ScrollView>
           {allFilled && (
             <View style={styles.stickyBar}>

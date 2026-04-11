@@ -37,6 +37,7 @@ app/(tabs)/home.tsx       → countdown GP, ultimi risultati, standings, stat de
 app/(tabs)/circuito.tsx   → mappe GPS SVG, settori colorati, swipe tra 24 circuiti
 app/(tabs)/headtohead.tsx → confronto carriera piloti, barre tug-of-war
 app/(tabs)/prediction.tsx → pronostico 3-step, scoring con bonus/malus, AsyncStorage
+app/season-results.tsx    → storico stagione, lista GP con punteggi e breakdown espandibile
 app/onboarding.tsx        → 5 slide onboarding con animazione, mostrato solo al primo avvio
 ```
 
@@ -178,16 +179,18 @@ Target sessione buona: ~100–110 punti totali.
 ### Implementazione post-gara
 - `checkRaceResults()` — fetcha `/position?session_key={key}` da OpenF1, se ritorna array con 3+ piloti imposta `raceResultsAvailable = true`
 - `calculateScore()` — calcola il punteggio confrontando il pronostico salvato con i dati reali OpenF1 (/position, /race_control, /laps)
+  - Salva in `pitwall_scores`: `myPodiumNames` (nomi piloti), `savedSafetyCar`, `savedRedFlag`, `savedDnfRange`
+  - Upsert per `round + season` — sovrascrive se esiste, aggiunge se non esiste
 - `fetchSessionKey()` — recupera il session_key dinamicamente da OpenF1 tramite circuitMap
 - Modal "SCOPRI IL RISULTATO" — visibile solo se raceResultsAvailable === true, mostra breakdown punti e punteggio finale
 
 ### Flusso prediction (3 step)
-1. Selezione podio (P1, P2, P3)
+1. Selezione podio (P1, P2, P3) — banner "LA MIA STAGIONE" in cima se `scoreHistory.length > 0`, naviga a `/season-results`
 2. Parametri avanzati (n° Safety Car, Red Flag sì/no, range DNF)
 3. Recap + submit
 
 - Lock: bloccato dopo inizio qualifiche — banner arancione con data/ora esatta
-- Persistenza: `AsyncStorage` — sopravvive al riavvio app
+- Persistenza: `AsyncStorage` key `pitwall_scores` — array di record, sopravvive al riavvio app
 
 ---
 

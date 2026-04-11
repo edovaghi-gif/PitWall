@@ -10,53 +10,58 @@ const SC_OPTIONS = ["0", "1", "2", "3+"];
 const DNF_OPTIONS = ["0–3", "4–6", "7+"];
 const POS_LABELS = ["1°", "2°", "3°"];
 
-function BreakdownExpand({ record, scoreColor }: { record: any; scoreColor: string }) {
+const MEDALS = ["🥇", "🥈", "🥉"];
+
+function BreakdownExpand({ record }: { record: any }) {
+  const realPodium: number[] = record.realPodium ?? [];
+
   const podioEsatto =
-    record.myPodium?.[0] === record.realPodium?.[0] &&
-    record.myPodium?.[1] === record.realPodium?.[1] &&
-    record.myPodium?.[2] === record.realPodium?.[2];
+    record.myPodium?.[0] === realPodium[0] &&
+    record.myPodium?.[1] === realPodium[1] &&
+    record.myPodium?.[2] === realPodium[2];
 
   const posResult = (i: number) => {
     const myNum = record.myPodium?.[i];
-    const realPodium: number[] = record.realPodium ?? [];
-    if (myNum == null) return { label: "N/D", points: null, color: "#555555" };
-    if (myNum === realPodium[i]) return { label: `P${i + 1} esatto`, points: 20, color: "#27AE60" };
-    if (realPodium.includes(myNum)) return { label: "Sul podio", points: 7, color: "#27AE60" };
-    return { label: "Fuori dal podio", points: 0, color: "#E10600" };
+    if (myNum == null) return { label: "N/D", points: null, ptColor: "#555555" };
+    if (myNum === realPodium[i]) return { label: `P${i + 1} esatto`, points: 20, ptColor: "#27AE60" };
+    if (realPodium.includes(myNum)) return { label: "Sul podio", points: 7, ptColor: "#27AE60" };
+    return { label: "Fuori dal podio", points: 0, ptColor: "#E10600" };
   };
 
   const scItem = record.breakdown?.find((b: any) => b.label?.toLowerCase().includes("safety car"));
   const rfItem = record.breakdown?.find((b: any) => b.label?.toLowerCase().includes("rossa") || b.label?.toLowerCase().includes("bandiera"));
   const dnfItem = record.breakdown?.find((b: any) => b.label?.toLowerCase().includes("dnf"));
 
-  const scLabel = scItem
-    ? (scItem.positive ? "Corretta ×1.1" : "Sbagliata −5pt")
-    : "—";
-  const rfLabel = rfItem
-    ? (rfItem.positive ? "Corretta ×1.15" : "Sbagliata −8pt")
-    : "—";
-  const dnfLabel = dnfItem
-    ? (dnfItem.positive ? "Corretto ×1.1" : "Sbagliato −5pt")
-    : "—";
+  const hasParams = record.savedSafetyCar != null || record.savedRedFlag != null || record.savedDnfRange != null;
 
-  const scColor = scItem ? (scItem.positive ? "#27AE60" : "#E10600") : "#555555";
-  const rfColor = rfItem ? (rfItem.positive ? "#27AE60" : "#E10600") : "#555555";
-  const dnfColor = dnfItem ? (dnfItem.positive ? "#27AE60" : "#E10600") : "#555555";
-
-  const scVal = record.savedSafetyCar != null ? SC_OPTIONS[record.savedSafetyCar] : "—";
-  const rfVal = record.savedRedFlag != null ? (record.savedRedFlag ? "Sì" : "No") : "—";
-  const dnfVal = record.savedDnfRange != null ? DNF_OPTIONS[record.savedDnfRange] : "—";
+  type ParamRow = { left: string; label: string; color: string };
+  const paramRows: ParamRow[] = [];
+  if (record.savedSafetyCar != null && scItem) {
+    paramRows.push({
+      left: `SC: ${SC_OPTIONS[record.savedSafetyCar]}`,
+      label: scItem.positive ? "Corretta ×1.1" : "Sbagliata −5pt",
+      color: scItem.positive ? "#27AE60" : "#E10600",
+    });
+  }
+  if (record.savedRedFlag != null && rfItem) {
+    paramRows.push({
+      left: `RF: ${record.savedRedFlag ? "Sì" : "No"}`,
+      label: rfItem.positive ? "Corretta ×1.15" : "Sbagliata −8pt",
+      color: rfItem.positive ? "#27AE60" : "#E10600",
+    });
+  }
+  if (record.savedDnfRange != null && dnfItem) {
+    paramRows.push({
+      left: `Ritiri: ${DNF_OPTIONS[record.savedDnfRange]}`,
+      label: dnfItem.positive ? "Corretto ×1.1" : "Sbagliato −5pt",
+      color: dnfItem.positive ? "#27AE60" : "#E10600",
+    });
+  }
 
   return (
     <View style={styles.expand}>
-      <Text style={styles.expandSectionLabel}>IL TUO PRONOSTICO</Text>
 
-      {podioEsatto && (
-        <View style={styles.bdRow}>
-          <Text style={[styles.bdLeft, { color: "#27AE60" }]}>Podio esatto</Text>
-          <Text style={[styles.bdRight, { color: "#27AE60" }]}>+50pt</Text>
-        </View>
-      )}
+      <Text style={styles.sectionLbl}>IL TUO PODIO</Text>
 
       {[0, 1, 2].map(i => {
         const res = posResult(i);
@@ -64,12 +69,12 @@ function BreakdownExpand({ record, scoreColor }: { record: any; scoreColor: stri
         return (
           <View key={i} style={styles.bdRow}>
             <Text style={[styles.bdLeft, { color: res.points === 0 ? "#555555" : "#FFFFFF" }]}>
-              {POS_LABELS[i]} {name}
+              {MEDALS[i]} {name}
             </Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Text style={[styles.bdLabel, { color: res.color }]}>{res.label}</Text>
+              <Text style={{ color: "#999999", fontSize: 11 }}>{res.label}</Text>
               {res.points != null && (
-                <Text style={[styles.bdRight, { color: res.color }]}>
+                <Text style={[styles.bdPts, { color: res.ptColor }]}>
                   {res.points > 0 ? `+${res.points}` : res.points}pt
                 </Text>
               )}
@@ -78,27 +83,35 @@ function BreakdownExpand({ record, scoreColor }: { record: any; scoreColor: stri
         );
       })}
 
-      <View style={styles.bdSep} />
+      {podioEsatto && (
+        <>
+          <View style={styles.bdSep} />
+          <View style={styles.bdRow}>
+            <Text style={{ color: "#27AE60", fontSize: 13 }}>Podio esatto</Text>
+            <Text style={[styles.bdPts, { color: "#27AE60" }]}>+50pt</Text>
+          </View>
+        </>
+      )}
 
-      <View style={styles.bdRow}>
-        <Text style={styles.bdLeft}>SC: {scVal}</Text>
-        <Text style={[styles.bdRight, { color: scColor }]}>{scLabel}</Text>
-      </View>
-      <View style={styles.bdRow}>
-        <Text style={styles.bdLeft}>RF: {rfVal}</Text>
-        <Text style={[styles.bdRight, { color: rfColor }]}>{rfLabel}</Text>
-      </View>
-      <View style={styles.bdRow}>
-        <Text style={styles.bdLeft}>Ritiri: {dnfVal}</Text>
-        <Text style={[styles.bdRight, { color: dnfColor }]}>{dnfLabel}</Text>
-      </View>
+      {hasParams && paramRows.length > 0 && (
+        <>
+          <Text style={[styles.sectionLbl, { marginTop: 12 }]}>PARAMETRI</Text>
+          {paramRows.map((row, j) => (
+            <View key={j} style={styles.bdRow}>
+              <Text style={styles.bdLeft}>{row.left}</Text>
+              <Text style={[styles.bdPts, { color: row.color }]}>{row.label}</Text>
+            </View>
+          ))}
+        </>
+      )}
 
       <View style={styles.bdSep} />
 
       <View style={styles.bdTotalRow}>
-        <Text style={styles.bdTotalLabel}>PUNTEGGIO FINALE</Text>
-        <Text style={[styles.bdTotalScore, { color: scoreColor }]}>{record.finalScore} pt</Text>
+        <Text style={styles.sectionLbl}>PUNTEGGIO FINALE</Text>
+        <Text style={styles.bdTotalScore}>{record.finalScore} pt</Text>
       </View>
+
     </View>
   );
 }
@@ -168,7 +181,7 @@ export default function SeasonResultsScreen() {
                   </TouchableOpacity>
                   {isExpanded && (
                     <View style={i < arr.length - 1 ? { borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" } : {}}>
-                      <BreakdownExpand record={record} scoreColor={scoreColor} />
+                      <BreakdownExpand record={record} />
                     </View>
                   )}
                 </View>
@@ -203,16 +216,14 @@ const styles = StyleSheet.create({
   rowScore: { fontSize: 26, fontWeight: "800" },
   rowPt: { color: "#555555", fontSize: 12, marginLeft: 4 },
 
-  expand: { backgroundColor: "#1A1A1A", paddingHorizontal: 14, paddingTop: 4, paddingBottom: 14 },
-  expandSectionLabel: { color: "#555555", fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", marginTop: 10, marginBottom: 6 },
+  expand: { backgroundColor: "#1A1A1A", paddingHorizontal: 12, paddingTop: 10, paddingBottom: 10 },
+  sectionLbl: { color: "#999999", fontSize: 10, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 },
 
   bdRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 7, borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" },
   bdLeft: { color: "#FFFFFF", fontSize: 13, flex: 1 },
-  bdLabel: { fontSize: 11 },
-  bdRight: { fontSize: 13, fontWeight: "700" },
-  bdSep: { height: 0.5, backgroundColor: "#333333", marginVertical: 8 },
+  bdPts: { fontSize: 13, fontWeight: "700" },
+  bdSep: { height: 0.5, backgroundColor: "#2A2A2A", marginVertical: 10 },
 
-  bdTotalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 },
-  bdTotalLabel: { color: "#999999", fontSize: 11, letterSpacing: 1, textTransform: "uppercase" },
-  bdTotalScore: { fontSize: 22, fontWeight: "800" },
+  bdTotalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  bdTotalScore: { color: "#27AE60", fontSize: 20, fontWeight: "800" },
 });

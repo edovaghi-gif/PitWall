@@ -52,25 +52,9 @@ export default function PredictionScreen() {
 
   useEffect(() => {
     navigation.setOptions({ title: "", headerShown: false });
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem("pitwall_scores");
-        const history: any[] = raw ? JSON.parse(raw) : [];
-        if (history.length > 0) {
-          setScoreHistory(history);
-        } else {
-          const testData = [
-            { raceName: "Australian Grand Prix", round: "1", season: "2026", date: "2026-03-16", finalScore: 112, basePoints: 90, multiplier: 1.15, malus: 0, myPodium: [81, 16, 44], realPodium: [81, 16, 44], breakdown: [{ label: "Podio esatto", points: 50, positive: true }, { label: "P1 esatto", points: 20, positive: true }, { label: "P2 esatto", points: 20, positive: true }, { label: "P3 esatto", points: 20, positive: true }, { label: "Bandiera rossa corretta ×1.15", points: null, positive: true }] },
-            { raceName: "Chinese Grand Prix", round: "2", season: "2026", date: "2026-03-23", finalScore: 47, basePoints: 57, multiplier: 1, malus: 10, myPodium: [1, 81, 16], realPodium: [12, 63, 81], breakdown: [{ label: "P1 sbagliato", points: 0, positive: false }, { label: "P2 sbagliato", points: 0, positive: false }, { label: "P3 sul podio", points: 7, positive: true }, { label: "Safety Car sbagliata", points: -5, positive: false }, { label: "Range DNF sbagliato", points: -5, positive: false }] },
-            { raceName: "Japanese Grand Prix", round: "3", season: "2026", date: "2026-03-29", finalScore: 87, basePoints: 77, multiplier: 1.1, malus: 5, myPodium: [12, 63, 81], realPodium: [12, 63, 16], breakdown: [{ label: "P1 esatto", points: 20, positive: true }, { label: "P2 esatto", points: 20, positive: true }, { label: "P3 sbagliato", points: 0, positive: false }, { label: "Safety Car corretta ×1.1", points: null, positive: true }, { label: "Bandiera rossa sbagliata", points: -8, positive: false }] },
-          ];
-          await AsyncStorage.setItem("pitwall_scores", JSON.stringify(testData));
-          setScoreHistory(testData);
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    })();
+    AsyncStorage.getItem("pitwall_scores").then(raw => {
+      if (raw) setScoreHistory(JSON.parse(raw));
+    }).catch(console.error);
   }, []);
 
   useEffect(() => {

@@ -32,6 +32,15 @@ const CIRCUIT_INFO_MAP: Record<string, any> = {
   "Yas Marina Circuit": require('../../assets/circuit-info/abudhabi.json'),
 };
 
+const TOTAL_LAPS: Record<string, number> = {
+  "Suzuka": 53, "Miami": 57, "Sakhir": 57, "Jeddah": 50, "Melbourne": 58,
+  "Shanghai": 56, "Monte Carlo": 78, "Catalunya": 66, "Montreal": 70,
+  "Spielberg": 71, "Silverstone": 52, "Hungaroring": 70, "Spa-Francorchamps": 44,
+  "Zandvoort": 72, "Monza": 53, "Baku": 51, "Singapore": 62, "Austin": 56,
+  "Mexico City": 71, "Interlagos": 71, "Las Vegas": 50, "Lusail": 57,
+  "Yas Marina Circuit": 58,
+};
+
 function timeToSecs(t: string): number {
   const parts = t.split(':');
   return parseInt(parts[0]) * 60 + parseFloat(parts[1]);
@@ -64,6 +73,8 @@ export default function HomeScreen() {
   const FP_DEV_MODE = false;
   const FP_DEV_CIRCUIT = "Suzuka";
   const FP_DEV_YEAR = 2026;
+  const RACE_DEV_MODE = false;
+  const RACE_DEV_SESSION_KEY = 11253;
 
   const [fpSessions, setFpSessions] = useState<{key: number, name: string, finished: boolean}[]>([]);
   const [fpResults, setFpResults] = useState<Record<number, any[]>>({});
@@ -79,6 +90,18 @@ export default function HomeScreen() {
   const raceControlRef = useRef<any[]>([]);
   const lapsRef = useRef<any[]>([]);
   const devQualiPhase = useRef<string | null>(QUALI_DEV_MODE ? "Q3" : null);
+
+  const [raceDrivers, setRaceDrivers] = useState<any[]>([]);
+  const [raceLap, setRaceLap] = useState<number | null>(null);
+  const [raceTotalLaps, setRaceTotalLaps] = useState<number | null>(null);
+  const [raceWeather, setRaceWeather] = useState<any | null>(null);
+  const [raceSafetyCarActive, setRaceSafetyCarActive] = useState(false);
+  const [raceRedFlagActive, setRaceRedFlagActive] = useState(false);
+  const [raceBattle, setRaceBattle] = useState<any | null>(null);
+  const previousIntervalsRef = useRef<Record<number, number>>({});
+  const raceStintsRef = useRef<any[]>([]);
+  const raceDriversCacheRef = useRef<any[]>([]);
+  const dnfRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     fetchData();
@@ -308,6 +331,200 @@ export default function HomeScreen() {
     return best;
   }
 
+  async function safeFetch(url: string) {
+    try {
+      const res = await fetch(url);
+      return await res.json();
+    } catch {
+      await new Promise(r => setTimeout(r, 1000));
+      const res = await fetch(url);
+      return await res.json();
+    }
+  }
+
+  async function fetchRaceStints() {
+    if (!activeSession) return;
+    const sessionKey = activeSession.session_key;
+    try {
+      const data = await safeFetch(`https://api.openf1.org/v1/stints?session_key=${sessionKey}`);
+      if (!Array.isArray(data)) return;
+      raceStintsRef.current = data;
+    } catch {}
+  }
+
+  async function fetchRaceWeather() {
+    if (!activeSession) return;
+    const sessionKey = activeSession.session_key;
+    try {
+      const data = await safeFetch(`https://api.openf1.org/v1/weather?session_key=${sessionKey}`);
+      if (!Array.isArray(data) || data.length === 0) return;
+      console.log('Setting weather:', JSON.stringify(data[data.length - 1]));
+      setRaceWeather(data[data.length - 1]);
+    } catch {}
+  }
+
+  async function fetchRaceData() {
+    if (!activeSession) return;
+    const sessionKey = activeSession.session_key;
+    const totalLaps = TOTAL_LAPS[activeSession.circuit_short_name] ?? 50;
+    let positionData: any[], intervalsData: any[], rcData: any[];
+    try {
+      const fetchPromises: Promise<any>[] = [
+        safeFetch(`https://api.openf1.org/v1/position?session_key=${sessionKey}`),
+        safeFetch(`https://api.openf1.org/v1/intervals?session_key=${sessionKey}`),
+        safeFetch(`https://api.openf1.org/v1/race_control?session_key=${sessionKey}`),
+      ];
+      if (raceDriversCacheRef.current.length === 0) {
+        fetchPromises.push(safeFetch(`https://api.openf1.org/v1/drivers?session_key=${sessionKey}`));
+      }
+      const results = await Promise.all(fetchPromises);
+      [positionData, intervalsData, rcData] = results;
+      const driversData = results[3];
+      if (Array.isArray(driversData) && driversData.length > 0) raceDriversCacheRef.current = driversData;
+    } catch { return; }
+    const drivers = raceDriversCacheRef.current;
+
+    if (!Array.isArray(positionData) || !Array.isArray(intervalsData) || !Array.isArray(rcData)) return;
+
+    // raceLap from last position record
+    const lastPositionLap = positionData.length > 0 ? positionData[positionData.length - 1]?.lap_number : null;
+    if (lastPositionLap != null) setRaceLap(lastPositionLap);
+
+    // Latest position per driver
+    const latestPosition: Record<number, number> = {};
+    for (const entry of positionData) {
+      latestPosition[entry.driver_number] = entry.position;
+    }
+
+    // Latest interval per driver
+    const latestInterval: Record<number, any> = {};
+    for (const entry of intervalsData) {
+      latestInterval[entry.driver_number] = entry;
+    }
+
+    // DNF detection from race_control
+    const dnfDrivers = new Set<number>();
+    for (const e of rcData) {
+      if (e.driver_number != null && (
+        e.message?.includes("RETIRED") ||
+        e.message?.includes("OUT") ||
+        (e.category === "Other" && e.flag === "BLACK AND WHITE")
+      )) {
+        dnfDrivers.add(e.driver_number);
+      }
+    }
+
+    // SC / RF detection
+    let scActive = false;
+    let rfActive = false;
+    for (const e of rcData) {
+      if (e.category === "SafetyCar") {
+        if (e.message?.includes("DEPLOYED")) scActive = true;
+        if (e.message?.includes("WITHDRAWN")) scActive = false;
+      }
+      if (e.category === "RedFlag") {
+        rfActive = true;
+        if (e.message?.includes("RESTARTED") || e.message?.includes("RESUMED")) rfActive = false;
+      }
+    }
+    setRaceSafetyCarActive(scActive);
+    setRaceRedFlagActive(rfActive);
+
+    // Build driver list
+    const driverMap: Record<number, any> = {};
+    for (const d of drivers) {
+      driverMap[d.driver_number] = d;
+    }
+
+    const stints = raceStintsRef.current;
+    const latestStint: Record<number, any> = {};
+    for (const s of stints) {
+      if (!latestStint[s.driver_number] || s.lap_end > latestStint[s.driver_number].lap_end) {
+        latestStint[s.driver_number] = s;
+      }
+    }
+
+    const positionDrivers = new Set(Object.keys(latestPosition).map(Number));
+    const allDriverNumbers = new Set<number>([
+      ...positionDrivers,
+      ...drivers.map((d: any) => d.driver_number),
+    ]);
+    const driverNumbers = Array.from(allDriverNumbers);
+    const built: any[] = [];
+    for (const num of driverNumbers) {
+      const info = driverMap[num] ?? {};
+      const pos = latestPosition[num];
+      const intEntry = latestInterval[num];
+      const stint = latestStint[num];
+
+      let intervalStr = "LEADER";
+      let gapToLeader: number | null = null;
+      if (pos !== 1 && intEntry) {
+        const gap = intEntry.gap_to_leader;
+        if (gap !== null && gap !== undefined) {
+          if (typeof gap === "number" && gap > 120) {
+            intervalStr = "LAP";
+          } else if (typeof gap === "number") {
+            intervalStr = `+${gap.toFixed(3)}s`;
+            gapToLeader = gap;
+          } else {
+            intervalStr = String(gap);
+          }
+        }
+      }
+
+      let compound: string | null = null;
+      let tyreAge: number | null = null;
+      let stops = 0;
+      if (stint) {
+        compound = stint.compound ?? null;
+        stops = Math.max(0, (stint.stint_number ?? 1) - 1);
+        if (stint.tyre_age_at_start != null && stint.lap_start != null) {
+          tyreAge = stint.tyre_age_at_start + (totalLaps - stint.lap_start);
+        }
+      }
+
+      built.push({
+        driver_number: num,
+        name_acronym: info.name_acronym ?? String(num),
+        team_colour: info.team_colour ? `#${info.team_colour}` : "#FFFFFF",
+        position: pos,
+        interval: intervalStr,
+        gap_to_leader: gapToLeader,
+        compound,
+        tyre_age: tyreAge,
+        stops,
+        isDnf: dnfRef.current.size > 0 && !dnfRef.current.has(num) && intervalStr !== "LAP",
+      });
+    }
+
+    built.sort((a, b) => {
+      if (a.isDnf !== b.isDnf) return a.isDnf ? 1 : -1;
+      return a.position - b.position;
+    });
+    setRaceDrivers(built);
+
+    // Battle Insight
+    const newPrev: Record<number, number> = { ...previousIntervalsRef.current };
+    let bestBattle: any = null;
+    let bestGap = Infinity;
+    for (let i = 0; i < built.length - 1; i++) {
+      const d1 = built[i];
+      const d2 = built[i + 1];
+      if (d2.gap_to_leader === null || d1.gap_to_leader === null) continue;
+      const gap = d2.gap_to_leader - d1.gap_to_leader;
+      if (gap < 2.0 && gap < bestGap) {
+        bestGap = gap;
+        const prevGap = previousIntervalsRef.current[d2.driver_number];
+        const trend = prevGap !== undefined ? prevGap - gap : null;
+        bestBattle = { driver1: d1, driver2: d2, gap, trend };
+      }
+      newPrev[d2.driver_number] = gap;
+    }
+    previousIntervalsRef.current = newPrev;
+    setRaceBattle(bestBattle);
+  }
+
   async function getCurrentSessionInfo(raceName: string, year: number) {
     const circuitMap: Record<string, string> = {
       "Miami Grand Prix": "Miami",
@@ -355,6 +572,17 @@ export default function HomeScreen() {
       setQualiPhase("Q3");
       return;
     }
+    if (RACE_DEV_MODE) {
+      const fakeSession = {
+        session_key: RACE_DEV_SESSION_KEY,
+        session_name: "Race",
+        circuit_short_name: "Suzuka",
+        date_start: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+        date_end: new Date(Date.now() + 120 * 60 * 1000).toISOString(),
+      };
+      setActiveSession(fakeSession);
+      return;
+    }
     if (!nextRace) return;
     const year = new Date(nextRace.date).getFullYear();
     const sessions = await getCurrentSessionInfo(nextRace.raceName, year);
@@ -365,7 +593,7 @@ export default function HomeScreen() {
       const end = new Date(s.date_end);
       return now >= start && now <= end;
     });
-    if (active && (active.session_name === "Qualifying" || active.session_name === "Sprint Qualifying")) {
+    if (active && (active.session_name === "Qualifying" || active.session_name === "Sprint Qualifying" || active.session_name === "Race")) {
       setActiveSession(active);
     } else {
       const nextQual = sessions.find((s: any) => {
@@ -551,6 +779,34 @@ export default function HomeScreen() {
   }, [activeSession]);
 
   useEffect(() => {
+    if (!activeSession || activeSession.session_name !== "Race") return;
+    const sessionKey = activeSession.session_key;
+    const totalLaps = TOTAL_LAPS[activeSession.circuit_short_name] ?? 50;
+    setRaceTotalLaps(TOTAL_LAPS[activeSession.circuit_short_name] ?? null);
+    dnfRef.current = new Set();
+    (async () => {
+      try {
+        const res = await fetch(`https://api.openf1.org/v1/laps?session_key=${sessionKey}&lap_number=${totalLaps}`);
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          dnfRef.current = new Set(data.map((l: any) => l.driver_number));
+        }
+      } catch {}
+    })();
+    fetchRaceData();
+    fetchRaceStints();
+    fetchRaceWeather();
+    const dataInterval = setInterval(fetchRaceData, 15000);
+    const stintsInterval = setInterval(fetchRaceStints, 30000);
+    const weatherInterval = setInterval(fetchRaceWeather, 120000);
+    return () => {
+      clearInterval(dataInterval);
+      clearInterval(stintsInterval);
+      clearInterval(weatherInterval);
+    };
+  }, [activeSession]);
+
+  useEffect(() => {
     setSelectedQPhase(activeQualiPhase as "Q1" | "Q2" | "Q3" | null);
   }, [activeQualiPhase]);
 
@@ -562,8 +818,114 @@ export default function HomeScreen() {
     );
   }
 
+  const isRace = activeSession?.session_name === "Race";
   const isQualifying = activeSession &&
     (activeSession.session_name === "Qualifying" || activeSession.session_name === "Sprint Qualifying");
+
+  function getTyreInfo(compound: string | null): { label: string; bg: string; textColor: string } {
+    switch (compound) {
+      case "SOFT": return { label: "S", bg: "#E10600", textColor: "#FFFFFF" };
+      case "MEDIUM": return { label: "M", bg: "#F39C12", textColor: "#000000" };
+      case "HARD": return { label: "H", bg: "#FFFFFF", textColor: "#000000" };
+      case "INTERMEDIATE": return { label: "I", bg: "#27AE60", textColor: "#FFFFFF" };
+      case "WET": return { label: "W", bg: "#3498DB", textColor: "#FFFFFF" };
+      default: return { label: "?", bg: "#2A2A2A", textColor: "#555555" };
+    }
+  }
+
+  if (isRace) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#0A0A0A", paddingTop: 52 }}>
+        <View style={styles.navbar}>
+          <Image source={logo} style={{ height: 32, width: 160, resizeMode: 'contain' }} />
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12 }}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Animated.View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#E10600", marginRight: 8, opacity: pulseAnim }} />
+            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "800", letterSpacing: 1 }}>
+              GIRO {raceLap ?? "—"}/{raceTotalLaps ?? "—"}
+            </Text>
+          </View>
+          <Text style={{ color: "#999999", fontSize: 13, fontWeight: "600" }}>
+            {raceWeather?.track_temperature ?? "—"}°C {raceWeather?.rainfall ? "🌧" : "☀️"}
+          </Text>
+        </View>
+        {raceSafetyCarActive && (
+          <View style={{ backgroundColor: "#F39C12", marginHorizontal: 16, borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12, marginBottom: 8 }}>
+            <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 13, textAlign: "center" }}>🚗 SAFETY CAR IN PISTA</Text>
+          </View>
+        )}
+        {raceRedFlagActive && (
+          <View style={{ backgroundColor: "#E10600", marginHorizontal: 16, borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12, marginBottom: 8 }}>
+            <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 13, textAlign: "center" }}>🚩 RED FLAG</Text>
+          </View>
+        )}
+        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" }}>
+          <Text style={{ color: "#555555", fontSize: 10, width: 22 }}> </Text>
+          <View style={{ width: 12, marginRight: 10 }} />
+          <Text style={{ color: "#555555", fontSize: 10, flex: 1 }}> </Text>
+          <Text style={{ color: "#555555", fontSize: 10, fontStyle: "italic", marginRight: 12 }}>INTERVAL</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>CPD</Text>
+            <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>AGE</Text>
+            <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>PIT</Text>
+          </View>
+        </View>
+        <ScrollView>
+          {raceDrivers.length === 0 ? (
+            <View style={{ padding: 32, alignItems: "center" }}>
+              <ActivityIndicator size="small" color="#E10600" />
+            </View>
+          ) : (
+            raceDrivers.map((driver, index) => {
+              const teamColor = driver.team_colour ?? "#FFFFFF";
+              const tyre = getTyreInfo(driver.compound);
+              const isBattleHere = raceBattle && raceBattle.driver1.driver_number === driver.driver_number;
+              return (
+                <View key={driver.driver_number}>
+                  <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#1A1A1A" }}>
+                    <Text style={{ color: "#999999", fontSize: 13, width: 22 }}>{driver.position}</Text>
+                    <View style={{ width: 2, height: 40, backgroundColor: teamColor, borderRadius: 1, marginRight: 10 }} />
+                    <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "700", flex: 1 }}>{driver.name_acronym}</Text>
+                    <Text style={{
+                      fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"], marginRight: 12,
+                      color: driver.isDnf ? "#555555" : driver.interval === "LEADER" ? "#E10600" : driver.interval === "LAP" ? "#555555" : "#FFFFFF",
+                    }}>
+                      {driver.isDnf ? "DNF" : driver.interval}
+                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <View style={{ backgroundColor: tyre.bg, borderRadius: 4, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                        <Text style={{ color: tyre.textColor, fontSize: 11, fontWeight: "800" }}>{tyre.label}</Text>
+                      </View>
+                      {driver.tyre_age !== null && (
+                        <Text style={{ color: "#999999", fontSize: 11 }}>{driver.tyre_age}</Text>
+                      )}
+                      <Text style={{ color: "#555555", fontSize: 11 }}>{driver.stops > 0 ? `${driver.stops}S` : ""}</Text>
+                    </View>
+                  </View>
+                  {isBattleHere && raceBattle && (
+                    <View style={{ backgroundColor: "#1A1A1A", borderLeftWidth: 3, borderLeftColor: "#E10600", paddingHorizontal: 16, paddingVertical: 10, marginHorizontal: 16, marginVertical: 4, borderRadius: 4 }}>
+                      <Text style={{ color: "#E10600", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>⚔ BATTAGLIA</Text>
+                      <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600" }}>
+                        {raceBattle.driver1.name_acronym} vs {raceBattle.driver2.name_acronym}{"  "}{raceBattle.gap.toFixed(3)}s
+                      </Text>
+                      {raceBattle.trend !== null && raceBattle.trend !== 0 && (
+                        <Text style={{ fontSize: 12, marginTop: 2, color: raceBattle.trend < 0 ? "#27AE60" : "#999999" }}>
+                          {raceBattle.trend < 0
+                            ? `↓ si avvicinano ${Math.abs(raceBattle.trend).toFixed(3)}s/giro`
+                            : `↑ si allontanano ${Math.abs(raceBattle.trend).toFixed(3)}s/giro`}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
+      </View>
+    );
+  }
 
   if (isQualifying) {
     return (

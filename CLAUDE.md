@@ -51,7 +51,7 @@ app/onboarding.tsx        → 5 slide onboarding con animazione, mostrato solo a
 - **Ergast** via `https://api.jolpi.ca/ergast/f1/` — risultati, standings, piloti, schedule
 - **OpenF1** via `https://api.openf1.org/v1/` — GPS circuiti, live telemetria, scoring post-gara
 
-Prefer dynamic fetch. Never hardcode data via API.
+Prefer dynamic fetch. Never hardcode via API.
 
 ---
 
@@ -64,20 +64,21 @@ Prefer dynamic fetch. Never hardcode data via API.
 
 ## Circuit Assets
 
-- `assets/circuits/` — 24 JSON pre-gen (2024 calendar)
+- `assets/circuits/` — 25 JSON (24 calendar + madrid.json con points:[])
 - `assets/circuit-info/{key}.json` — circuit metadata, DNA, lap records
-  - Fields: `name`, `corners[]`, `dna{}`, `lapRecord{}`, `qualiRecord{}`
-  - `lapRecord` / `qualiRecord`: `{ time, driver, team, year }` — from `fetch-lap-records.js` / `fetch-quali-records.js`
-  - Manual fix: edit `scripts/lap-records.json` or `scripts/quali-records.json`, rerun script
+  - Fields: `name`, `corners[]`, `turns` (int), `dna{}`, `lapRecord{}`, `qualiRecord{}`
+  - `lapRecord`: `{ time, driver, year }` — from `fetch-lap-records.js`
+  - `turns`: numero curve ufficiale, aggiunto manualmente a tutti i 24 JSON
+  - Manual fix: edit `scripts/lap-records.json`, rerun script then node -e "..." apply loop
 - `assets/quali-pb-2025.json` — 2025 quali personal bests per circuit/driver
   - Struttura: `{ "Suzuka": { "VER": { "bestLap": "1:26.983", "lapDuration": 86.983 }, ... }, ... }`
   - Circuit key = `circuit_short_name` OpenF1 (es. "Suzuka", "Monte Carlo", "Yas Marina Circuit")
   - Rerun `fetch-pb-2025.js` after each GP
   - Baku + Yas Marina: no lap data in OpenF1 (archive gaps)
 - Circuit struct: `name`, `session_key`, `viewBox ("0 0 300 300")`, `points: [{x,y,z}]`
-- `pointIndex` 0-99 mapped proportionally on track
+- `pointIndex` 0-99 proportional on track
 - Y axis corrected (inverted vs raw GPS)
-- Rerun `generate-circuit.js` after coordinate transform logic changes
+- Rerun `generate-circuit.js` after coord transform logic changes
 - Colored sectors: never remove during cosmetic fixes
 
 ### Driver number mapping 2025 (per fetch-pb-2025.js)
@@ -292,8 +293,8 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 - Tap meteo area in header → bottom-sheet modal
 - Mostra: temperatura asfalto + aria, umidità, rainfall, rischio pioggia (regex da race_control messages), vento (velocità + gradi + cardinale)
 - `extractRainRisk(rcData)`: scansiona race_control per "RISK OF RAIN XX%" → stato `raceRainRisk`
-- Presente sia in race che in qualifying
-- `fetchRaceWeather()` ora chiamato anche nel qualifying useEffect (120s interval)
+- Present in race + qualifying
+- `fetchRaceWeather()` also called in qualifying useEffect (120s interval)
 
 ---
 
@@ -329,12 +330,48 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 
 ---
 
+## Circuito Screen (circuito.tsx)
+
+- 25 circuiti (24 reali + Madrid placeholder)
+- `CIRCUIT_INFO_MAP`: maps circuit key → `require()` circuit-info JSON (same pattern as home.tsx)
+- `CIRCUIT_COUNTRY`: maps circuit key → paese (per AI prompt)
+
+### Header restyling
+- Riga 1: `ROUND X · CITTÀ` (small, #999999)
+- Riga 2: circuit name fontSize 22, fontWeight 900
+- Riga 3: km · giri (#999999)
+
+### Lap record card
+- `circuitInfo?.lapRecord` → card con tempo #E10600 fontSize 32, sottotitolo `driver · year`
+- Mostrata dopo sector legend, prima della mappa
+
+### Stats grid 2×2
+- GIRI, DISTANZA (da `meta.sub` split '·'), CURVE (da `circuitInfo.turns`), G-MAX (Math.max su `corners[].g`)
+- Mostrato dopo mappa/dots, prima di corner detail/DNA
+
+### AI Anecdotes
+- `fetchAnecdotes(circuitKey, circuitName, lapRecord, country)`: chiama Claude Haiku via `https://a.anthropic.com/v1/messages`
+- Cache AsyncStorage key `anecdotes_{circuitKey}` — carica cache se presente, altrimenti fetch
+- Fallback silenzioso su errore → `setAnecdotes([])`
+- Chiamato su mount (circuito 0) e in `onMomentumScrollEnd` (reset + fetch nuovo circuito)
+- Mostrato in fondo dopo DNA card
+
+### Madrid placeholder
+- `assets/circuits/madrid.json`: `points: []`
+- Guard in pager map: se `points.length === 0` → placeholder View con testo "Tracciato non disponibile\nPrima edizione 2026"
+
+### fetch-lap-records.js
+- Filter `secs < 60` aggiunto per escludere varianti outer/short circuit
+- Correzioni manuali in `scripts/lap-records.json`: Bahrain=De La Rosa 1:31.447 2005, catalunya=Piastri 1:16.330 2025, Silverstone=Verstappen 1:27.097 2020
+
+---
+
 ## Regole generali
 
 - NO headers — `headerShown: false` in `app/_layout.tsx`
 - NO hardcoded driver data — always from Ergast API
 - Surgical changes only
-- Ask before extensive refactoring
+- Ask before extensive refactor
 - Code blocks: only code, no trailing inline comments
 - Test onboarding: temporarily add `await AsyncStorage.removeItem('onboarding_complete')` in `app/index.tsx`, remove after
 
@@ -342,7 +379,7 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 
 ## Onboarding
 - File: app/onboarding.tsx
-- 5 slides horizontal ScrollView with paging
+- 5 slides horizontal ScrollView, paging
 - PitWall logo fixed at top (no scroll), paddingTop 220
 - AsyncStorage key: "onboarding_complete" — if present, skip
 - `app/index.tsx` checks key, redirects to `/onboarding` or `/(tabs)/home`

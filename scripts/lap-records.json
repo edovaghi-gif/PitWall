@@ -19,9 +19,9 @@
   },
   "bahrain": {
     "circuit": "Bahrain International Circuit",
-    "driver": "Michael Schumacher",
-    "time": "1:30.252",
-    "year": 2004
+    "driver": "Pedro de la Rosa",
+    "time": "1:31.447",
+    "year": 2005
   },
   "jeddah": {
     "circuit": "Jeddah Corniche Circuit",
@@ -49,9 +49,9 @@
   },
   "catalunya": {
     "circuit": "Circuit de Barcelona-Catalunya",
-    "driver": "Giancarlo Fisichella",
-    "time": "1:15.641",
-    "year": 2005
+    "driver": "Oscar Piastri",
+    "time": "1:16.330",
+    "year": 2025
   },
   "villeneuve": {
     "circuit": "Circuit Gilles Villeneuve",
@@ -67,9 +67,9 @@
   },
   "silverstone": {
     "circuit": "Silverstone Circuit",
-    "driver": "Michael Schumacher",
-    "time": "1:18.739",
-    "year": 2004
+    "driver": "Max Verstappen",
+    "time": "1:27.097",
+    "year": 2020
   },
   "spa": {
     "circuit": "Circuit de Spa-Francorchamps",

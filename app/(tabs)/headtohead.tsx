@@ -41,6 +41,12 @@ export default function HeadToHeadScreen() {
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectingSlot, setSelectingSlot] = useState<"left" | "right">("left");
+  const [circuitStats, setCircuitStats] = useState<{ L: any; R: any } | null>(null);
+  const [loadingCircuit, setLoadingCircuit] = useState(false);
+  const [selectedCircuitId, setSelectedCircuitId] = useState<string | null>(null);
+  const [selectedCircuitName, setSelectedCircuitName] = useState<string | null>(null);
+  const [showCircuitPicker, setShowCircuitPicker] = useState(false);
+  const [allCircuits, setAllCircuits] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     navigation.setOptions({ title: "", headerShown: false });
@@ -48,11 +54,17 @@ export default function HeadToHeadScreen() {
 
   useEffect(() => {
     fetchDrivers();
+    fetchCircuits();
   }, []);
 
   useEffect(() => {
     if (driverL && driverR) fetchStats();
   }, [driverL, driverR]);
+
+  useEffect(() => {
+    if (tab !== "circuito") return;
+    if (driverL && driverR && selectedCircuitId) fetchCircuitStats();
+  }, [selectedCircuitId, driverL, driverR, tab]);
 
   async function fetchDrivers() {
     try {
@@ -151,6 +163,106 @@ export default function HeadToHeadScreen() {
     }
   }
 
+  async function fetchCircuits() {
+    try {
+      const res = await fetch(`${ERGAST}/2026.json?limit=100`);
+      const data = await res.json();
+      const races = data.MRData.RaceTable.Races;
+      const circuitNames: Record<string, { country: string; circuit: string }> = {
+        "bahrain": { country: "Bahrain", circuit: "Bahrain International Circuit" },
+        "jeddah": { country: "Arabia Saudita", circuit: "Jeddah Corniche Circuit" },
+        "albert_park": { country: "Australia", circuit: "Albert Park" },
+        "suzuka": { country: "Giappone", circuit: "Suzuka Circuit" },
+        "shanghai": { country: "Cina", circuit: "Shanghai International Circuit" },
+        "miami": { country: "USA", circuit: "Miami International Autodrome" },
+        "imola": { country: "Italia", circuit: "Imola" },
+        "monaco": { country: "Monaco", circuit: "Circuit de Monaco" },
+        "villeneuve": { country: "Canada", circuit: "Circuit Gilles Villeneuve" },
+        "catalunya": { country: "Spagna", circuit: "Circuit de Barcelona-Catalunya" },
+        "madring": { country: "Spagna", circuit: "Madrid Street Circuit" },
+        "red_bull_ring": { country: "Austria", circuit: "Red Bull Ring" },
+        "silverstone": { country: "Gran Bretagna", circuit: "Silverstone Circuit" },
+        "hungaroring": { country: "Ungheria", circuit: "Hungaroring" },
+        "spa": { country: "Belgio", circuit: "Circuit de Spa-Francorchamps" },
+        "zandvoort": { country: "Olanda", circuit: "Circuit Zandvoort" },
+        "monza": { country: "Italia", circuit: "Autodromo Nazionale Monza" },
+        "baku": { country: "Azerbaijan", circuit: "Baku City Circuit" },
+        "marina_bay": { country: "Singapore", circuit: "Marina Bay Street Circuit" },
+        "americas": { country: "USA", circuit: "Circuit of the Americas" },
+        "rodriguez": { country: "Messico", circuit: "Autodromo Hermanos Rodriguez" },
+        "interlagos": { country: "Brasile", circuit: "Autodromo Jose Carlos Pace" },
+        "vegas": { country: "USA", circuit: "Las Vegas Street Circuit" },
+        "losail": { country: "Qatar", circuit: "Lusail International Circuit" },
+        "yas_marina": { country: "Abu Dhabi", circuit: "Yas Marina Circuit" },
+      };
+      const circuits = races.map((r: any) => {
+        const circuitId = r.Circuit.circuitId;
+        const circuitInfo = circuitNames[circuitId];
+        return {
+          id: circuitId,
+          name: circuitInfo ? `${circuitInfo.country} — ${circuitInfo.circuit}` : r.raceName,
+        };
+      });
+      setAllCircuits(circuits);
+      const now = new Date();
+      const next = races.find((r: any) => new Date(r.date) > now);
+      if (next) {
+        const nextId = next.Circuit.circuitId;
+        const nextInfo = circuitNames[nextId];
+        setSelectedCircuitId(nextId);
+        setSelectedCircuitName(nextInfo ? `${nextInfo.country} — ${nextInfo.circuit}` : next.raceName);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function fetchCircuitStats() {
+    if (!driverL || !driverR || !selectedCircuitId) return;
+    setLoadingCircuit(true);
+    try {
+      async function fetchDriverCircuitRaces(driverId: string) {
+        let offset = 0;
+        const limit = 100;
+        let all: any[] = [];
+        while (true) {
+          const res = await fetch(`${ERGAST}/drivers/${driverId}/circuits/${selectedCircuitId}/results.json?limit=${limit}&offset=${offset}`);
+          const data = await res.json();
+          const races = data.MRData.RaceTable.Races ?? [];
+          all = [...all, ...races];
+          if (all.length >= parseInt(data.MRData.total)) break;
+          offset += limit;
+        }
+        return all;
+      }
+      const [racesL, racesR] = await Promise.all([
+        fetchDriverCircuitRaces(driverL.id),
+        fetchDriverCircuitRaces(driverR.id),
+      ]);
+      function calcCircuitStats(races: any[]) {
+        const results = races.map((r: any) => r.Results?.[0]).filter(Boolean);
+        const gare = results.length;
+        const vittorie = results.filter((r: any) => r.position === "1").length;
+        const podi = results.filter((r: any) => parseInt(r.position) <= 3).length;
+        const pole = results.filter((r: any) => r.grid === "1").length;
+        const girlVeloci = results.filter((r: any) => r.FastestLap?.rank === "1").length;
+        const dnf = results.filter((r: any) => {
+          const s = r.status ?? "";
+          return s !== "Finished" && !s.startsWith("+");
+        }).length;
+        const bestFinish = gare > 0 ? Math.min(...results.map((r: any) => parseInt(r.position))) : null;
+        const avgPosition = gare > 0 ? results.reduce((s: number, r: any) => s + parseInt(r.position), 0) / gare : null;
+        const posGain = gare > 0 ? results.reduce((s: number, r: any) => s + (parseInt(r.grid) - parseInt(r.position)), 0) / gare : null;
+        return { gare, vittorie, podi, pole, girlVeloci, dnf, bestFinish, avgPosition, posGain };
+      }
+      setCircuitStats({ L: calcCircuitStats(racesL), R: calcCircuitStats(racesR) });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingCircuit(false);
+    }
+  }
+
   function StatBar({ label, valL, valR }: any) {
     const total = Math.max(valL + valR, 1);
     const fL = valL / total;
@@ -209,16 +321,89 @@ export default function HeadToHeadScreen() {
       </View>
 
       <View style={styles.tabs}>
-        {["generale", "stagioni"].map(t => (
-          <TouchableOpacity key={t} style={[styles.tab, tab === t && styles.tabActive]} onPress={() => setTab(t)}>
-            <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-              {t === "generale" ? "Generale" : "Stagioni"}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {(["generale", "stagioni", "circuito"] as const).map(t => {
+          const labels: Record<string, string> = { generale: "CARRIERA", stagioni: "STAGIONI", circuito: "CIRCUITO" };
+          return (
+            <TouchableOpacity
+              key={t}
+              style={[styles.tab, tab === t && styles.tabActive]}
+              onPress={() => {
+                setTab(t);
+                if (t === "circuito" && circuitStats === null && driverL && driverR && selectedCircuitId) {
+                  fetchCircuitStats();
+                }
+              }}
+            >
+              <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{labels[t]}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      {loading ? (
+      {tab === "circuito" ? (
+        <>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12 }}>
+            <Text style={{ color: "#999999", fontSize: 11, fontWeight: "700", letterSpacing: 1 }}>STORICO CIRCUITO</Text>
+            <TouchableOpacity onPress={() => setShowCircuitPicker(true)} style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#1E1E1E", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}>
+              <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "700" }}>{selectedCircuitName ? selectedCircuitName.split(" — ")[0] : "—"}</Text>
+              <Text style={{ color: "#E10600", marginLeft: 6, fontSize: 12 }}>▼</Text>
+            </TouchableOpacity>
+          </View>
+          {loadingCircuit ? (
+            <ActivityIndicator color="#E10600" style={{ marginTop: 32 }} />
+          ) : circuitStats ? (
+            <View style={styles.statsContainer}>
+              <StatBar label="Gare disputate" valL={circuitStats.L.gare} valR={circuitStats.R.gare} />
+              {circuitStats.L.vittorie + circuitStats.R.vittorie > 0 && <StatBar label="Vittorie" valL={circuitStats.L.vittorie} valR={circuitStats.R.vittorie} />}
+              {circuitStats.L.podi + circuitStats.R.podi > 0 && <StatBar label="Podi" valL={circuitStats.L.podi} valR={circuitStats.R.podi} />}
+              {circuitStats.L.pole + circuitStats.R.pole > 0 && <StatBar label="Pole position" valL={circuitStats.L.pole} valR={circuitStats.R.pole} />}
+              {circuitStats.L.girlVeloci + circuitStats.R.girlVeloci > 0 && <StatBar label="Giri veloci" valL={circuitStats.L.girlVeloci} valR={circuitStats.R.girlVeloci} />}
+              {circuitStats.L.dnf + circuitStats.R.dnf > 0 && <StatBar label="DNF" valL={circuitStats.L.dnf} valR={circuitStats.R.dnf} />}
+              {(circuitStats.L.posGain !== null || circuitStats.R.posGain !== null) && (() => {
+                const lv = circuitStats.L.posGain ?? 0;
+                const rv = circuitStats.R.posGain ?? 0;
+                const offset = Math.min(lv, rv, 0);
+                const sl = lv - offset;
+                const sr = rv - offset;
+                const total = Math.max(sl + sr, 1);
+                const fL = sl / total;
+                const fmt = (v: number) => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1);
+                return (
+                  <View style={styles.statRow}>
+                    <Text style={styles.statVal}>{fmt(lv)}</Text>
+                    <View style={styles.statBarWrap}>
+                      <Text style={styles.statLabel}>Guadagno pos. medio</Text>
+                      <View style={{ height: 5, flexDirection: "row", overflow: "visible" }}>
+                        <View style={{ width: `${fL * 100}%`, height: 5, backgroundColor: driverL?.color, borderTopLeftRadius: 4, borderBottomLeftRadius: 4, marginRight: 1 }} />
+                        <View style={{ flex: 1, height: 5, backgroundColor: driverR?.color, borderTopRightRadius: 4, borderBottomRightRadius: 4, marginLeft: 1 }} />
+                      </View>
+                    </View>
+                    <Text style={[styles.statVal, { textAlign: "right" }]}>{fmt(rv)}</Text>
+                  </View>
+                );
+              })()}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" }}>
+                <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700", width: 60, textAlign: "left" }}>
+                  {circuitStats.L.bestFinish != null ? `${circuitStats.L.bestFinish}°` : "—"}
+                </Text>
+                <Text style={{ color: "#999999", fontSize: 11, fontWeight: "600", letterSpacing: 0.5, textAlign: "center", flex: 1 }}>Miglior risultato</Text>
+                <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700", width: 60, textAlign: "right" }}>
+                  {circuitStats.R.bestFinish != null ? `${circuitStats.R.bestFinish}°` : "—"}
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" }}>
+                <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700", width: 60, textAlign: "left" }}>
+                  {circuitStats.L.avgPosition != null ? circuitStats.L.avgPosition.toFixed(1) : "—"}
+                </Text>
+                <Text style={{ color: "#999999", fontSize: 11, fontWeight: "600", letterSpacing: 0.5, textAlign: "center", flex: 1 }}>Pos. media</Text>
+                <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700", width: 60, textAlign: "right" }}>
+                  {circuitStats.R.avgPosition != null ? circuitStats.R.avgPosition.toFixed(1) : "—"}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+        </>
+      ) : loading ? (
         <ActivityIndicator color="#E10600" style={{ marginTop: 32 }} />
       ) : stats ? (
         <View style={styles.statsContainer}>
@@ -287,6 +472,36 @@ export default function HeadToHeadScreen() {
                 </TouchableOpacity>
               )}
             />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showCircuitPicker} transparent animationType="slide" onRequestClose={() => setShowCircuitPicker(false)}>
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.6)" }}>
+          <View style={{ backgroundColor: "#141414", borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: "70%", paddingBottom: 32 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" }}>
+              <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "600" }}>Seleziona Circuito</Text>
+              <TouchableOpacity onPress={() => setShowCircuitPicker(false)}>
+                <Text style={{ color: "#999999", fontSize: 14 }}>Chiudi</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView>
+              {allCircuits.map((c) => (
+                <TouchableOpacity
+                  key={c.id}
+                  style={{ paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" }}
+                  onPress={() => {
+                    setSelectedCircuitId(c.id);
+                    setSelectedCircuitName(c.name);
+                    setCircuitStats(null);
+                    setShowCircuitPicker(false);
+                  }}
+                >
+                  <Text style={{ color: selectedCircuitId === c.id ? "#E10600" : "#FFFFFF", fontSize: 14, fontWeight: "600" }}>{c.name.split(" — ")[0]}</Text>
+                  <Text style={{ color: selectedCircuitId === c.id ? "#E10600" : "#999999", fontSize: 11, marginTop: 2 }}>{c.name.split(" — ")[1] ?? ""}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         </View>
       </Modal>

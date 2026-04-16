@@ -96,8 +96,12 @@ export default function HomeScreen() {
   const [raceTotalLaps, setRaceTotalLaps] = useState<number | null>(null);
   const [raceWeather, setRaceWeather] = useState<any | null>(null);
   const [raceSafetyCarActive, setRaceSafetyCarActive] = useState(false);
+  const [raceVscActive, setRaceVscActive] = useState(false);
   const [raceRedFlagActive, setRaceRedFlagActive] = useState(false);
+  const [raceYellowSectors, setRaceYellowSectors] = useState<number[]>([]);
   const [raceBattle, setRaceBattle] = useState<any | null>(null);
+  const [raceRainRisk, setRaceRainRisk] = useState<string | null>(null);
+  const [showWeatherModal, setShowWeatherModal] = useState(false);
   const previousIntervalsRef = useRef<Record<number, number>>({});
   const raceStintsRef = useRef<any[]>([]);
   const raceDriversCacheRef = useRef<any[]>([]);
@@ -105,6 +109,9 @@ export default function HomeScreen() {
   const [expandedRaceDriver, setExpandedRaceDriver] = useState<number | null>(null);
   const [showGapToLeader, setShowGapToLeader] = useState(false);
   const gapHistoryRef = useRef<Record<number, Array<{gap: number, stint: number, timestamp: number}>>>({});
+  const arrowTranslateRef = useRef(new Animated.Value(0));
+  const arrowOpacityRef = useRef(new Animated.Value(1));
+  const arrowLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -290,6 +297,42 @@ export default function HomeScreen() {
     ).start();
   }, []);
 
+  useEffect(() => {
+    arrowLoopRef.current?.stop();
+    arrowTranslateRef.current.setValue(0);
+    arrowOpacityRef.current.setValue(1);
+    if (expandedRaceDriver === null) return;
+    const driverIdx = raceDrivers.findIndex((d: any) => d.driver_number === expandedRaceDriver);
+    if (driverIdx < 0 || driverIdx >= raceDrivers.length - 1) return;
+    const behind = raceDrivers[driverIdx + 1];
+    if (!behind || behind.isDnf) return;
+    const config = getArrowConfig(behind.driver_number);
+    if (!config) return;
+    let loop: Animated.CompositeAnimation;
+    if (config.type === 'stable' || config.type === 'sc') {
+      arrowOpacityRef.current.setValue(0.3);
+      loop = Animated.loop(Animated.sequence([
+        Animated.timing(arrowOpacityRef.current, { toValue: 1.0, duration: 900, useNativeDriver: true }),
+        Animated.timing(arrowOpacityRef.current, { toValue: 0.3, duration: 900, useNativeDriver: true }),
+      ]));
+    } else {
+      const durations: Record<string, number> = { slow: 1200, medium: 800, fast: 400 };
+      const ranges: Record<string, number> = { slow: 8, medium: 14, fast: 20 };
+      const dur = durations[config.tier];
+      const range = ranges[config.tier];
+      const fromX = config.type === 'closing' ? -range : 0;
+      const toX = config.type === 'closing' ? 0 : -range;
+      arrowTranslateRef.current.setValue(fromX);
+      loop = Animated.loop(Animated.sequence([
+        Animated.timing(arrowTranslateRef.current, { toValue: toX, duration: dur, useNativeDriver: true }),
+        Animated.timing(arrowTranslateRef.current, { toValue: fromX, duration: 0, useNativeDriver: true }),
+      ]));
+    }
+    arrowLoopRef.current = loop;
+    loop.start();
+    return () => { loop.stop(); };
+  }, [expandedRaceDriver, raceDrivers, raceSafetyCarActive, raceVscActive]);
+
   function getSectorColor(segments: number[] | null): string {
     if (!segments || segments.length === 0) return "#2A2A2A";
     if (segments.includes(2064)) return "#9B59B6";
@@ -334,23 +377,22 @@ export default function HomeScreen() {
     return best;
   }
 
-  async function safeFetch(url: string) {
+  async function safeFetch(url: string): Promise<any | null> {
     const attempt = async () => {
       const res = await fetch(url);
       const text = await res.text();
-      if (!text.startsWith('[') && !text.startsWith('{')) {
-        console.log('Non-JSON response:', text.slice(0, 100));
-        throw new Error("non_json");
-      }
+      if (!text.startsWith('[') && !text.startsWith('{')) return null;
       const data = JSON.parse(text);
-      if (data?.error === "Too Many Requests") throw new Error("rate_limit");
+      if (data?.error === "Too Many Requests") return null;
       return data;
     };
     try {
-      return await attempt();
-    } catch {
+      const result = await attempt();
+      if (result !== null) return result;
       await new Promise(r => setTimeout(r, 1500));
       return await attempt();
+    } catch {
+      return null;
     }
   }
 
@@ -377,7 +419,7 @@ export default function HomeScreen() {
   }
 
   function getTrend(attackerNum: number | null): { text: string; color: string } | null {
-    if (raceSafetyCarActive) return { text: "🚗 SC in pista", color: "#F39C12" };
+    if (raceSafetyCarActive || raceVscActive) return { text: "🚗 SC/VSC in pista", color: "#F39C12" };
     if (attackerNum === null) return null;
     const history = gapHistoryRef.current[attackerNum] ?? [];
     const valid: Array<{gap: number, stint: number}> = [];
@@ -389,9 +431,81 @@ export default function HomeScreen() {
     const current = valid[valid.length - 1].gap;
     const avgPrev = valid.slice(0, valid.length - 1).reduce((s, e) => s + e.gap, 0) / (valid.length - 1);
     const delta = current - avgPrev;
-    if (Math.abs(delta) < 0.05) return { text: "→ stabile", color: "#999999" };
-    if (delta < 0) return { text: `↓ si avvicina ${Math.abs(delta).toFixed(3)}s/giro`, color: "#27AE60" };
-    return { text: `↑ si allontana ${Math.abs(delta).toFixed(3)}s/giro`, color: "#999999" };
+    if (Math.abs(delta) <= 0.1) return { text: "→ stabile", color: "#999999" };
+    if (delta < 0) return { text: "↓ si avvicina", color: "#27AE60" };
+    return { text: "↑ si allontana", color: "#999999" };
+  }
+
+  function getCatchEstimate(attackerNum: number | null, currentGap: number | null): number | null {
+    if (attackerNum === null || currentGap === null || currentGap <= 0) return null;
+    if (raceSafetyCarActive || raceVscActive) return null;
+    const history = gapHistoryRef.current[attackerNum] ?? [];
+    const valid: Array<{ gap: number; stint: number }> = [];
+    for (let i = 0; i < history.length; i++) {
+      if (i > 0 && history[i].stint !== history[i - 1].stint) { valid.length = 0; continue; }
+      valid.push(history[i]);
+    }
+    if (valid.length < 2) return null;
+    const current = valid[valid.length - 1].gap;
+    const avgPrev = valid.slice(0, valid.length - 1).reduce((s, e) => s + e.gap, 0) / (valid.length - 1);
+    const delta = current - avgPrev;
+    if (delta >= -0.1) return null;
+    const closingRate = Math.abs(delta);
+    return Math.ceil(currentGap / closingRate);
+  }
+
+  function extractRainRisk(rcData: any[]): string | null {
+    for (let i = rcData.length - 1; i >= 0; i--) {
+      const msg = rcData[i]?.message ?? "";
+      const match = msg.match(/RISK OF RAIN[^0-9]*(\d+)%/i);
+      if (match) return `${match[1]}%`;
+    }
+    return null;
+  }
+
+  function getWindDirection(degrees: number): string {
+    const dirs = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"];
+    return dirs[Math.round(degrees / 45) % 8];
+  }
+
+  function WeatherRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+    return (
+      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5 }}>
+        <Text style={{ color: "#999999", fontSize: 13 }}>{label}</Text>
+        <Text style={{ color: highlight ? "#F39C12" : "#FFFFFF", fontSize: 13, fontWeight: "600" }}>{value}</Text>
+      </View>
+    );
+  }
+
+  type ArrowTier = 'slow' | 'medium' | 'fast';
+  type ArrowType = 'closing' | 'stable' | 'away' | 'sc';
+  type ArrowConfig = { type: ArrowType; tier: ArrowTier; text: string; color: string };
+
+  function getArrowConfig(driverBehindNum: number | null): ArrowConfig | null {
+    if (driverBehindNum === null) return null;
+    if (raceSafetyCarActive || raceVscActive) return { type: 'sc', tier: 'slow', text: '● ● ●', color: '#F39C12' };
+    const history = gapHistoryRef.current[driverBehindNum] ?? [];
+    const valid: Array<{gap: number, stint: number}> = [];
+    for (let i = 0; i < history.length; i++) {
+      if (i > 0 && history[i].stint !== history[i - 1].stint) { valid.length = 0; continue; }
+      valid.push(history[i]);
+    }
+    if (valid.length < 2) return null;
+    const current = valid[valid.length - 1].gap;
+    const avgPrev = valid.slice(0, valid.length - 1).reduce((s, e) => s + e.gap, 0) / (valid.length - 1);
+    const delta = current - avgPrev;
+    const absDelta = Math.abs(delta);
+    if (delta < -0.1) {
+      const tier: ArrowTier = absDelta >= 0.6 ? 'fast' : absDelta >= 0.3 ? 'medium' : 'slow';
+      const texts: Record<ArrowTier, string> = { slow: '> > >', medium: '>> >>', fast: '>>>>>>>' };
+      return { type: 'closing', tier, text: texts[tier], color: '#27AE60' };
+    } else if (absDelta <= 0.1) {
+      return { type: 'stable', tier: 'slow', text: '● ● ●', color: '#F39C12' };
+    } else {
+      const tier: ArrowTier = absDelta >= 0.6 ? 'fast' : absDelta >= 0.3 ? 'medium' : 'slow';
+      const texts: Record<ArrowTier, string> = { slow: '< < <', medium: '<< <<', fast: '<<<<<<<' };
+      return { type: 'away', tier, text: texts[tier], color: '#E10600' };
+    }
   }
 
   async function fetchRaceData() {
@@ -456,31 +570,49 @@ export default function HomeScreen() {
       }
     }
 
-    // SC / RF detection — sort by date, check last relevant event
+    // SC / VSC / RF / Yellow detection — iterate in chronological order
     const sortedRc = [...rcData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    const lastSc = [...sortedRc].reverse().find(e => e.category === "SafetyCar");
-    const lastRf = [...sortedRc].reverse().find(e => e.category === "RedFlag");
     let scActive = false;
+    let vscActive = false;
     let rfActive = false;
-    if (lastSc) {
-      scActive = lastSc.message?.includes("DEPLOYED") ?? false;
-      if (scActive) {
-        const lastScDate = new Date(lastSc.date).getTime();
-        const greenAfter = sortedRc.some(e => new Date(e.date).getTime() > lastScDate && e.flag === "GREEN");
-        if (greenAfter) scActive = false;
+    const yellowSectors: Record<number, string> = {};
+    for (const e of sortedRc) {
+      if (e.category === "SafetyCar") {
+        const msg = e.message ?? "";
+        if (msg.includes("VIRTUAL SAFETY CAR DEPLOYED") || msg.includes("VSC DEPLOYED")) {
+          vscActive = true;
+          scActive = false;
+        } else if (msg.includes("DEPLOYED")) {
+          scActive = true;
+          vscActive = false;
+        }
+        if (msg.includes("WITHDRAWN") || msg.includes("ENDING")) {
+          scActive = false;
+          vscActive = false;
+        }
       }
-    }
-    if (lastRf) {
-      const msg = lastRf.message ?? "";
-      rfActive = !msg.includes("RESTARTED") && !msg.includes("RESUMED");
-      if (rfActive) {
-        const lastRfDate = new Date(lastRf.date).getTime();
-        const greenAfter = sortedRc.some(e => new Date(e.date).getTime() > lastRfDate && e.flag === "GREEN");
-        if (greenAfter) rfActive = false;
+      if (e.category === "RedFlag") {
+        rfActive = true;
+        if ((e.message ?? "").includes("RESTARTED") || (e.message ?? "").includes("RESUMED")) rfActive = false;
+      }
+      if (e.flag === "YELLOW") {
+        const sector = e.sector ?? 0;
+        yellowSectors[sector] = "YELLOW";
+      }
+      if (e.flag === "GREEN" || e.flag === "CLEAR" || e.flag === "CHEQUERED") {
+        const sector = e.sector ?? 0;
+        if (yellowSectors[sector] !== undefined) delete yellowSectors[sector];
+        if (e.sector == null) {
+          Object.keys(yellowSectors).forEach(k => delete yellowSectors[Number(k)]);
+        }
       }
     }
     setRaceSafetyCarActive(scActive);
+    setRaceVscActive(vscActive);
     setRaceRedFlagActive(rfActive);
+    const activeSectors = Object.keys(yellowSectors).map(Number).filter(s => s > 0).sort((a, b) => a - b);
+    const hasGenericYellow = yellowSectors[0] !== undefined;
+    setRaceYellowSectors(hasGenericYellow && activeSectors.length === 0 ? [-1] : activeSectors);
 
     // Build driver list
     const driverMap: Record<number, any> = {};
@@ -510,28 +642,32 @@ export default function HomeScreen() {
       const stint = latestStint[num];
 
       let intervalStr = "LEADER";
+      let gapToLeaderStr = "LEADER";
       let gapToLeader: number | null = null;
       let isLapped = false;
-      let intervalNum: number | null = null;
-      let gapToLeaderStr: string | null = null;
+
       if (pos !== 1 && intEntry) {
-        const intervalVal = intEntry.interval;
-        const gapVal = intEntry.gap_to_leader;
-        if (gapVal !== null && gapVal !== undefined && typeof gapVal === "string" && gapVal.toUpperCase().includes("LAP")) {
-          isLapped = true;
-          gapToLeaderStr = gapVal;
-          intervalStr = gapVal;
-          if (intervalVal !== null && intervalVal !== undefined && typeof intervalVal === "number") {
-            intervalNum = intervalVal;
+        const gap = intEntry.gap_to_leader;
+        const interval = intEntry.interval;
+
+        if (gap !== null && gap !== undefined) {
+          if (typeof gap === "string") {
+            gapToLeaderStr = gap;
+            isLapped = true;
+          } else if (typeof gap === "number" && gap > 120) {
+            gapToLeaderStr = "+1 LAP";
+            isLapped = true;
+          } else if (typeof gap === "number") {
+            gapToLeaderStr = `+${gap.toFixed(3)}s`;
+            gapToLeader = gap;
           }
-        } else {
-          if (gapVal !== null && gapVal !== undefined && typeof gapVal === "number") {
-            gapToLeader = gapVal;
-          }
-          if (intervalVal !== null && intervalVal !== undefined && typeof intervalVal === "number") {
-            intervalStr = `+${intervalVal.toFixed(3)}s`;
-          } else if (gapVal !== null && gapVal !== undefined && typeof gapVal === "number") {
-            intervalStr = `+${gapVal.toFixed(3)}s`;
+        }
+
+        if (interval !== null && interval !== undefined) {
+          if (typeof interval === "number") {
+            intervalStr = `+${interval.toFixed(3)}s`;
+          } else if (typeof interval === "string") {
+            intervalStr = interval;
           }
         }
       }
@@ -554,7 +690,6 @@ export default function HomeScreen() {
         headshot_url: info.headshot_url ?? null,
         position: pos,
         interval: intervalStr,
-        intervalNum,
         gapToLeaderStr,
         gap_to_leader: gapToLeader,
         compound,
@@ -566,19 +701,18 @@ export default function HomeScreen() {
     }
 
     built.sort((a, b) => {
-      if (a.isDnf !== b.isDnf) return a.isDnf ? 1 : -1;
-      if (a.isLapped !== b.isLapped) return a.isLapped ? 1 : -1;
-      if (a.isLapped && b.isLapped) {
-        const aLaps = parseInt(a.gapToLeaderStr ?? a.interval) || 0;
-        const bLaps = parseInt(b.gapToLeaderStr ?? b.interval) || 0;
-        return aLaps - bLaps;
-      }
-      return a.position - b.position;
+      const aDnf = a.isDnf ? 1 : 0;
+      const bDnf = b.isDnf ? 1 : 0;
+      if (aDnf !== bDnf) return aDnf - bDnf;
+      const aLapped = a.isLapped ? 1 : 0;
+      const bLapped = b.isLapped ? 1 : 0;
+      if (aLapped !== bLapped) return aLapped - bLapped;
+      return (a.position ?? 999) - (b.position ?? 999);
     });
     setRaceDrivers(built);
 
     // Gap history for expand inline
-    if (!raceSafetyCarActive) {
+    if (!raceSafetyCarActive && !raceVscActive) {
       for (const d of built) {
         if (d.gap_to_leader === null) continue;
         const stintEntry = latestStint[d.driver_number];
@@ -609,6 +743,7 @@ export default function HomeScreen() {
     }
     previousIntervalsRef.current = newPrev;
     setRaceBattle(bestBattle);
+    setRaceRainRisk(extractRainRisk(rcData));
   }
 
   async function getCurrentSessionInfo(raceName: string, year: number) {
@@ -730,6 +865,7 @@ export default function HomeScreen() {
     } else {
       setQualiCountdown(null);
     }
+    setRaceRainRisk(extractRainRisk(data));
   }
 
   async function fetchQualifyingData() {
@@ -863,9 +999,11 @@ export default function HomeScreen() {
     const sessionKey = activeSession.session_key;
     fetchRaceControl(sessionKey);
     fetchQualifyingData();
+    fetchRaceWeather();
     const rcInterval = setInterval(() => fetchRaceControl(sessionKey), 30000);
     const dataInterval = setInterval(fetchQualifyingData, 10000);
-    return () => { clearInterval(rcInterval); clearInterval(dataInterval); };
+    const weatherInterval = setInterval(fetchRaceWeather, 120000);
+    return () => { clearInterval(rcInterval); clearInterval(dataInterval); clearInterval(weatherInterval); };
   }, [activeSession]);
 
   useEffect(() => {
@@ -939,20 +1077,37 @@ export default function HomeScreen() {
               GIRO {raceLap ?? "—"}/{raceTotalLaps ?? "—"}
             </Text>
           </View>
-          <Text style={{ color: "#999999", fontSize: 13, fontWeight: "600" }}>
-            {raceWeather?.track_temperature ?? "—"}°C {raceWeather?.rainfall ? "🌧" : "☀️"}
-          </Text>
+          <TouchableOpacity onPress={() => setShowWeatherModal(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={{ color: "#999999", fontSize: 13, fontWeight: "600" }}>
+              {raceWeather?.track_temperature ?? "—"}°C {raceWeather?.rainfall ? "🌧" : "☀️"} ›
+            </Text>
+          </TouchableOpacity>
         </View>
-        {raceSafetyCarActive && (
-          <View style={{ backgroundColor: "#F39C12", marginHorizontal: 16, borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12, marginBottom: 8 }}>
-            <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 13, textAlign: "center" }}>🚗 SAFETY CAR IN PISTA</Text>
-          </View>
-        )}
         {raceRedFlagActive && (
           <View style={{ backgroundColor: "#E10600", marginHorizontal: 16, borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12, marginBottom: 8 }}>
             <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 13, textAlign: "center" }}>🚩 RED FLAG</Text>
           </View>
         )}
+        {raceSafetyCarActive && (
+          <View style={{ backgroundColor: "#F39C12", marginHorizontal: 16, borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12, marginBottom: 8 }}>
+            <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 13, textAlign: "center" }}>🚗 SAFETY CAR IN PISTA</Text>
+          </View>
+        )}
+        {raceVscActive && (
+          <View style={{ backgroundColor: "#F39C12", marginHorizontal: 16, marginBottom: 8, borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#D4890A", borderStyle: "dashed" }}>
+            <Text style={{ color: "#000000", fontWeight: "800", fontSize: 12, letterSpacing: 1 }}>🚗 VIRTUAL SAFETY CAR</Text>
+          </View>
+        )}
+        {raceYellowSectors.length > 0 && (() => {
+          const yellowLabel = raceYellowSectors[0] === -1
+            ? "⚠️ BANDIERA GIALLA"
+            : `⚠️ GIALLA ${raceYellowSectors.join(' · ')}`;
+          return (
+            <View style={{ backgroundColor: "#F39C12", marginHorizontal: 16, marginBottom: 8, borderRadius: 6, paddingVertical: 4, paddingHorizontal: 12, flexDirection: "row", alignItems: "center" }}>
+              <Text style={{ color: "#000000", fontWeight: "700", fontSize: 11, letterSpacing: 0.5 }}>{yellowLabel}</Text>
+            </View>
+          );
+        })()}
         <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" }}>
           <Text style={{ color: "#555555", fontSize: 10, width: 22 }}> </Text>
           <View style={{ width: 12, marginRight: 10 }} />
@@ -982,24 +1137,19 @@ export default function HomeScreen() {
               const driverBehind = index < raceDrivers.length - 1 ? raceDrivers[index + 1] : null;
               const trendAhead = getTrend(driver.driver_number);
               const trendBehind = getTrend(driverBehind?.driver_number ?? null);
-              let intervalDisplay: string;
-              let intervalColor: string;
-              if (driver.isDnf) {
-                intervalDisplay = "DNF";
-                intervalColor = "#555555";
-              } else if (driver.isLapped && driver.gapToLeaderStr) {
-                intervalDisplay = driver.gapToLeaderStr;
-                intervalColor = "#555555";
-              } else if (driver.position === 1) {
-                intervalDisplay = "LEADER";
-                intervalColor = "#E10600";
-              } else if (!showGapToLeader) {
-                intervalDisplay = driver.interval;
-                intervalColor = "#FFFFFF";
-              } else {
-                intervalDisplay = driver.gap_to_leader !== null ? `+${driver.gap_to_leader.toFixed(3)}s` : driver.interval;
-                intervalColor = "#FFFFFF";
-              }
+              const arrowConfig = isExpanded && driverBehind && !driverBehind.isDnf
+                ? getArrowConfig(driverBehind.driver_number)
+                : null;
+              const catchEst = isExpanded && driverBehind && !driverBehind.isDnf
+                ? getCatchEstimate(driverBehind.driver_number, driverBehind.gap_to_leader !== null ? driverBehind.gap_to_leader - (driver.gap_to_leader ?? 0) : null)
+                : null;
+              const intervalDisplay = (() => {
+                if (driver.isDnf) return "DNF";
+                if (driver.isLapped) return driver.gapToLeaderStr;
+                if (driver.position === 1) return "LEADER";
+                return showGapToLeader ? driver.gapToLeaderStr : driver.interval;
+              })();
+              const intervalColor = driver.isDnf ? "#555555" : driver.isLapped ? "#555555" : driver.position === 1 ? "#E10600" : "#FFFFFF";
               return (
                 <View key={driver.driver_number}>
                   <TouchableOpacity
@@ -1030,39 +1180,41 @@ export default function HomeScreen() {
                     </View>
                   </TouchableOpacity>
                   {isExpanded && !driver.isDnf && (
-                    <View style={{ backgroundColor: "#1A1A1A", paddingHorizontal: 16, paddingVertical: 12, flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" }}>
-                      <View style={{ flex: 1, marginRight: 8 }}>
-                        <Text style={{ color: "#999999", fontSize: 10, textTransform: "uppercase", marginBottom: 4 }}>DAVANTI</Text>
-                        {!driverAhead ? (
-                          <Text style={{ color: "#E10600", fontSize: 16, fontWeight: "700" }}>LEADER</Text>
-                        ) : (
-                          <>
-                            <Text style={{ color: "#555555", fontSize: 10, marginBottom: 2 }}>{driverAhead.name_acronym}</Text>
-                            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>{driverAhead.isLapped ? driverAhead.interval : driver.interval}</Text>
-                            {raceSafetyCarActive ? (
-                              <Text style={{ color: "#F39C12", fontSize: 11, marginTop: 2 }}>🚗 SC — trend sospeso</Text>
-                            ) : trendAhead ? (
-                              <Text style={{ color: trendAhead.color, fontSize: 11, marginTop: 2 }}>{trendAhead.text}</Text>
-                            ) : null}
-                          </>
-                        )}
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: "#999999", fontSize: 10, textTransform: "uppercase", marginBottom: 4 }}>DIETRO</Text>
-                        {!driverBehind || driverBehind.isDnf ? (
-                          <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>—</Text>
-                        ) : (
-                          <>
+                    <View style={{ backgroundColor: "#1A1A1A", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" }}>
+                      <Text style={{ color: "#999999", fontSize: 10, textTransform: "uppercase", marginBottom: 4 }}>DIETRO</Text>
+                      {!driverBehind || driverBehind.isDnf ? (
+                        <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>—</Text>
+                      ) : (
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                          <View>
                             <Text style={{ color: "#555555", fontSize: 10, marginBottom: 2 }}>{driverBehind.name_acronym}</Text>
                             <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>{driverBehind.interval}</Text>
-                            {raceSafetyCarActive ? (
-                              <Text style={{ color: "#F39C12", fontSize: 11, marginTop: 2 }}>🚗 SC — trend sospeso</Text>
+                            {raceSafetyCarActive || raceVscActive ? (
+                              <Text style={{ color: "#F39C12", fontSize: 11, marginTop: 2 }}>🚗 SC/VSC — trend sospeso</Text>
                             ) : trendBehind ? (
                               <Text style={{ color: trendBehind.color, fontSize: 11, marginTop: 2 }}>{trendBehind.text}</Text>
                             ) : null}
-                          </>
-                        )}
-                      </View>
+                          </View>
+                          {arrowConfig ? (
+                            <View style={{ alignItems: "flex-end" }}>
+                              <View style={{ overflow: "hidden", width: 60, alignItems: "flex-end" }}>
+                                {(arrowConfig.type === 'stable' || arrowConfig.type === 'sc') ? (
+                                  <Animated.Text style={{ color: arrowConfig.color, fontSize: 14, letterSpacing: 2, opacity: arrowOpacityRef.current }}>
+                                    {arrowConfig.text}
+                                  </Animated.Text>
+                                ) : (
+                                  <Animated.View style={{ transform: [{ translateX: arrowTranslateRef.current }] }}>
+                                    <Text style={{ color: arrowConfig.color, fontSize: 14, letterSpacing: 2 }}>{arrowConfig.text}</Text>
+                                  </Animated.View>
+                                )}
+                              </View>
+                              {arrowConfig.type === 'closing' && catchEst !== null && catchEst <= 30 && (
+                                <Text style={{ fontSize: 11, fontWeight: "600", color: "#27AE60", marginTop: 2 }}>~{catchEst} giri</Text>
+                              )}
+                            </View>
+                          ) : null}
+                        </View>
+                      )}
                     </View>
                   )}
                 </View>
@@ -1070,6 +1222,35 @@ export default function HomeScreen() {
             })
           )}
         </ScrollView>
+        <Modal transparent animationType="slide" visible={showWeatherModal} onRequestClose={() => setShowWeatherModal(false)}>
+          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowWeatherModal(false)} />
+          <View style={{ backgroundColor: "#141414", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 }}>
+            <View style={{ width: 40, height: 4, backgroundColor: "#2A2A2A", borderRadius: 2, alignSelf: "center", marginBottom: 20 }} />
+            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "800", letterSpacing: 1, marginBottom: 20 }}>CONDIZIONI PISTA</Text>
+            {!raceWeather ? (
+              <Text style={{ color: "#999999", fontSize: 13, textAlign: "center", paddingVertical: 24 }}>Dati meteo non disponibili</Text>
+            ) : (
+              <>
+                <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 8 }}>🌡 TEMPERATURA</Text>
+                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                  <WeatherRow label="Asfalto" value={`${raceWeather.track_temperature ?? "—"}°C`} />
+                  <WeatherRow label="Aria" value={`${raceWeather.air_temperature ?? "—"}°C`} />
+                </View>
+                <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 8 }}>💧 UMIDITÀ & PIOGGIA</Text>
+                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                  <WeatherRow label="Umidità" value={`${raceWeather.humidity ?? "—"}%`} />
+                  <WeatherRow label="Pioggia in corso" value={raceWeather.rainfall ? "Sì 🌧" : "No ☀️"} />
+                  {raceRainRisk !== null && <WeatherRow label="Rischio pioggia" value={raceRainRisk} highlight={parseInt(raceRainRisk) > 30} />}
+                </View>
+                <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 8 }}>💨 VENTO</Text>
+                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 10, padding: 14 }}>
+                  <WeatherRow label="Velocità" value={`${raceWeather.wind_speed ?? "—"} m/s`} />
+                  <WeatherRow label="Direzione" value={raceWeather.wind_direction != null ? `${raceWeather.wind_direction}° (${getWindDirection(raceWeather.wind_direction)})` : "—"} />
+                </View>
+              </>
+            )}
+          </View>
+        </Modal>
       </View>
     );
   }
@@ -1080,11 +1261,18 @@ export default function HomeScreen() {
         <View style={styles.navbar}>
           <Image source={logo} style={{ height: 32, width: 160, resizeMode: 'contain' }} />
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 12 }}>
-          <Animated.View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#E10600", marginRight: 8, opacity: pulseAnim }} />
-          <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "800", letterSpacing: 1 }}>
-            {activeQualiPhase ? `${activeQualiPhase} IN CORSO` : "QUALIFICHE IN CORSO"}
-          </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12 }}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Animated.View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#E10600", marginRight: 8, opacity: pulseAnim }} />
+            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "800", letterSpacing: 1 }}>
+              {activeQualiPhase ? `${activeQualiPhase} IN CORSO` : "QUALIFICHE IN CORSO"}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => setShowWeatherModal(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={{ color: "#999999", fontSize: 13, fontWeight: "600" }}>
+              {raceWeather?.track_temperature ?? "—"}°C {raceWeather?.rainfall ? "🌧" : "☀️"} ›
+            </Text>
+          </TouchableOpacity>
         </View>
         <View style={{ flexDirection: "row", paddingHorizontal: 16, marginBottom: 12, gap: 8 }}>
           {["Q1", "Q2", "Q3"].map(q => {
@@ -1228,6 +1416,35 @@ export default function HomeScreen() {
             });
           })()}
         </ScrollView>
+        <Modal transparent animationType="slide" visible={showWeatherModal} onRequestClose={() => setShowWeatherModal(false)}>
+          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowWeatherModal(false)} />
+          <View style={{ backgroundColor: "#141414", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 }}>
+            <View style={{ width: 40, height: 4, backgroundColor: "#2A2A2A", borderRadius: 2, alignSelf: "center", marginBottom: 20 }} />
+            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "800", letterSpacing: 1, marginBottom: 20 }}>CONDIZIONI PISTA</Text>
+            {!raceWeather ? (
+              <Text style={{ color: "#999999", fontSize: 13, textAlign: "center", paddingVertical: 24 }}>Dati meteo non disponibili</Text>
+            ) : (
+              <>
+                <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 8 }}>🌡 TEMPERATURA</Text>
+                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                  <WeatherRow label="Asfalto" value={`${raceWeather.track_temperature ?? "—"}°C`} />
+                  <WeatherRow label="Aria" value={`${raceWeather.air_temperature ?? "—"}°C`} />
+                </View>
+                <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 8 }}>💧 UMIDITÀ & PIOGGIA</Text>
+                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                  <WeatherRow label="Umidità" value={`${raceWeather.humidity ?? "—"}%`} />
+                  <WeatherRow label="Pioggia in corso" value={raceWeather.rainfall ? "Sì 🌧" : "No ☀️"} />
+                  {raceRainRisk !== null && <WeatherRow label="Rischio pioggia" value={raceRainRisk} highlight={parseInt(raceRainRisk) > 30} />}
+                </View>
+                <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 8 }}>💨 VENTO</Text>
+                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 10, padding: 14 }}>
+                  <WeatherRow label="Velocità" value={`${raceWeather.wind_speed ?? "—"} m/s`} />
+                  <WeatherRow label="Direzione" value={raceWeather.wind_direction != null ? `${raceWeather.wind_direction}° (${getWindDirection(raceWeather.wind_direction)})` : "—"} />
+                </View>
+              </>
+            )}
+          </View>
+        </Modal>
       </View>
     );
   }

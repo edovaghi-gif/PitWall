@@ -51,7 +51,7 @@ app/onboarding.tsx        → 5 slide onboarding con animazione, mostrato solo a
 - **Ergast** via `https://api.jolpi.ca/ergast/f1/` — risultati, standings, piloti, schedule
 - **OpenF1** via `https://api.openf1.org/v1/` — GPS circuiti, live telemetria, scoring post-gara
 
-Prefer dynamic API fetch. Never hardcode data available via API.
+Prefer dynamic fetch. Never hardcode data via API.
 
 ---
 
@@ -100,7 +100,7 @@ Prefer dynamic API fetch. Never hardcode data available via API.
 
 ### OpenF1 — scoperte importanti
 - Quali = single session (no Q1/Q2/Q3 split) — one session_key
-- `date_start` populated on normal laps, null on out-laps (not all laps as previously noted)
+- `date_start` populated on normal laps, null on out-laps
 - Laps have `segments_sector_1/2/3`: mini-sector color arrays pre-calc by OpenF1:
   - 2048 = grey (no time), 2049 = yellow, 2051 = green, 2064 = purple
 - `is_pit_out_lap: true` = pit exit
@@ -109,6 +109,11 @@ Prefer dynamic API fetch. Never hardcode data available via API.
 - OpenF1 rate-limited — sequential fetch (not `Promise.all`) for multiple sessions
 - `/intervals` not available for quali, only race
 - `/session_status` useless
+- `/intervals` `interval` field for lapped drivers = string `"LAP"` (not a number) — no numeric gap to car ahead
+- `/intervals` `gap_to_leader` for lapped = string `"+1 LAP"` / `"+2 LAPS"` — use for detection and display
+- SC: `race_control` `category === "SafetyCar"` + message contains `"DEPLOYED"` but NOT `"VIRTUAL"`
+- VSC: `category === "SafetyCar"` + message contains `"VIRTUAL SAFETY CAR DEPLOYED"` or `"VSC DEPLOYED"`
+- Yellow flag: `race_control` `flag === "YELLOW"` + `sector` field (int, may be null = track-wide)
 
 ---
 
@@ -144,7 +149,17 @@ If fix touches % / proportion calc logic, stop and ask.
 - Driver picker: FlatList, 20 drivers dynamic from Ergast
 - Modal: bottom-sheet
 - Driver numbers: dynamic from Ergast
-- Driver headshots: from OpenF1 `/sessions?year=2026&session_type=Race` (latest) → `/drivers?session_key={key}`, matched by `name_acronym`. 80×80px circle above driver name. Fallback: colored number. Non-JSON guard on all OpenF1 fetches (text() + startsWith check).
+- Driver headshots: OpenF1 `/sessions?year=2026&session_type=Race` → `/drivers?session_key={key}`, matched by `name_acronym`. 80×80px circle above name. Fallback: colored number. Non-JSON guard all OpenF1 fetches (text() + startsWith check).
+
+### Tab CIRCUITO
+- 3 tab: CARRIERA / STAGIONI / CIRCUITO
+- Default circuit = prossimo GP dal calendario 2026 Ergast
+- Selector 24 circuiti, nomi formato `"Paese — Circuito"` (es. "Giappone — Suzuka Circuit")
+- Metriche tug-of-war: gare disputate, vittorie, podi, pole, giri veloci, DNF, guadagno pos. medio
+- Standalone: miglior risultato, pos. media
+- Ordine: tutte le barre tug-of-war prima, standalone in fondo
+- Dati da Ergast `/drivers/{driverId}/circuits/{circuitId}/results.json` (paginato)
+- circuitId 2026 confermati: `madring`=Madrid, `vegas`=Las Vegas, `red_bull_ring`=Austria, `villeneuve`=Canada
 
 ---
 
@@ -183,7 +198,7 @@ Target good session: ~100–110 pts.
   - Saves to `pitwall_scores`: `myPodiumNames`, `savedSafetyCar`, `savedRedFlag`, `savedDnfRange`
   - Upsert by `round + season` — overwrite if exists, insert if not
 - `fetchSessionKey()` — dynamic session_key from OpenF1 via circuitMap
-- Modal "SCOPRI IL RISULTATO" — visible only if `raceResultsAvailable === true`, shows score breakdown
+- Modal "SCOPRI IL RISULTATO" — visible if `raceResultsAvailable === true`, shows score breakdown
 
 ### Flusso prediction (3 step)
 1. Podio selection (P1, P2, P3) — banner "LA MIA STAGIONE" at top if `scoreHistory.length > 0`, navigates to `/season-results`
@@ -202,46 +217,83 @@ Target good session: ~100–110 pts.
 - `RACE_DEV_SESSION_KEY = 11253` (Suzuka 2026 Race)
 
 ### Architettura fetch
-- `fetchRaceData()`: poll every 15s — parallel fetch via `safeFetch` (retry 1x after 1000ms): `/position`, `/intervals`, `/race_control`, `/drivers` (only if cache empty)
+- `fetchRaceData()`: poll every 15s — parallel fetch via `safeFetch`: `/position`, `/intervals`, `/race_control`, `/drivers` (only if cache empty)
 - `fetchRaceStints()`: poll every 30s — `/stints`
 - `fetchRaceWeather()`: poll every 120s — `/weather`
-- `safeFetch(url)`: retry once after 1000ms on error
+- `safeFetch(url)`: null (never throws) on non-JSON, rate limit, network error. Retry once 1500ms, null silently.
 - On mount: one-shot fetch `/laps?lap_number={totalLaps}` → save finishers to `dnfRef`
 
 ### DNF detection
 - `dnfRef`: Set<number> populated on mount from last-lap driver_numbers
-- `isDnf = dnfRef.size > 0 && !dnfRef.has(num) && intervalStr !== "LAP"`
-- Lapped drivers (`intervalStr = "LAP"`) NOT DNF — show gap normally
+- `isDnf = dnfRef.size > 0 && !dnfRef.has(num) && !isLapped`
+- Lapped drivers (`isLapped = true`) NOT DNF — detected from `gap_to_leader` STRING ("+1 LAP", "+2 LAPS")
+- OpenF1 `interval` field for lapped drivers = string "LAP" — no numeric gap to car ahead available
+- `gapToLeaderStr`: stored on driver object. Both modes show "+1 LAP"/"+2 LAPS" for lapped.
 - DNF shown at bottom, interval = "DNF" color #555555
 
 ### Classifica live
-- Data from `/position` (last pos per driver) + `/intervals` (gap to leader)
-- Gap > 120s → "LAP" (lapped)
+- Data from `/position` (last pos per driver) + `/intervals` (gap to car ahead + gap to leader)
+- Lapped: `gap_to_leader` is string "+1 LAP"/"+2 LAPS" from OpenF1 → `isLapped = true`
+- Sort: classified by position → lapped (by lap count) → DNF last
 - Tyre compound/age from `/stints` (`raceStintsRef`)
 - Tyre age: `tyre_age_at_start + (totalLaps - lap_start)` (estimate)
 - Header cols: INTERVAL | CPD | AGE | PIT
 
-### Expand inline pilota (race)
-- Tap driver row → expand panel below (toggle, one at a time)
-- State: `expandedRaceDriver: string | null` (driver acronym)
-- Shows DAVANTI/DIETRO cols + gap trend (closing/separating)
-- `gapHistoryRef`: rolling 5-sample gap history per driver
-- `getTrend()`: `prevGap - currentGap` → positive = closing, negative = pulling away
-
 ### Gap toggle
 - `showGapToLeader: boolean` — toggle via header tap
-- INTERVAL mode: gap to car ahead (`intEntry.interval`)
-- GAP mode: gap to leader (`intEntry.gap_to_leader`)
-- Gap > 120s → "LAP"; lapped NOT marked DNF
+- INTERVAL mode: `driver.interval` (gap to car ahead, from `intEntry.interval`)
+- GAP mode: `driver.gapToLeaderStr` (formatted string, from `intEntry.gap_to_leader`)
+- Lapped drivers: show `gapToLeaderStr` in BOTH modes ("+1 LAP"/"+2 LAPS"), color #555555
+- P1: "LEADER" red. DNF: "DNF" gray. Classified: white.
+
+### SC / VSC / Flag detection (fetchRaceData)
+- Iterates `rcData` chronologically — state accumulates per event
+- SC: `category === "SafetyCar"` + message contains `"DEPLOYED"` but NOT `"VIRTUAL"` → `scActive = true`, `vscActive = false`
+- VSC: `category === "SafetyCar"` + message contains `"VIRTUAL SAFETY CAR DEPLOYED"` or `"VSC DEPLOYED"` → `vscActive = true`, `scActive = false`
+- Both clear on `"WITHDRAWN"` or `"ENDING"`
+- RF: `category === "RedFlag"` → `rfActive = true`, clears on `"RESTARTED"`/`"RESUMED"`
+- Yellow: `flag === "YELLOW"` + `sector` field → `raceYellowSectors` (number[], sector numbers). `-1` sentinel = yellow with no sector info. Clears per-sector on GREEN/CLEAR/CHEQUERED; clears all if no sector specified.
+- State: `raceSafetyCarActive`, `raceVscActive`, `raceRedFlagActive`, `raceYellowSectors`
+
+### Banner priority (top to bottom)
+RF (red) → SC (orange) → VSC (orange dashed border) → Yellow (thinner paddingVertical 4)
+Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sector info.
+
+### Expand inline pilota (race)
+- Tap driver row → expand panel below (toggle, one at a time)
+- State: `expandedRaceDriver: number | null` (driver_number)
+- Shows DIETRO only (DAVANTI removed): driver acronym, gap, trend text, animated arrow, catch estimate
+- DNF drivers: no expand panel
+- `gapHistoryRef`: rolling 5-sample gap_to_leader history per driver (paused during SC/VSC)
+- `getTrend()`: text/color. SC/VSC guard: "🚗 SC/VSC in pista" if either active.
+- Thresholds: closing `delta < -0.1`, stable `|delta| <= 0.1`, pulling away `delta > 0.1`
+
+### Arrow animations (expand panel)
+- `arrowAnimsRef`: Animated.Value map per driver (not single set)
+- `getArrowConfig(driverBehindNum)`: returns `{type, tier, text, color}` from gapHistoryRef
+- Closing (green #27AE60): translateX -range→0 loop. Slow `"> > >"` 1200ms, medium `">> >>"` 800ms, fast `">>>>>>>"` 400ms. Ranges: slow=8, medium=14, fast=20.
+- Stable/SC (orange #F39C12): `"● ● ●"` opacity pulse 0.3↔1.0, 900ms per half.
+- Pulling away (red #E10600): translateX 0→-range loop. Same tiers/durations.
+- Soglie: closing `delta < -0.1`, stable `|delta| <= 0.1`, pulling away `delta > 0.1`
+- Intensità: slow 0.1–0.3s/lap, medium 0.3–0.6, fast >0.6
+- `getCatchEstimate(attackerNum, currentGap)`: `Math.ceil(gap / closingRate)`, null if not closing or SC/VSC active. Shown as `"~N giri"` if ≤30.
+- Overflow hidden (width 60) clips sliding arrows.
 
 ### Driver headshots (race + quali rows)
 - 32×32px circle between team color bar and driver acronym
 - From OpenF1 `/drivers?session_key={key}`, stored in `raceDriversCacheRef`
-- `safeFetch` guards all OpenF1 calls: text() + startsWith('[' or '{') check
+- `safeFetch` guards all OpenF1 calls
 
 ### Meteo
 - `raceWeather.track_temperature` + `raceWeather.rainfall` in header
 - `raceTotalLaps` from `TOTAL_LAPS[circuit_short_name]`
+
+### Modal CONDIZIONI PISTA
+- Tap meteo area in header → bottom-sheet modal
+- Mostra: temperatura asfalto + aria, umidità, rainfall, rischio pioggia (regex da race_control messages), vento (velocità + gradi + cardinale)
+- `extractRainRisk(rcData)`: scansiona race_control per "RISK OF RAIN XX%" → stato `raceRainRisk`
+- Presente sia in race che in qualifying
+- `fetchRaceWeather()` ora chiamato anche nel qualifying useEffect (120s interval)
 
 ---
 

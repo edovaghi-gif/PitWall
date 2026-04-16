@@ -57,7 +57,7 @@
   "lapRecord": {
     "time": "1:19.813",
     "driver": "Charles Leclerc",
-    "team": "Ferrari",
+    "team": "Albert Park Grand Prix Circuit",
     "year": 2024
   },
   "qualiRecord": {
@@ -65,5 +65,6 @@
     "driver": "Lando Norris",
     "team": "McLaren",
     "year": 2025
-  }
+  },
+  "turns": 16
 }

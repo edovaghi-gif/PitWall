@@ -57,7 +57,7 @@
   "lapRecord": {
     "time": "1:32.238",
     "driver": "Michael Schumacher",
-    "team": "Ferrari",
+    "team": "Shanghai International Circuit",
     "year": 2004
   },
   "qualiRecord": {
@@ -65,5 +65,6 @@
     "driver": "Oscar Piastri",
     "team": "McLaren",
     "year": 2025
-  }
+  },
+  "turns": 16
 }

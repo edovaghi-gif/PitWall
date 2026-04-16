@@ -67,6 +67,7 @@ async function main() {
         const lapTime = result?.FastestLap?.Time?.time;
         if (!lapTime) continue;
         const secs = timeToSeconds(lapTime);
+        if (secs < 60) continue; // skip outer/short circuit variants
         if (secs < bestSecs) {
           bestSecs = secs;
           best = {

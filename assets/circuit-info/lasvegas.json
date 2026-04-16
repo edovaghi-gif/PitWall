@@ -57,7 +57,7 @@
   "lapRecord": {
     "time": "1:33.365",
     "driver": "Max Verstappen",
-    "team": "Red Bull",
+    "team": "Las Vegas Strip Street Circuit",
     "year": 2025
   },
   "qualiRecord": {
@@ -65,5 +65,6 @@
     "driver": "George Russell",
     "team": "Mercedes",
     "year": 2024
-  }
+  },
+  "turns": 17
 }

@@ -57,7 +57,7 @@
   "lapRecord": {
     "time": "1:30.965",
     "driver": "Andrea Kimi Antonelli",
-    "team": "Mercedes",
+    "team": "Suzuka Circuit",
     "year": 2025
   },
   "qualiRecord": {
@@ -65,5 +65,6 @@
     "driver": "Max Verstappen",
     "team": "Red Bull",
     "year": 2025
-  }
+  },
+  "turns": 18
 }

@@ -57,7 +57,7 @@
   "lapRecord": {
     "time": "1:10.540",
     "driver": "Valtteri Bottas",
-    "team": "Mercedes",
+    "team": "Autódromo José Carlos Pace",
     "year": 2018
   },
   "qualiRecord": {
@@ -65,5 +65,6 @@
     "driver": "Lewis Hamilton",
     "team": "Mercedes",
     "year": 2018
-  }
+  },
+  "turns": 15
 }

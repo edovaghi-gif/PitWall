@@ -73,7 +73,7 @@ export default function HomeScreen() {
   const FP_DEV_MODE = false;
   const FP_DEV_CIRCUIT = "Suzuka";
   const FP_DEV_YEAR = 2026;
-  const RACE_DEV_MODE = true;
+  const RACE_DEV_MODE = false;
   const RACE_DEV_SESSION_KEY = 11253;
 
   const [fpSessions, setFpSessions] = useState<{key: number, name: string, finished: boolean}[]>([]);

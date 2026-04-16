@@ -55,15 +55,16 @@
     "sorpassi": "Rari"
   },
   "lapRecord": {
-    "time": "1:16.330",
-    "driver": "Oscar Piastri",
-    "team": "McLaren",
-    "year": 2025
+    "time": "1:15.641",
+    "driver": "Giancarlo Fisichella",
+    "team": "Circuit de Barcelona-Catalunya",
+    "year": 2005
   },
   "qualiRecord": {
     "time": "1:11.383",
     "driver": "Lando Norris",
     "team": "McLaren",
     "year": 2024
-  }
+  },
+  "turns": 16
 }

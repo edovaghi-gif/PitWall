@@ -57,7 +57,7 @@
   "lapRecord": {
     "time": "1:43.009",
     "driver": "Charles Leclerc",
-    "team": "Ferrari",
+    "team": "Baku City Circuit",
     "year": 2019
   },
   "qualiRecord": {
@@ -65,5 +65,6 @@
     "driver": "Charles Leclerc",
     "team": "Ferrari",
     "year": 2023
-  }
+  },
+  "turns": 20
 }

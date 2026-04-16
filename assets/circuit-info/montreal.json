@@ -57,7 +57,7 @@
   "lapRecord": {
     "time": "1:13.078",
     "driver": "Valtteri Bottas",
-    "team": "Mercedes",
+    "team": "Circuit Gilles Villeneuve",
     "year": 2019
   },
   "qualiRecord": {
@@ -65,5 +65,6 @@
     "driver": "Sebastian Vettel",
     "team": "Ferrari",
     "year": 2019
-  }
+  },
+  "turns": 14
 }

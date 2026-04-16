@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const logo = require('../../assets/images/PitWall Logo.png');
 import { useNavigation } from "expo-router";
@@ -30,6 +31,7 @@ import spaData       from "../../assets/circuits/spa.json";
 import spielbergData from "../../assets/circuits/spielberg.json";
 import suzukaData    from "../../assets/circuits/suzuka.json";
 import zandvoortData from "../../assets/circuits/zandvoort.json";
+import madridData    from "../../assets/circuits/madrid.json";
 
 const PAGE_W = Dimensions.get("window").width - 32;
 
@@ -61,6 +63,7 @@ const CIRCUITS = [
   { key: "lasvegas",   data: lasVegasData },
   { key: "lusail",     data: lusailData },
   { key: "abudhabi",   data: abudhabiData },
+  { key: "madrid",     data: madridData },
 ];
 
 type Meta = {
@@ -94,6 +97,46 @@ const CIRCUIT_META: Record<string, Meta> = {
   lasvegas:    { display: "Las Vegas Street Circuit",        sub: "Las Vegas · 6.201 km · 50 giri",     dna: { tipo: "Cittadino",   usura: "Bassa",      qualifica: "Alta",      sc: "3 su ultimi 10 GP", sorpassi: "Possibili"  } },
   lusail:      { display: "Lusail International Circuit",    sub: "Lusail · 5.380 km · 57 giri",        dna: { tipo: "Permanente",  usura: "Molto Alta", qualifica: "Alta",      sc: "3 su ultimi 10 GP", sorpassi: "Possibili"  } },
   abudhabi:    { display: "Yas Marina Circuit",              sub: "Abu Dhabi · 5.281 km · 58 giri",     dna: { tipo: "Permanente",  usura: "Media",      qualifica: "Alta",      sc: "3 su ultimi 10 GP", sorpassi: "Possibili"  } },
+  madrid:      { display: "Madrid Street Circuit",           sub: "Madrid · 5.474 km · 52 giri",        dna: { tipo: "Cittadino",   usura: "Media",      qualifica: "Alta",      sc: "3 su ultimi 10 GP", sorpassi: "Possibili"  } },
+};
+
+const CIRCUIT_INFO_MAP: Record<string, any> = {
+  abudhabi:   require("../../assets/circuit-info/abudhabi.json"),
+  austin:     require("../../assets/circuit-info/austin.json"),
+  bahrain:    require("../../assets/circuit-info/bahrain.json"),
+  baku:       require("../../assets/circuit-info/baku.json"),
+  barcelona:  require("../../assets/circuit-info/barcelona.json"),
+  budapest:   require("../../assets/circuit-info/budapest.json"),
+  imola:      require("../../assets/circuit-info/imola.json"),
+  jeddah:     require("../../assets/circuit-info/jeddah.json"),
+  lasvegas:   require("../../assets/circuit-info/lasvegas.json"),
+  lusail:     require("../../assets/circuit-info/lusail.json"),
+  melbourne:  require("../../assets/circuit-info/melbourne.json"),
+  mexico:     require("../../assets/circuit-info/mexico.json"),
+  miami:      require("../../assets/circuit-info/miami.json"),
+  monaco:     require("../../assets/circuit-info/monaco.json"),
+  montreal:   require("../../assets/circuit-info/montreal.json"),
+  monza:      require("../../assets/circuit-info/monza.json"),
+  saopaulo:   require("../../assets/circuit-info/saopaulo.json"),
+  shanghai:   require("../../assets/circuit-info/shanghai.json"),
+  silverstone:require("../../assets/circuit-info/silverstone.json"),
+  singapore:  require("../../assets/circuit-info/singapore.json"),
+  spa:        require("../../assets/circuit-info/spa.json"),
+  spielberg:  require("../../assets/circuit-info/spielberg.json"),
+  suzuka:     require("../../assets/circuit-info/suzuka.json"),
+  zandvoort:  require("../../assets/circuit-info/zandvoort.json"),
+  madrid:     require("../../assets/circuit-info/madrid.json"),
+};
+
+const CIRCUIT_COUNTRY: Record<string, string> = {
+  bahrain: "Bahrain", jeddah: "Arabia Saudita", melbourne: "Australia",
+  suzuka: "Giappone", shanghai: "Cina", miami: "USA", imola: "Italia",
+  monaco: "Monaco", montreal: "Canada", barcelona: "Spagna",
+  spielberg: "Austria", silverstone: "Gran Bretagna", budapest: "Ungheria",
+  spa: "Belgio", zandvoort: "Olanda", monza: "Italia", baku: "Azerbaijan",
+  singapore: "Singapore", austin: "USA", mexico: "Messico",
+  saopaulo: "Brasile", lasvegas: "USA", lusail: "Qatar", abudhabi: "Abu Dhabi",
+  madrid: "Spagna",
 };
 
 const CORNERS = [
@@ -126,14 +169,58 @@ export default function CircuitoScreen() {
   const navigation = useNavigation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedCorner, setSelectedCorner] = useState<any>(null);
+  const [anecdotes, setAnecdotes] = useState<{titolo: string, testo: string}[]>([]);
+  const [loadingAnecdotes, setLoadingAnecdotes] = useState(false);
 
   useEffect(() => {
     navigation.setOptions({ title: "", headerShown: false });
+    const c = CIRCUITS[0];
+    const m = CIRCUIT_META[c.key];
+    fetchAnecdotes(c.key, m.display, CIRCUIT_INFO_MAP[c.key]?.lapRecord?.time ?? '—', CIRCUIT_COUNTRY[c.key] ?? '');
   }, []);
+
+  async function fetchAnecdotes(circuitKey: string, circuitName: string, lapRecord: string, country: string) {
+    const cacheKey = `anecdotes_${circuitKey}`;
+    try {
+      const cached = await AsyncStorage.getItem(cacheKey);
+      if (cached) {
+        setAnecdotes(JSON.parse(cached));
+        return;
+      }
+    } catch {}
+
+    setLoadingAnecdotes(true);
+    try {
+      const response = await fetch('https://a.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 300,
+          messages: [{
+            role: 'user',
+            content: `Sei un esperto di Formula 1. Genera 2 aneddoti storici brevi e interessanti sul circuito ${circuitName} in ${country}. Il lap record è ${lapRecord}. Rispondi SOLO con un array JSON valido, nessun testo aggiuntivo, nessun markdown: [{"titolo": "...", "testo": "..."}]. Ogni testo massimo 120 caratteri. Solo fatti reali verificabili.`
+          }]
+        })
+      });
+      const data = await response.json();
+      const text = data.content?.[0]?.text ?? '[]';
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) {
+        setAnecdotes(parsed);
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(parsed));
+      }
+    } catch {
+      setAnecdotes([]);
+    } finally {
+      setLoadingAnecdotes(false);
+    }
+  }
 
   const current = CIRCUITS[currentIndex];
   const meta = CIRCUIT_META[current.key];
   const isMonaco = current.key === "monaco";
+  const circuitInfo = CIRCUIT_INFO_MAP[current.key];
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -142,9 +229,18 @@ export default function CircuitoScreen() {
           <Image source={logo} style={{ height: 32, width: 160, resizeMode: 'contain' }} />
         </View>
 
-        <View style={styles.circuitHeader}>
-          <Text style={styles.circuitName}>{meta.display}</Text>
-          <Text style={styles.circuitSub}>{meta.sub}</Text>
+        <View style={{ gap: 4, marginBottom: 4 }}>
+          <Text style={{ color: "#999999", fontSize: 11, fontWeight: "700", letterSpacing: 2 }}>
+            ROUND {currentIndex + 1} · {meta.sub.split('·')[0].trim().toUpperCase()}
+          </Text>
+          <Text style={{ color: "#FFFFFF", fontSize: 22, fontWeight: "900", letterSpacing: -0.5 }}>
+            {meta.display.toUpperCase()}
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
+            <Text style={{ color: "#999999", fontSize: 12 }}>
+              {meta.sub.split('·').slice(1).join('·').trim()}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.sectorLegend}>
@@ -156,6 +252,18 @@ export default function CircuitoScreen() {
           ))}
         </View>
 
+        {circuitInfo?.lapRecord && (
+          <View style={{ backgroundColor: "#141414", borderRadius: 12, padding: 16, marginBottom: 4 }}>
+            <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 4 }}>LAP RECORD</Text>
+            <Text style={{ color: "#E10600", fontSize: 32, fontWeight: "900", letterSpacing: -1 }}>
+              {circuitInfo.lapRecord.time}
+            </Text>
+            <Text style={{ color: "#999999", fontSize: 12, marginTop: 4 }}>
+              {circuitInfo.lapRecord.driver} · {circuitInfo.lapRecord.year}
+            </Text>
+          </View>
+        )}
+
         {/* Horizontal pager */}
         <View>
           <ScrollView
@@ -166,10 +274,23 @@ export default function CircuitoScreen() {
               const index = Math.round(e.nativeEvent.contentOffset.x / PAGE_W);
               setCurrentIndex(index);
               setSelectedCorner(null);
+              setAnecdotes([]);
+              const c = CIRCUITS[index];
+              const m = CIRCUIT_META[c.key];
+              fetchAnecdotes(c.key, m.display, CIRCUIT_INFO_MAP[c.key]?.lapRecord?.time ?? '—', CIRCUIT_COUNTRY[c.key] ?? '');
             }}
           >
             {CIRCUITS.map(({ key, data }) => {
               const points = data.points;
+              if (points.length === 0) {
+                return (
+                  <View key={key} style={[styles.mapCard, { width: PAGE_W }]}>
+                    <View style={{ width: "100%", height: 280, alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ color: "#555555", fontSize: 13, textAlign: "center" }}>Tracciato non disponibile{"\n"}Prima edizione 2026</Text>
+                    </View>
+                  </View>
+                );
+              }
               const [path1, path2, path3] = makeSectorPaths(points);
               return (
                 <View key={key} style={[styles.mapCard, { width: PAGE_W }]}>
@@ -206,6 +327,41 @@ export default function CircuitoScreen() {
             ))}
           </View>
         </View>
+
+        {/* Stats grid */}
+        {(() => {
+          const parts = meta.sub.split('·').map((s: string) => s.trim());
+          const giri = parts[2] ?? '—';
+          const km = parts[1] ?? '—';
+          const numCurve = circuitInfo?.turns ?? '—';
+          const gMax = circuitInfo?.corners
+            ? Math.max(...circuitInfo.corners.map((c: any) => parseFloat(c.g))).toFixed(1) + 'G'
+            : '—';
+          return (
+            <>
+              <View style={{ flexDirection: "row", gap: 8, marginBottom: 4 }}>
+                <View style={{ flex: 1, backgroundColor: "#141414", borderRadius: 12, padding: 14 }}>
+                  <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1 }}>GIRI</Text>
+                  <Text style={{ color: "#FFFFFF", fontSize: 24, fontWeight: "800", marginTop: 4 }}>{giri}</Text>
+                </View>
+                <View style={{ flex: 1, backgroundColor: "#141414", borderRadius: 12, padding: 14 }}>
+                  <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1 }}>DISTANZA</Text>
+                  <Text style={{ color: "#FFFFFF", fontSize: 24, fontWeight: "800", marginTop: 4 }}>{km}</Text>
+                </View>
+              </View>
+              <View style={{ flexDirection: "row", gap: 8, marginBottom: 4 }}>
+                <View style={{ flex: 1, backgroundColor: "#141414", borderRadius: 12, padding: 14 }}>
+                  <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1 }}>CURVE</Text>
+                  <Text style={{ color: "#FFFFFF", fontSize: 24, fontWeight: "800", marginTop: 4 }}>{numCurve}</Text>
+                </View>
+                <View style={{ flex: 1, backgroundColor: "#141414", borderRadius: 12, padding: 14 }}>
+                  <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1 }}>G-MAX</Text>
+                  <Text style={{ color: "#FFFFFF", fontSize: 24, fontWeight: "800", marginTop: 4 }}>{gMax}</Text>
+                </View>
+              </View>
+            </>
+          );
+        })()}
 
         {/* Corner detail (Monaco only) */}
         {isMonaco && selectedCorner ? (
@@ -247,6 +403,22 @@ export default function CircuitoScreen() {
           <View style={styles.dnaRow}><Text style={styles.dnaKey}>Safety car</Text><Text style={styles.dnaVal}>{meta.dna.sc}</Text></View>
           <View style={styles.dnaRow}><Text style={styles.dnaKey}>Sorpassi</Text><Text style={styles.dnaVal}>{meta.dna.sorpassi}</Text></View>
         </View>
+        {anecdotes.length > 0 && (
+          <View style={{ backgroundColor: "#141414", borderRadius: 12, padding: 16, gap: 14 }}>
+            <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1 }}>ANEDDOTI</Text>
+            {anecdotes.map((a, i) => (
+              <View key={i} style={{ borderLeftWidth: 2, borderLeftColor: "#E10600", paddingLeft: 12 }}>
+                <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "700", marginBottom: 4 }}>{a.titolo}</Text>
+                <Text style={{ color: "#999999", fontSize: 12, lineHeight: 18 }}>{a.testo}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+        {loadingAnecdotes && (
+          <View style={{ padding: 16, alignItems: "center" }}>
+            <ActivityIndicator size="small" color="#E10600" />
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

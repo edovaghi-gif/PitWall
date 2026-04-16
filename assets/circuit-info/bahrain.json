@@ -55,15 +55,16 @@
     "sorpassi": "Frequenti"
   },
   "lapRecord": {
-    "time": "1:31.447",
-    "driver": "Pedro de la Rosa",
-    "team": "McLaren",
-    "year": 2005
+    "time": "1:30.252",
+    "driver": "Michael Schumacher",
+    "team": "Bahrain International Circuit",
+    "year": 2004
   },
   "qualiRecord": {
     "time": "1:27.264",
     "driver": "Lewis Hamilton",
     "team": "Mercedes",
     "year": 2020
-  }
+  },
+  "turns": 15
 }

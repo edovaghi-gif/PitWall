@@ -57,7 +57,7 @@
   "lapRecord": {
     "time": "1:05.619",
     "driver": "Carlos Sainz",
-    "team": "McLaren",
+    "team": "Red Bull Ring",
     "year": 2020
   },
   "qualiRecord": {
@@ -65,5 +65,6 @@
     "driver": "Valtteri Bottas",
     "team": "Mercedes",
     "year": 2020
-  }
+  },
+  "turns": 10
 }

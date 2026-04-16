@@ -27,6 +27,7 @@ type Driver = {
   team: string;
   color: string;
   number: string;
+  headshot_url?: string | null;
 };
 
 export default function HeadToHeadScreen() {
@@ -70,6 +71,32 @@ export default function HeadToHeadScreen() {
           number: d.permanentNumber ?? "0",
         };
       });
+
+      try {
+        const sessRes = await fetch(`https://api.openf1.org/v1/sessions?year=2026&session_type=Race`);
+        const sessText = await sessRes.text();
+        if (!sessText.startsWith('[') && !sessText.startsWith('{')) throw new Error("non_json");
+        const sessData = JSON.parse(sessText);
+        if (Array.isArray(sessData) && sessData.length > 0) {
+          const latest = sessData[sessData.length - 1];
+          const drvRes = await fetch(`https://api.openf1.org/v1/drivers?session_key=${latest.session_key}`);
+          const drvText = await drvRes.text();
+          if (!drvText.startsWith('[') && !drvText.startsWith('{')) throw new Error("non_json");
+          const drvData = JSON.parse(drvText);
+          if (Array.isArray(drvData)) {
+            const headshotMap: Record<string, string> = {};
+            drvData.forEach((d: any) => {
+              if (d.name_acronym && d.headshot_url) {
+                headshotMap[d.name_acronym.toUpperCase()] = d.headshot_url;
+              }
+            });
+            mapped.forEach(d => {
+              d.headshot_url = headshotMap[d.code.toUpperCase()] ?? null;
+            });
+          }
+        }
+      } catch {}
+
       setDrivers(mapped);
       setDriverL(mapped[0] ?? null);
       setDriverR(mapped[1] ?? null);
@@ -160,14 +187,22 @@ export default function HeadToHeadScreen() {
       <View style={styles.driverHeader}>
         <TouchableOpacity style={styles.driverSide} onPress={() => { setSelectingSlot("left"); setModalVisible(true); }}>
           <View style={[styles.colorBar, { backgroundColor: driverL?.color }]} />
-          <Text style={[styles.driverNumber, { color: driverL?.color }]}>{driverL?.number}</Text>
+          {driverL?.headshot_url ? (
+            <Image source={{ uri: driverL.headshot_url }} style={styles.driverPhoto} />
+          ) : (
+            <Text style={[styles.driverNumber, { color: driverL?.color }]}>{driverL?.number}</Text>
+          )}
           <Text style={styles.driverName}>{driverL?.name}</Text>
           <Text style={styles.driverTeam}>{driverL?.team}</Text>
         </TouchableOpacity>
         <View style={styles.vsBadge}><Text style={styles.vsText}>VS</Text></View>
         <TouchableOpacity style={styles.driverSide} onPress={() => { setSelectingSlot("right"); setModalVisible(true); }}>
           <View style={[styles.colorBar, { backgroundColor: driverR?.color }]} />
-          <Text style={[styles.driverNumber, { color: driverR?.color }]}>{driverR?.number}</Text>
+          {driverR?.headshot_url ? (
+            <Image source={{ uri: driverR.headshot_url }} style={styles.driverPhoto} />
+          ) : (
+            <Text style={[styles.driverNumber, { color: driverR?.color }]}>{driverR?.number}</Text>
+          )}
           <Text style={styles.driverName}>{driverR?.name}</Text>
           <Text style={styles.driverTeam}>{driverR?.team}</Text>
         </TouchableOpacity>
@@ -268,6 +303,7 @@ const styles = StyleSheet.create({
   driverHeader: { flexDirection: "row", borderWidth: 0.5, borderColor: "#2A2A2A", borderRadius: 12, overflow: "hidden", backgroundColor: "#141414" },
   driverSide: { flex: 1, padding: 12, alignItems: "center", gap: 2, position: "relative", backgroundColor: "#141414" },
   colorBar: { position: "absolute", top: 0, left: 0, right: 0, height: 3 },
+  driverPhoto: { width: 80, height: 80, borderRadius: 40, marginTop: 8, backgroundColor: "#1E1E1E" },
   driverNumber: { fontSize: 24, fontWeight: "500", marginTop: 8 },
   driverName: { fontSize: 13, fontWeight: "500", color: "#FFFFFF" },
   driverTeam: { fontSize: 10, color: "#999999" },

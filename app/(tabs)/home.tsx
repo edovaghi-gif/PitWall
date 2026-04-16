@@ -73,7 +73,7 @@ export default function HomeScreen() {
   const FP_DEV_MODE = false;
   const FP_DEV_CIRCUIT = "Suzuka";
   const FP_DEV_YEAR = 2026;
-  const RACE_DEV_MODE = false;
+  const RACE_DEV_MODE = true;
   const RACE_DEV_SESSION_KEY = 11253;
 
   const [fpSessions, setFpSessions] = useState<{key: number, name: string, finished: boolean}[]>([]);
@@ -102,6 +102,9 @@ export default function HomeScreen() {
   const raceStintsRef = useRef<any[]>([]);
   const raceDriversCacheRef = useRef<any[]>([]);
   const dnfRef = useRef<Set<number>>(new Set());
+  const [expandedRaceDriver, setExpandedRaceDriver] = useState<number | null>(null);
+  const [showGapToLeader, setShowGapToLeader] = useState(false);
+  const gapHistoryRef = useRef<Record<number, Array<{gap: number, stint: number, timestamp: number}>>>({});
 
   useEffect(() => {
     fetchData();
@@ -332,13 +335,22 @@ export default function HomeScreen() {
   }
 
   async function safeFetch(url: string) {
+    const attempt = async () => {
+      const res = await fetch(url);
+      const text = await res.text();
+      if (!text.startsWith('[') && !text.startsWith('{')) {
+        console.log('Non-JSON response:', text.slice(0, 100));
+        throw new Error("non_json");
+      }
+      const data = JSON.parse(text);
+      if (data?.error === "Too Many Requests") throw new Error("rate_limit");
+      return data;
+    };
     try {
-      const res = await fetch(url);
-      return await res.json();
+      return await attempt();
     } catch {
-      await new Promise(r => setTimeout(r, 1000));
-      const res = await fetch(url);
-      return await res.json();
+      await new Promise(r => setTimeout(r, 1500));
+      return await attempt();
     }
   }
 
@@ -357,10 +369,29 @@ export default function HomeScreen() {
     const sessionKey = activeSession.session_key;
     try {
       const data = await safeFetch(`https://api.openf1.org/v1/weather?session_key=${sessionKey}`);
+      console.log('Weather result:', JSON.stringify(data).slice(0, 200));
       if (!Array.isArray(data) || data.length === 0) return;
       console.log('Setting weather:', JSON.stringify(data[data.length - 1]));
       setRaceWeather(data[data.length - 1]);
     } catch {}
+  }
+
+  function getTrend(attackerNum: number | null): { text: string; color: string } | null {
+    if (raceSafetyCarActive) return { text: "🚗 SC in pista", color: "#F39C12" };
+    if (attackerNum === null) return null;
+    const history = gapHistoryRef.current[attackerNum] ?? [];
+    const valid: Array<{gap: number, stint: number}> = [];
+    for (let i = 0; i < history.length; i++) {
+      if (i > 0 && history[i].stint !== history[i - 1].stint) { valid.length = 0; continue; }
+      valid.push(history[i]);
+    }
+    if (valid.length < 2) return null;
+    const current = valid[valid.length - 1].gap;
+    const avgPrev = valid.slice(0, valid.length - 1).reduce((s, e) => s + e.gap, 0) / (valid.length - 1);
+    const delta = current - avgPrev;
+    if (Math.abs(delta) < 0.05) return { text: "→ stabile", color: "#999999" };
+    if (delta < 0) return { text: `↓ si avvicina ${Math.abs(delta).toFixed(3)}s/giro`, color: "#27AE60" };
+    return { text: `↑ si allontana ${Math.abs(delta).toFixed(3)}s/giro`, color: "#999999" };
   }
 
   async function fetchRaceData() {
@@ -380,15 +411,26 @@ export default function HomeScreen() {
       const results = await Promise.all(fetchPromises);
       [positionData, intervalsData, rcData] = results;
       const driversData = results[3];
-      if (Array.isArray(driversData) && driversData.length > 0) raceDriversCacheRef.current = driversData;
+      if (Array.isArray(driversData) && driversData.length > 0) {
+        console.log('Driver headshot_url:', driversData[0]?.headshot_url);
+        raceDriversCacheRef.current = driversData;
+      }
     } catch { return; }
     const drivers = raceDriversCacheRef.current;
 
     if (!Array.isArray(positionData) || !Array.isArray(intervalsData) || !Array.isArray(rcData)) return;
+    console.log('ALO interval raw:', intervalsData.filter((i: any) => i.driver_number === 14).slice(-1)[0])
+    console.log('BOT interval raw:', intervalsData.filter((i: any) => i.driver_number === 77).slice(-1)[0])
+    console.log('ALB interval raw:', intervalsData.filter((i: any) => i.driver_number === 23).slice(-1)[0])
 
-    // raceLap from last position record
-    const lastPositionLap = positionData.length > 0 ? positionData[positionData.length - 1]?.lap_number : null;
-    if (lastPositionLap != null) setRaceLap(lastPositionLap);
+    // raceLap: max lap_number from positionData, fallback totalLaps
+    let maxLapFound: number | null = null;
+    for (const entry of positionData) {
+      if (entry.lap_number != null && entry.lap_number > (maxLapFound ?? 0)) {
+        maxLapFound = entry.lap_number;
+      }
+    }
+    setRaceLap(maxLapFound ?? totalLaps);
 
     // Latest position per driver
     const latestPosition: Record<number, number> = {};
@@ -414,17 +456,27 @@ export default function HomeScreen() {
       }
     }
 
-    // SC / RF detection
+    // SC / RF detection — sort by date, check last relevant event
+    const sortedRc = [...rcData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const lastSc = [...sortedRc].reverse().find(e => e.category === "SafetyCar");
+    const lastRf = [...sortedRc].reverse().find(e => e.category === "RedFlag");
     let scActive = false;
     let rfActive = false;
-    for (const e of rcData) {
-      if (e.category === "SafetyCar") {
-        if (e.message?.includes("DEPLOYED")) scActive = true;
-        if (e.message?.includes("WITHDRAWN")) scActive = false;
+    if (lastSc) {
+      scActive = lastSc.message?.includes("DEPLOYED") ?? false;
+      if (scActive) {
+        const lastScDate = new Date(lastSc.date).getTime();
+        const greenAfter = sortedRc.some(e => new Date(e.date).getTime() > lastScDate && e.flag === "GREEN");
+        if (greenAfter) scActive = false;
       }
-      if (e.category === "RedFlag") {
-        rfActive = true;
-        if (e.message?.includes("RESTARTED") || e.message?.includes("RESUMED")) rfActive = false;
+    }
+    if (lastRf) {
+      const msg = lastRf.message ?? "";
+      rfActive = !msg.includes("RESTARTED") && !msg.includes("RESUMED");
+      if (rfActive) {
+        const lastRfDate = new Date(lastRf.date).getTime();
+        const greenAfter = sortedRc.some(e => new Date(e.date).getTime() > lastRfDate && e.flag === "GREEN");
+        if (greenAfter) rfActive = false;
       }
     }
     setRaceSafetyCarActive(scActive);
@@ -459,16 +511,27 @@ export default function HomeScreen() {
 
       let intervalStr = "LEADER";
       let gapToLeader: number | null = null;
+      let isLapped = false;
+      let intervalNum: number | null = null;
+      let gapToLeaderStr: string | null = null;
       if (pos !== 1 && intEntry) {
-        const gap = intEntry.gap_to_leader;
-        if (gap !== null && gap !== undefined) {
-          if (typeof gap === "number" && gap > 120) {
-            intervalStr = "LAP";
-          } else if (typeof gap === "number") {
-            intervalStr = `+${gap.toFixed(3)}s`;
-            gapToLeader = gap;
-          } else {
-            intervalStr = String(gap);
+        const intervalVal = intEntry.interval;
+        const gapVal = intEntry.gap_to_leader;
+        if (gapVal !== null && gapVal !== undefined && typeof gapVal === "string" && gapVal.toUpperCase().includes("LAP")) {
+          isLapped = true;
+          gapToLeaderStr = gapVal;
+          intervalStr = gapVal;
+          if (intervalVal !== null && intervalVal !== undefined && typeof intervalVal === "number") {
+            intervalNum = intervalVal;
+          }
+        } else {
+          if (gapVal !== null && gapVal !== undefined && typeof gapVal === "number") {
+            gapToLeader = gapVal;
+          }
+          if (intervalVal !== null && intervalVal !== undefined && typeof intervalVal === "number") {
+            intervalStr = `+${intervalVal.toFixed(3)}s`;
+          } else if (gapVal !== null && gapVal !== undefined && typeof gapVal === "number") {
+            intervalStr = `+${gapVal.toFixed(3)}s`;
           }
         }
       }
@@ -488,21 +551,44 @@ export default function HomeScreen() {
         driver_number: num,
         name_acronym: info.name_acronym ?? String(num),
         team_colour: info.team_colour ? `#${info.team_colour}` : "#FFFFFF",
+        headshot_url: info.headshot_url ?? null,
         position: pos,
         interval: intervalStr,
+        intervalNum,
+        gapToLeaderStr,
         gap_to_leader: gapToLeader,
         compound,
         tyre_age: tyreAge,
         stops,
-        isDnf: dnfRef.current.size > 0 && !dnfRef.current.has(num) && intervalStr !== "LAP",
+        isLapped,
+        isDnf: dnfRef.current.size > 0 && !dnfRef.current.has(num) && !isLapped,
       });
     }
 
     built.sort((a, b) => {
       if (a.isDnf !== b.isDnf) return a.isDnf ? 1 : -1;
+      if (a.isLapped !== b.isLapped) return a.isLapped ? 1 : -1;
+      if (a.isLapped && b.isLapped) {
+        const aLaps = parseInt(a.gapToLeaderStr ?? a.interval) || 0;
+        const bLaps = parseInt(b.gapToLeaderStr ?? b.interval) || 0;
+        return aLaps - bLaps;
+      }
       return a.position - b.position;
     });
     setRaceDrivers(built);
+
+    // Gap history for expand inline
+    if (!raceSafetyCarActive) {
+      for (const d of built) {
+        if (d.gap_to_leader === null) continue;
+        const stintEntry = latestStint[d.driver_number];
+        const stintNum = stintEntry?.stint_number ?? 0;
+        const history = gapHistoryRef.current[d.driver_number] ?? [];
+        history.push({ gap: d.gap_to_leader, stint: stintNum, timestamp: Date.now() });
+        if (history.length > 5) history.shift();
+        gapHistoryRef.current[d.driver_number] = history;
+      }
+    }
 
     // Battle Insight
     const newPrev: Record<number, number> = { ...previousIntervalsRef.current };
@@ -593,8 +679,11 @@ export default function HomeScreen() {
       const end = new Date(s.date_end);
       return now >= start && now <= end;
     });
-    if (active && (active.session_name === "Qualifying" || active.session_name === "Sprint Qualifying" || active.session_name === "Race")) {
+    if (active && (active.session_name === "Qualifying" || active.session_name === "Sprint Qualifying")) {
       setActiveSession(active);
+    } else if (active && active.session_name === "Race") {
+      setActiveSession(active);
+      return;
     } else {
       const nextQual = sessions.find((s: any) => {
         const start = new Date(s.date_start);
@@ -685,6 +774,7 @@ export default function HomeScreen() {
         full_name: driver.full_name,
         name_acronym: driver.name_acronym,
         team_colour: driver.team_colour,
+        headshot_url: driver.headshot_url ?? null,
         best_lap_duration: null,
         lap_phase: null as number | null,
         sector1: null,
@@ -790,6 +880,9 @@ export default function HomeScreen() {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           dnfRef.current = new Set(data.map((l: any) => l.driver_number));
+          console.log('dnfRef finishers:', [...dnfRef.current]);
+        } else {
+          console.log('dnfRef: no last-lap data returned, size=0');
         }
       } catch {}
     })();
@@ -864,7 +957,11 @@ export default function HomeScreen() {
           <Text style={{ color: "#555555", fontSize: 10, width: 22 }}> </Text>
           <View style={{ width: 12, marginRight: 10 }} />
           <Text style={{ color: "#555555", fontSize: 10, flex: 1 }}> </Text>
-          <Text style={{ color: "#555555", fontSize: 10, fontStyle: "italic", marginRight: 12 }}>INTERVAL</Text>
+          <TouchableOpacity onPress={() => setShowGapToLeader(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={{ color: showGapToLeader ? "#E10600" : "#555555", fontSize: 10, fontStyle: "italic", marginRight: 12 }}>
+              {showGapToLeader ? "GAP" : "INTERVAL"}
+            </Text>
+          </TouchableOpacity>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>CPD</Text>
             <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>AGE</Text>
@@ -880,42 +977,92 @@ export default function HomeScreen() {
             raceDrivers.map((driver, index) => {
               const teamColor = driver.team_colour ?? "#FFFFFF";
               const tyre = getTyreInfo(driver.compound);
-              const isBattleHere = raceBattle && raceBattle.driver1.driver_number === driver.driver_number;
+              const isExpanded = expandedRaceDriver === driver.driver_number;
+              const driverAhead = index > 0 ? raceDrivers[index - 1] : null;
+              const driverBehind = index < raceDrivers.length - 1 ? raceDrivers[index + 1] : null;
+              const trendAhead = getTrend(driver.driver_number);
+              const trendBehind = getTrend(driverBehind?.driver_number ?? null);
+              let intervalDisplay: string;
+              let intervalColor: string;
+              if (driver.isDnf) {
+                intervalDisplay = "DNF";
+                intervalColor = "#555555";
+              } else if (driver.isLapped && driver.gapToLeaderStr) {
+                intervalDisplay = driver.gapToLeaderStr;
+                intervalColor = "#555555";
+              } else if (driver.position === 1) {
+                intervalDisplay = "LEADER";
+                intervalColor = "#E10600";
+              } else if (!showGapToLeader) {
+                intervalDisplay = driver.interval;
+                intervalColor = "#FFFFFF";
+              } else {
+                intervalDisplay = driver.gap_to_leader !== null ? `+${driver.gap_to_leader.toFixed(3)}s` : driver.interval;
+                intervalColor = "#FFFFFF";
+              }
               return (
                 <View key={driver.driver_number}>
-                  <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#1A1A1A" }}>
-                    <Text style={{ color: "#999999", fontSize: 13, width: 22 }}>{driver.position}</Text>
-                    <View style={{ width: 2, height: 40, backgroundColor: teamColor, borderRadius: 1, marginRight: 10 }} />
-                    <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "700", flex: 1 }}>{driver.name_acronym}</Text>
-                    <Text style={{
-                      fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"], marginRight: 12,
-                      color: driver.isDnf ? "#555555" : driver.interval === "LEADER" ? "#E10600" : driver.interval === "LAP" ? "#555555" : "#FFFFFF",
-                    }}>
-                      {driver.isDnf ? "DNF" : driver.interval}
-                    </Text>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      <View style={{ backgroundColor: tyre.bg, borderRadius: 4, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
-                        <Text style={{ color: tyre.textColor, fontSize: 11, fontWeight: "800" }}>{tyre.label}</Text>
-                      </View>
-                      {driver.tyre_age !== null && (
-                        <Text style={{ color: "#999999", fontSize: 11 }}>{driver.tyre_age}</Text>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setExpandedRaceDriver(isExpanded ? null : driver.driver_number)}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#1A1A1A" }}>
+                      <Text style={{ color: "#999999", fontSize: 13, width: 22 }}>{driver.position}</Text>
+                      <View style={{ width: 2, height: 40, backgroundColor: teamColor, borderRadius: 1, marginRight: 10 }} />
+                      {driver.headshot_url ? (
+                        <Image source={{ uri: driver.headshot_url }} style={{ width: 32, height: 32, borderRadius: 16, marginRight: 8, backgroundColor: "#2A2A2A" }} resizeMode="cover" />
+                      ) : (
+                        <View style={{ width: 32, height: 32, borderRadius: 16, marginRight: 8, backgroundColor: "#2A2A2A" }} />
                       )}
-                      <Text style={{ color: "#555555", fontSize: 11 }}>{driver.stops > 0 ? `${driver.stops}S` : ""}</Text>
-                    </View>
-                  </View>
-                  {isBattleHere && raceBattle && (
-                    <View style={{ backgroundColor: "#1A1A1A", borderLeftWidth: 3, borderLeftColor: "#E10600", paddingHorizontal: 16, paddingVertical: 10, marginHorizontal: 16, marginVertical: 4, borderRadius: 4 }}>
-                      <Text style={{ color: "#E10600", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>⚔ BATTAGLIA</Text>
-                      <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600" }}>
-                        {raceBattle.driver1.name_acronym} vs {raceBattle.driver2.name_acronym}{"  "}{raceBattle.gap.toFixed(3)}s
+                      <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "700", flex: 1 }}>{driver.name_acronym}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"], marginRight: 12, color: intervalColor }}>
+                        {intervalDisplay}
                       </Text>
-                      {raceBattle.trend !== null && raceBattle.trend !== 0 && (
-                        <Text style={{ fontSize: 12, marginTop: 2, color: raceBattle.trend < 0 ? "#27AE60" : "#999999" }}>
-                          {raceBattle.trend < 0
-                            ? `↓ si avvicinano ${Math.abs(raceBattle.trend).toFixed(3)}s/giro`
-                            : `↑ si allontanano ${Math.abs(raceBattle.trend).toFixed(3)}s/giro`}
-                        </Text>
-                      )}
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <View style={{ backgroundColor: tyre.bg, borderRadius: 4, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                          <Text style={{ color: tyre.textColor, fontSize: 11, fontWeight: "800" }}>{tyre.label}</Text>
+                        </View>
+                        {driver.tyre_age !== null && (
+                          <Text style={{ color: "#999999", fontSize: 11 }}>{driver.tyre_age}</Text>
+                        )}
+                        <Text style={{ color: "#555555", fontSize: 11 }}>{driver.stops > 0 ? `${driver.stops}S` : ""}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                  {isExpanded && !driver.isDnf && (
+                    <View style={{ backgroundColor: "#1A1A1A", paddingHorizontal: 16, paddingVertical: 12, flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" }}>
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <Text style={{ color: "#999999", fontSize: 10, textTransform: "uppercase", marginBottom: 4 }}>DAVANTI</Text>
+                        {!driverAhead ? (
+                          <Text style={{ color: "#E10600", fontSize: 16, fontWeight: "700" }}>LEADER</Text>
+                        ) : (
+                          <>
+                            <Text style={{ color: "#555555", fontSize: 10, marginBottom: 2 }}>{driverAhead.name_acronym}</Text>
+                            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>{driverAhead.isLapped ? driverAhead.interval : driver.interval}</Text>
+                            {raceSafetyCarActive ? (
+                              <Text style={{ color: "#F39C12", fontSize: 11, marginTop: 2 }}>🚗 SC — trend sospeso</Text>
+                            ) : trendAhead ? (
+                              <Text style={{ color: trendAhead.color, fontSize: 11, marginTop: 2 }}>{trendAhead.text}</Text>
+                            ) : null}
+                          </>
+                        )}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: "#999999", fontSize: 10, textTransform: "uppercase", marginBottom: 4 }}>DIETRO</Text>
+                        {!driverBehind || driverBehind.isDnf ? (
+                          <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>—</Text>
+                        ) : (
+                          <>
+                            <Text style={{ color: "#555555", fontSize: 10, marginBottom: 2 }}>{driverBehind.name_acronym}</Text>
+                            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>{driverBehind.interval}</Text>
+                            {raceSafetyCarActive ? (
+                              <Text style={{ color: "#F39C12", fontSize: 11, marginTop: 2 }}>🚗 SC — trend sospeso</Text>
+                            ) : trendBehind ? (
+                              <Text style={{ color: trendBehind.color, fontSize: 11, marginTop: 2 }}>{trendBehind.text}</Text>
+                            ) : null}
+                          </>
+                        )}
+                      </View>
                     </View>
                   )}
                 </View>
@@ -1033,6 +1180,11 @@ export default function HomeScreen() {
                   >
                     <Text style={{ color: isEliminated ? "#555555" : "#999999", fontSize: 11, width: 16 }}>{index + 1}</Text>
                     <View style={{ width: 2, height: 16, backgroundColor: teamColor, borderRadius: 2, marginRight: 6 }} />
+                    {driver.headshot_url ? (
+                      <Image source={{ uri: driver.headshot_url }} style={{ width: 32, height: 32, borderRadius: 16, marginRight: 6, backgroundColor: "#2A2A2A" }} resizeMode="cover" />
+                    ) : (
+                      <View style={{ width: 32, height: 32, borderRadius: 16, marginRight: 6, backgroundColor: "#2A2A2A" }} />
+                    )}
                     <Text style={{ color: isEliminated ? "#555555" : "#FFFFFF", fontSize: 12, fontWeight: "600", width: 30 }}>{acronym}</Text>
                     <View style={{ flexDirection: "row", gap: 2, marginHorizontal: 6 }}>
                       <View style={{ width: 62, height: 20, borderRadius: 3, backgroundColor: isEliminated ? "#1A1A1A" : (driver.sector1 !== null ? driver.sector1_color : "#2A2A2A"), justifyContent: "center", alignItems: "center" }}>

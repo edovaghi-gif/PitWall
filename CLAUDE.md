@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guidance for Claude Code in this repository.
+Guide Claude Code this repo.
 
 ## Commands
 
@@ -18,13 +18,13 @@ node scripts/fetch-quali-records.js           # Aggiorna scripts/quali-records.j
 node scripts/fetch-pb-2025.js                 # Aggiorna assets/quali-pb-2025.json
 ```
 
-No test suite.
+No tests.
 
 ---
 
 ## Architecture
 
-PitWall: F1 app iOS, Expo/React Native, expo-router (file-based routing). New Architecture + React Compiler abilitati.
+PitWall: F1 iOS app. Expo/React Native, expo-router file-routing. New Arch + React Compiler ON.
 
 ### Routing
 
@@ -56,29 +56,29 @@ Prefer dynamic API fetch. Never hardcode data available via API.
 ---
 
 ## App Assets
-- Logo: `assets/images/PitWall Logo.png` — PNG trasparente, usato in tutte le schermate (`height: 32, width: 160, resizeMode: 'contain'`)
+- Logo: `assets/images/PitWall Logo.png` — PNG trasparente, all screens (`height: 32, width: 160, resizeMode: 'contain'`)
 - Foto muretto: `assets/images/PitWall Photo.png` — sfondo onboarding (opacity 0.25)
-- All screens use `SafeAreaView` — navbar `paddingTop: 8`, NOT `paddingTop: 52`
+- All screens: `SafeAreaView` — navbar `paddingTop: 8`, NOT `paddingTop: 52`
 
 ---
 
 ## Circuit Assets
 
-- `assets/circuits/` — 24 JSON pre-generati (2024 calendar)
+- `assets/circuits/` — 24 JSON pre-gen (2024 calendar)
 - `assets/circuit-info/{key}.json` — circuit metadata, DNA, lap records
-  - Campi: `name`, `corners[]`, `dna{}`, `lapRecord{}`, `qualiRecord{}`
-  - `lapRecord` e `qualiRecord`: `{ time, driver, team, year }` — generati da `fetch-lap-records.js` / `fetch-quali-records.js`
-  - Manual corrections: edit `scripts/lap-records.json` or `scripts/quali-records.json`, rerun script
+  - Fields: `name`, `corners[]`, `dna{}`, `lapRecord{}`, `qualiRecord{}`
+  - `lapRecord` / `qualiRecord`: `{ time, driver, team, year }` — from `fetch-lap-records.js` / `fetch-quali-records.js`
+  - Manual fix: edit `scripts/lap-records.json` or `scripts/quali-records.json`, rerun script
 - `assets/quali-pb-2025.json` — 2025 quali personal bests per circuit/driver
   - Struttura: `{ "Suzuka": { "VER": { "bestLap": "1:26.983", "lapDuration": 86.983 }, ... }, ... }`
   - Circuit key = `circuit_short_name` OpenF1 (es. "Suzuka", "Monte Carlo", "Yas Marina Circuit")
   - Rerun `fetch-pb-2025.js` after each GP
   - Baku + Yas Marina: no lap data in OpenF1 (archive gaps)
-- Circuit structure: `name`, `session_key`, `viewBox ("0 0 300 300")`, `points: [{x,y,z}]`
+- Circuit struct: `name`, `session_key`, `viewBox ("0 0 300 300")`, `points: [{x,y,z}]`
 - `pointIndex` 0-99 mapped proportionally on track
 - Y axis corrected (inverted vs raw GPS)
-- Rerun `generate-circuit.js` after any coordinate transform logic changes
-- Colored sectors must not be removed during cosmetic fixes
+- Rerun `generate-circuit.js` after coordinate transform logic changes
+- Colored sectors: never remove during cosmetic fixes
 
 ### Driver number mapping 2025 (per fetch-pb-2025.js)
 | # | Codice | Pilota |
@@ -90,24 +90,25 @@ Prefer dynamic API fetch. Never hardcode data available via API.
 | 23 | ALB | Albon | 27 | HUL | Hülkenberg | 30 | LAW | Lawson |
 | 31 | OCO | Ocon | 43 | COL | Colapinto | 44 | HAM | Hamilton |
 | 55 | SAI | Sainz | 63 | RUS | Russell | 81 | PIA | Piastri | 87 | BEA | Bearman |
+
 ### Session key noti — Giappone 2026 (circuit_short_name "Suzuka")
 - Practice 1: 11246
 - Practice 2: 11247
 - Practice 3: 11248
-- Qualifying: 11249 (sessione unica 60min, Q1/Q2/Q3 non separati)
-- Race: 11253 (53 giri)
+- Qualifying: 11249 (single session 60min, Q1/Q2/Q3 not split)
+- Race: 11253 (53 laps)
 
 ### OpenF1 — scoperte importanti
 - Quali = single session (no Q1/Q2/Q3 split) — one session_key
 - `date_start` populated on normal laps, null on out-laps (not all laps as previously noted)
-- Laps have `segments_sector_1/2/3`: mini-sector color arrays pre-calculated by OpenF1:
-  - 2048 = grigio (nessun tempo), 2049 = giallo, 2051 = verde, 2064 = viola
+- Laps have `segments_sector_1/2/3`: mini-sector color arrays pre-calc by OpenF1:
+  - 2048 = grey (no time), 2049 = yellow, 2051 = green, 2064 = purple
 - `is_pit_out_lap: true` = pit exit
-- Q1/Q2/Q3 determined from `/race_control` field `qualifying_phase` (1/2/3)
-- `SESSION STARTED`/`SESSION FINISHED` in race_control give exact timestamps per Q phase
-- OpenF1 rate-limited — use sequential fetch (not `Promise.all`) for multiple sessions
+- Q1/Q2/Q3 from `/race_control` field `qualifying_phase` (1/2/3)
+- `SESSION STARTED`/`SESSION FINISHED` in race_control → exact timestamps per Q phase
+- OpenF1 rate-limited — sequential fetch (not `Promise.all`) for multiple sessions
 - `/intervals` not available for quali, only race
-- `/session_status` returns no useful data
+- `/session_status` useless
 
 ---
 
@@ -127,9 +128,9 @@ Dark mode all screens. No light colors.
 | TextMuted | `#555555` |
 
 - Tab bar: Ionicons (`home`, `map`, `bar-chart`, `trophy`) — active `#E10600`, inactive `#555555`
-- Accent `#E10600` only for primary interactive elements + active states
+- Accent `#E10600` only for primary interactive + active states
 - Border always 0.5px
-- Styles with React Native `StyleSheet` scoped per component
+- Styles: React Native `StyleSheet` scoped per component
 - Use `SafeAreaView` for content padding
 
 ---
@@ -143,6 +144,7 @@ If fix touches % / proportion calc logic, stop and ask.
 - Driver picker: FlatList, 20 drivers dynamic from Ergast
 - Modal: bottom-sheet
 - Driver numbers: dynamic from Ergast
+- Driver headshots: from OpenF1 `/sessions?year=2026&session_type=Race` (latest) → `/drivers?session_key={key}`, matched by `name_acronym`. 80×80px circle above driver name. Fallback: colored number. Non-JSON guard on all OpenF1 fetches (text() + startsWith check).
 
 ---
 
@@ -157,7 +159,7 @@ OpenF1 only. Never use Ergast for post-race scoring.
 - DNF: `/laps?session_key={key}&lap_number={totalLaps}` — absent drivers = retired
 
 ### Detection eventi
-- Safety Car: `category === "SafetyCar"` + `message` contiene `"DEPLOYED"`
+- Safety Car: `category === "SafetyCar"` + `message` contains `"DEPLOYED"`
 - Red Flag: `category === "RedFlag"`
 
 ### Calcolo punti
@@ -173,14 +175,14 @@ OpenF1 only. Never use Ergast for post-race scoring.
 | Red Flag sbagliata | −8pt |
 | Range DNF sbagliato | −5pt |
 
-Target good session: ~100–110 pts total.
+Target good session: ~100–110 pts.
 
 ### Implementazione post-gara
-- `checkRaceResults()` — fetches `/position?session_key={key}` from OpenF1, sets `raceResultsAvailable = true` if 3+ drivers returned
-- `calculateScore()` — computes score comparing saved prediction vs OpenF1 real data (`/position`, `/race_control`, `/laps`)
-  - Saves to `pitwall_scores`: `myPodiumNames` (driver names), `savedSafetyCar`, `savedRedFlag`, `savedDnfRange`
+- `checkRaceResults()` — fetches `/position?session_key={key}`, sets `raceResultsAvailable = true` if 3+ drivers returned
+- `calculateScore()` — score from saved prediction vs OpenF1 real data (`/position`, `/race_control`, `/laps`)
+  - Saves to `pitwall_scores`: `myPodiumNames`, `savedSafetyCar`, `savedRedFlag`, `savedDnfRange`
   - Upsert by `round + season` — overwrite if exists, insert if not
-- `fetchSessionKey()` — fetches session_key dynamically from OpenF1 via circuitMap
+- `fetchSessionKey()` — dynamic session_key from OpenF1 via circuitMap
 - Modal "SCOPRI IL RISULTATO" — visible only if `raceResultsAvailable === true`, shows score breakdown
 
 ### Flusso prediction (3 step)
@@ -196,18 +198,18 @@ Target good session: ~100–110 pts total.
 ## Live Race (home.tsx)
 
 ### DEV mode
-- `RACE_DEV_MODE = false` — **verificare prima di ogni build/release**
+- `RACE_DEV_MODE = false` — **check before every build/release**
 - `RACE_DEV_SESSION_KEY = 11253` (Suzuka 2026 Race)
 
 ### Architettura fetch
 - `fetchRaceData()`: poll every 15s — parallel fetch via `safeFetch` (retry 1x after 1000ms): `/position`, `/intervals`, `/race_control`, `/drivers` (only if cache empty)
 - `fetchRaceStints()`: poll every 30s — `/stints`
 - `fetchRaceWeather()`: poll every 120s — `/weather`
-- `safeFetch(url)`: internal helper, retry once after 1000ms on error
+- `safeFetch(url)`: retry once after 1000ms on error
 - On mount: one-shot fetch `/laps?lap_number={totalLaps}` → save finishers to `dnfRef`
 
 ### DNF detection
-- `dnfRef`: Set<number> populated on mount with last-lap driver_numbers
+- `dnfRef`: Set<number> populated on mount from last-lap driver_numbers
 - `isDnf = dnfRef.size > 0 && !dnfRef.has(num) && intervalStr !== "LAP"`
 - Lapped drivers (`intervalStr = "LAP"`) NOT DNF — show gap normally
 - DNF shown at bottom, interval = "DNF" color #555555
@@ -217,27 +219,39 @@ Target good session: ~100–110 pts total.
 - Gap > 120s → "LAP" (lapped)
 - Tyre compound/age from `/stints` (`raceStintsRef`)
 - Tyre age: `tyre_age_at_start + (totalLaps - lap_start)` (estimate)
-- Header colonne: INTERVAL | CPD | AGE | PIT
+- Header cols: INTERVAL | CPD | AGE | PIT
 
-### Battle Insight
-- Pair with smallest gap < 2.0s between consecutive drivers in standings
-- `previousIntervalsRef`: saves numeric gap (relative between 2 drivers) each poll
-- `trend = previousGap - currentGap` → positive = closing, negative = pulling away
-- Shown below front driver's row
+### Expand inline pilota (race)
+- Tap driver row → expand panel below (toggle, one at a time)
+- State: `expandedRaceDriver: string | null` (driver acronym)
+- Shows DAVANTI/DIETRO cols + gap trend (closing/separating)
+- `gapHistoryRef`: rolling 5-sample gap history per driver
+- `getTrend()`: `prevGap - currentGap` → positive = closing, negative = pulling away
+
+### Gap toggle
+- `showGapToLeader: boolean` — toggle via header tap
+- INTERVAL mode: gap to car ahead (`intEntry.interval`)
+- GAP mode: gap to leader (`intEntry.gap_to_leader`)
+- Gap > 120s → "LAP"; lapped NOT marked DNF
+
+### Driver headshots (race + quali rows)
+- 32×32px circle between team color bar and driver acronym
+- From OpenF1 `/drivers?session_key={key}`, stored in `raceDriversCacheRef`
+- `safeFetch` guards all OpenF1 calls: text() + startsWith('[' or '{') check
 
 ### Meteo
 - `raceWeather.track_temperature` + `raceWeather.rainfall` in header
-- `raceTotalLaps` da `TOTAL_LAPS[circuit_short_name]`
+- `raceTotalLaps` from `TOTAL_LAPS[circuit_short_name]`
 
 ---
 
 ## Live Qualifying (home.tsx)
 
 ### DEV mode
-- `QUALI_DEV_MODE = false` — **verificare prima di ogni build/release**
+- `QUALI_DEV_MODE = false` — **check before every build/release**
 - `QUALI_DEV_SESSION_KEY = 11249` (Suzuka 2025 Qualifying)
 - In DEV mode, `fakeSession` includes `circuit_short_name: "Suzuka"` for circuit mapping
-- `FP_DEV_MODE = false` — verificare prima di ogni build/release
+- `FP_DEV_MODE = false` — check before every build/release
 
 ### Filtro lap per fase Q
 - `phaseStart`/`phaseEnd` always from `raceControlRef` (even in DEV mode)
@@ -247,12 +261,12 @@ Target good session: ~100–110 pts total.
   - `requireWindow=true` for previous phases (null if window unavailable)
 
 ### Piloti eliminati
-- Best lap frozen from last Q phase they participated (Q3 → Q2 → Q1)
+- Best lap frozen from last Q phase participated (Q3 → Q2 → Q1)
 - `lap_phase: number | null` in driverMap — tracks phase of shown best lap
 - Sort: first by `lap_phase` desc (Q3 > Q2 > Q1), then by `best_lap_duration`
 - Gap always relative to current phase leader (not `bubbleTime`)
 
-### Expand inline pilota
+### Expand inline pilota (quali)
 - Tap driver row → expand panel below (toggle, one driver at a time)
 - State: `expandedDriver: string | null` (driver acronym)
 - **VS QUALI RECORD**: delta vs `qualiRecord.time` from circuit-info of current circuit
@@ -265,22 +279,22 @@ Target good session: ~100–110 pts total.
 
 ## Regole generali
 
-- NON aggiungere header — `headerShown: false` in `app/_layout.tsx`
+- NO headers — `headerShown: false` in `app/_layout.tsx`
 - NO hardcoded driver data — always from Ergast API
-- Surgical changes: change only what's needed for task
+- Surgical changes only
 - Ask before extensive refactoring
 - Code blocks: only code, no trailing inline comments
-- To test onboarding: temporarily add `await AsyncStorage.removeItem('onboarding_complete')` in `app/index.tsx`, remove after test
+- Test onboarding: temporarily add `await AsyncStorage.removeItem('onboarding_complete')` in `app/index.tsx`, remove after
 
 ---
 
 ## Onboarding
 - File: app/onboarding.tsx
-- 5 slides in horizontal ScrollView with paging
-- PitWall logo fixed at top (doesn't scroll), paddingTop 220
-- AsyncStorage key: "onboarding_complete" — if present, skip onboarding
+- 5 slides horizontal ScrollView with paging
+- PitWall logo fixed at top (no scroll), paddingTop 220
+- AsyncStorage key: "onboarding_complete" — if present, skip
 - `app/index.tsx` checks key, redirects to `/onboarding` or `/(tabs)/home`
-- DEV: to test, temporarily add `await AsyncStorage.removeItem('onboarding_complete')` in index.tsx, remove after
+- DEV: test → temporarily add `await AsyncStorage.removeItem('onboarding_complete')` in index.tsx, remove after
 
 ---
 

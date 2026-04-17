@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guide Claude Code this repo.
+Guide Claude Code repo.
 
 ## Commands
 
@@ -70,7 +70,7 @@ Prefer dynamic fetch. Never hardcode via API.
   - `lapRecord`: `{ time, driver, year }` — from `fetch-lap-records.js`
   - `turns`: official corner count, added manually to all 24 JSON
   - Manual fix: edit `scripts/lap-records.json`, rerun script then node -e "..." apply loop
-- `assets/quali-pb-2025.json` — 2025 quali personal bests per circuit/driver
+- `assets/quali-pb-2025.json` — 2025 quali PBs per circuit/driver
   - Structure: `{ "Suzuka": { "VER": { "bestLap": "1:26.983", "lapDuration": 86.983 }, ... }, ... }`
   - Circuit key = `circuit_short_name` OpenF1 (e.g. "Suzuka", "Monte Carlo", "Yas Marina Circuit")
   - Rerun `fetch-pb-2025.js` after each GP
@@ -100,6 +100,7 @@ Prefer dynamic fetch. Never hardcode via API.
 - Race: 11253 (53 laps)
 
 ### OpenF1 — key findings
+- Sessions fetch: use `session_type=Race` (NOT `session_name=Race`) — confirmed working
 - Quali = single session (no Q1/Q2/Q3 split) — one session_key
 - `date_start` populated on normal laps, null on out-laps
 - Laps: `segments_sector_1/2/3` = mini-sector color arrays, pre-calc by OpenF1:
@@ -124,20 +125,23 @@ Dark mode all screens.
 
 | Token | Valore |
 |---|---|
-| Background | `#0A0A0A` |
-| Surface | `#141414` |
+| Background | `#000000` |
+| Surface | `#0D0D0D` |
 | Surface2 | `#1E1E1E` |
-| Border | `#2A2A2A` (0.5px) |
+| Border | `#0A0A0A` (0.5px) |
 | Accent | `#E10600` |
+| Success | `#00C850` |
 | TextPrimary | `#FFFFFF` |
 | TextSecondary | `#999999` |
 | TextMuted | `#555555` |
 
 - Tab bar: Ionicons (`home`, `map`, `bar-chart`, `trophy`) — active `#E10600`, inactive `#555555`
-- Accent `#E10600` only for primary interactive + active states
+- Accent `#E10600` only primary interactive + active states
 - Border always 0.5px
+- Pill LEADER: bg `rgba(0,200,80,0.15)`, text `#00C850`
+- Pill gap: bg `#161616`, text `#555555`
 - Styles: React Native `StyleSheet` scoped per component
-- Use `SafeAreaView` for content padding
+- `SafeAreaView` for content padding
 
 ---
 
@@ -228,7 +232,7 @@ Target good session: ~100–110 pts.
 - `dnfRef`: Set<number> populated on mount from last-lap driver_numbers
 - `isDnf = dnfRef.size > 0 && !dnfRef.has(num) && !isLapped`
 - Lapped drivers (`isLapped = true`) NOT DNF — detected from `gap_to_leader` STRING ("+1 LAP", "+2 LAPS")
-- OpenF1 `interval` field for lapped drivers = string "LAP" — no numeric gap to car ahead available
+- OpenF1 `interval` field for lapped drivers = string "LAP" — no numeric gap to car ahead
 - `gapToLeaderStr`: stored on driver object. Both modes show "+1 LAP"/"+2 LAPS" for lapped.
 - DNF shown at bottom, interval = "DNF" color #555555
 
@@ -356,7 +360,7 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 - Carico aerodinamico: avg G from `corners[].g`. Labels: ≥4.5=Altissimo, ≥3.8=Alto, ≥3.0=Medio, else=Basso
 - Trazione: from `circuitInfo.trazione` field (hardcoded in JSON). `getTractionRating(trazione)` → label+color
 - Usura gomme: from `meta.dna.usura`
-- Removed from DNA card (now lives only in Profilo Tecnico)
+- Removed from DNA card, only in Profilo Tecnico
 - Block indicators: `getBlocks(rating, color)` — 4 rectangular blocks, filled count: Altissima/Molto Alta=4, Alta=3, Media=2, Bassa=1
 - Field `trazione` added to all 25 circuit-info JSONs
 
@@ -375,12 +379,31 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 - Filter `secs < 60` added to exclude outer/short circuit variants
 - Manual fixes in `scripts/lap-records.json`: Bahrain=De La Rosa 1:31.447 2005, catalunya=Piastri 1:16.330 2025, Silverstone=Verstappen 1:27.097 2020
 
+### Calendar integration
+- `fetchCalendar()` fetches Ergast `/2026.json` → `raceCalendar` state (Record<ergastId, {round, date}>)
+- Header shows `R{n}` badge (red) + formatted date per circuit
+- `CANCELLED_CIRCUITS = new Set(['bahrain', 'jeddah'])` → gray "ANNULLATA" badge, dimmed name
+- CIRCUITS array ordered by 2026 calendar
+- `CIRCUIT_TO_ERGAST_ID` maps circuit key → Ergast circuitId
+
+---
+
+## Home pre-weekend (home.tsx)
+
+- Background `#000000`, separatori `0.5px #0A0A0A`
+- Countdown: no card bg, fontSize 52 fontWeight 300, sep `#1A1A1A`
+- Stat del weekend: no bg, solo left border `#E10600`
+- Ultima gara: no card bg, headshot 32×32 + barra team 2×20px, pill LEADER/gap
+- Classifica piloti: headshot 28×28, nome `#CCC` fontSize 15, punti `#FFF` fontSize 13 + "pt" `#444`
+- Classifica costruttori: no headshot, no dot, solo pos/nome/punti
+- `fetchHomeHeadshots()`: fetch `/sessions?year=2026&session_type=Race` → last session_key → `/drivers` → map acronym→headshot_url
+
 ---
 
 ## Prossimi passi
 
-- Date gara in schermata Circuito (da Ergast `/2026.json`)
-- Review grafica generale post-Miami
+- Team logos in assets/images/teams/ — da implementare in costruttori e H2H
+- Redesign: Live Race, Circuito, H2H, Prediction
 - Statistiche circuito aggiuntive: DRS zones, record costruttori, anno prima gara
 
 ---

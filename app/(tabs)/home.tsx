@@ -32,6 +32,12 @@ const CIRCUIT_INFO_MAP: Record<string, any> = {
   "Yas Marina Circuit": require('../../assets/circuit-info/abudhabi.json'),
 };
 
+const HOME_TEAM_COLORS: Record<string, string> = {
+  ferrari: "#E8002D", red_bull: "#3671C6", mclaren: "#FF8000",
+  mercedes: "#27F4D2", williams: "#00A3E0", alpine: "#FF87BC",
+  aston_martin: "#229971", haas: "#B6BABD", rb: "#6692FF", sauber: "#52E252",
+};
+
 const TOTAL_LAPS: Record<string, number> = {
   "Suzuka": 53, "Miami": 57, "Sakhir": 57, "Jeddah": 50, "Melbourne": 58,
   "Shanghai": 56, "Monte Carlo": 78, "Catalunya": 66, "Montreal": 70,
@@ -108,6 +114,7 @@ export default function HomeScreen() {
   const dnfRef = useRef<Set<number>>(new Set());
   const [expandedRaceDriver, setExpandedRaceDriver] = useState<number | null>(null);
   const [showGapToLeader, setShowGapToLeader] = useState(false);
+  const [homeHeadshots, setHomeHeadshots] = useState<Record<string, string>>({});
   const gapHistoryRef = useRef<Record<number, Array<{gap: number, stint: number, timestamp: number}>>>({});
   const arrowTranslateRef = useRef(new Animated.Value(0));
   const arrowOpacityRef = useRef(new Animated.Value(1));
@@ -115,6 +122,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     fetchData();
+    fetchHomeHeadshots();
   }, []);
 
   useEffect(() => {
@@ -165,6 +173,25 @@ export default function HomeScreen() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function fetchHomeHeadshots() {
+    try {
+      const sessRes = await fetch('https://api.openf1.org/v1/sessions?year=2026&session_type=Race');
+      const sessData = await sessRes.json();
+      if (!Array.isArray(sessData) || sessData.length === 0) return;
+      const sessionKey = sessData[sessData.length - 1].session_key;
+      const drvRes = await fetch(`https://api.openf1.org/v1/drivers?session_key=${sessionKey}`);
+      const drvData = await drvRes.json();
+      if (!Array.isArray(drvData)) return;
+      const map: Record<string, string> = {};
+      for (const d of drvData) {
+        if (d.name_acronym && d.headshot_url) {
+          map[d.name_acronym] = d.headshot_url;
+        }
+      }
+      setHomeHeadshots(map);
+    } catch {}
   }
 
   async function fetchStatOfDay(circuitId: string, raceName: string) {
@@ -1451,7 +1478,7 @@ export default function HomeScreen() {
 
   return (
     <>
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#000000" }}>
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.navbar}>
         <Image source={logo} style={{ height: 32, width: 160, resizeMode: 'contain' }} />
@@ -1515,40 +1542,77 @@ export default function HomeScreen() {
       ) : null}
 
       {lastRace && (
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>Ultima gara</Text>
-          <Text style={styles.cardTitle}>{lastRace.raceName}</Text>
-          {lastRace.Results.slice(0, 3).map((r: any, i: number) => (
-            <View key={i} style={styles.podiumRow}>
-              <Text style={styles.podiumPos}>{i + 1}°</Text>
-              <Text style={styles.podiumDriver}>{r.Driver.familyName}</Text>
-              <Text style={styles.podiumTeam}>{r.Constructor.name}</Text>
-              <Text style={styles.podiumTime}>{i === 0 ? "–" : r.Time?.time ?? r.status}</Text>
-            </View>
-          ))}
+        <View style={{ paddingBottom: 16, marginBottom: 8 }}>
+          <Text style={[styles.cardLabel, { marginBottom: 6 }]}>Ultima gara</Text>
+          <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF", marginBottom: 10 }}>{lastRace.raceName}</Text>
+          {lastRace.Results.slice(0, 3).map((r: any, i: number) => {
+            const teamColor = HOME_TEAM_COLORS[r.Constructor.constructorId] || "#555555";
+            const gap = i === 0 ? null : r.Time?.time ?? r.status;
+            const acronym = r.Driver?.code;
+            const headshotUrl = homeHeadshots[acronym];
+            return (
+              <View key={i} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: "#0A0A0A" }}>
+                <Text style={{ color: "#555555", fontSize: 11, width: 20 }}>{i + 1}</Text>
+                {headshotUrl ? (
+                  <Image source={{ uri: headshotUrl }} style={{ width: 32, height: 32, borderRadius: 16, marginRight: 8, backgroundColor: "#111111" }} />
+                ) : (
+                  <View style={{ width: 32, height: 32, borderRadius: 16, marginRight: 8, backgroundColor: "#111111" }} />
+                )}
+                <View style={{ width: 2, height: 20, backgroundColor: teamColor, borderRadius: 1, marginRight: 10 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "600" }}>{r.Driver.familyName}</Text>
+                  <Text style={{ color: "#555555", fontSize: 11, marginTop: 1 }}>{r.Constructor.name}</Text>
+                </View>
+                <View style={{ backgroundColor: i === 0 ? "#0D2B1A" : "#161616", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                  <Text style={{ color: i === 0 ? "#27AE60" : "#666666", fontSize: 11, fontWeight: "600" }}>
+                    {i === 0 ? "LEADER" : gap}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
         </View>
       )}
 
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>Classifica piloti</Text>
-        {standings.map((s: any, i: number) => (
-          <View key={i} style={styles.standingRow}>
-            <Text style={styles.standingPos}>{s.position}</Text>
-            <Text style={styles.standingDriver}>{s.Driver.familyName}</Text>
-            <Text style={styles.standingPts}>{s.points} pt</Text>
-          </View>
-        ))}
+      <View style={{ marginBottom: 8 }}>
+        <Text style={[styles.cardLabel, { marginBottom: 10 }]}>Classifica piloti</Text>
+        {standings.map((s: any, i: number) => {
+          const pts = parseFloat(s.points);
+          const acronym = s.Driver?.code ?? s.Driver?.driverId?.slice(0, 3).toUpperCase();
+          const headshotUrl = homeHeadshots[acronym];
+          return (
+            <View key={i} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: "#0A0A0A" }}>
+              <Text style={{ color: "#333333", fontSize: 11, width: 20 }}>{s.position}</Text>
+              {headshotUrl ? (
+                <Image source={{ uri: headshotUrl }} style={{ width: 28, height: 28, borderRadius: 14, marginRight: 10, backgroundColor: "#111111" }} />
+              ) : (
+                <View style={{ width: 28, height: 28, borderRadius: 14, marginRight: 10, backgroundColor: "#111111" }} />
+              )}
+              <Text style={{ color: "#CCCCCC", fontSize: 15, fontWeight: "500", flex: 1 }}>{s.Driver.familyName}</Text>
+              <View style={{ flexDirection: "row", alignItems: "baseline", gap: 2 }}>
+                <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600", fontVariant: ["tabular-nums"] }}>{pts.toLocaleString("it-IT")}</Text>
+                <Text style={{ color: "#444444", fontSize: 11 }}>pt</Text>
+              </View>
+            </View>
+          );
+        })}
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>Classifica costruttori</Text>
-        {constructorStandings.map((s: any, i: number) => (
-          <View key={i} style={styles.standingRow}>
-            <Text style={styles.standingPos}>{s.position}</Text>
-            <Text style={styles.standingDriver}>{s.Constructor.name}</Text>
-            <Text style={styles.standingPts}>{s.points} pt</Text>
-          </View>
-        ))}
+      <View style={{ marginBottom: 8 }}>
+        <Text style={[styles.cardLabel, { marginBottom: 10 }]}>Classifica costruttori</Text>
+        {constructorStandings.map((s: any, i: number) => {
+          const pts = parseFloat(s.points);
+          return (
+            <View key={i} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: "#0A0A0A" }}>
+              <Text style={{ color: "#333333", fontSize: 11, width: 20 }}>{s.position}</Text>
+              <Text style={{ color: "#CCCCCC", fontSize: 15, fontWeight: "500", flex: 1 }}>{s.Constructor.name}</Text>
+              <View style={{ flexDirection: "row", alignItems: "baseline", gap: 2 }}>
+                <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600", fontVariant: ["tabular-nums"] }}>{pts.toLocaleString("it-IT")}</Text>
+                <Text style={{ color: "#444444", fontSize: 11 }}>pt</Text>
+              </View>
+            </View>
+          );
+        })}
       </View>
     </ScrollView>
     </SafeAreaView>
@@ -1615,19 +1679,18 @@ const styles = StyleSheet.create({
   navbar: { paddingVertical: 8, paddingTop: 8, marginBottom: 4 },
 
   countdownCard: {
-    backgroundColor: "#141414", borderRadius: 16,
-    padding: 24, alignItems: "center", gap: 4, marginBottom: 8,
+    borderRadius: 16, padding: 24, alignItems: "center", gap: 4, marginBottom: 8,
   },
   countdownLabel: { fontSize: 18, fontWeight: "700", color: "#FFFFFF" },
   countdownCircuit: { fontSize: 13, color: "#999999", marginBottom: 16 },
   countdownRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-evenly", width: "100%", paddingHorizontal: 8, marginTop: 8 },
   countdownUnit: { alignItems: "center", flex: 1 },
-  countdownNum: { fontSize: 48, fontWeight: "800", color: "#FFFFFF", letterSpacing: -1, textAlign: "center" },
+  countdownNum: { fontSize: 52, fontWeight: "300", color: "#FFFFFF", letterSpacing: -2, textAlign: "center" },
   countdownUnitLabel: { fontSize: 9, fontWeight: "600", color: "#E10600", letterSpacing: 2, marginTop: 4, textAlign: "center" },
-  countdownSep: { fontSize: 28, color: "#444444", marginBottom: 16 },
+  countdownSep: { fontSize: 28, color: "#1A1A1A", marginBottom: 16 },
   card: { backgroundColor: "#141414", borderRadius: 12, padding: 14, gap: 8, marginBottom: 8 },
   cardLabel: { fontSize: 10, color: "#999", textTransform: "uppercase", letterSpacing: 0.5 },
-  cardTitle: { fontSize: 16, fontWeight: "500", marginBottom: 4, color: "#FFFFFF" },
+  cardTitle: { fontSize: 16, fontWeight: "600", marginBottom: 4, color: "#FFFFFF" },
   podiumRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
   podiumPos: { fontSize: 12, color: "#999", width: 20 },
   podiumDriver: { fontSize: 13, fontWeight: "500", flex: 1, color: "#FFFFFF" },
@@ -1637,7 +1700,7 @@ const styles = StyleSheet.create({
   standingPos: { fontSize: 11, color: "#999", width: 16 },
   standingDriver: { fontSize: 13, fontWeight: "500", flex: 1, color: "#FFFFFF" },
   standingPts: { fontSize: 12, color: "#999999" },
-  statCard: { backgroundColor: "#141414", borderLeftWidth: 2, borderLeftColor: "#E10600", paddingLeft: 12, paddingVertical: 10, gap: 6, borderRadius: 12, marginBottom: 8 },
+  statCard: { borderLeftWidth: 2, borderLeftColor: "#E10600", paddingLeft: 12, paddingVertical: 10, gap: 6, marginBottom: 8 },
   statLabel: { fontSize: 10, color: "#E10600", textTransform: "uppercase", letterSpacing: 0.5 },
   statText: { fontSize: 13, color: "#FFFFFF", lineHeight: 20 },
 });

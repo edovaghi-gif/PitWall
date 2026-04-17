@@ -65,5 +65,6 @@
     "team": "Mercedes",
     "year": 2019
   },
-  "turns": 20
+  "turns": 20,
+  "trazione": "Alta"
 }

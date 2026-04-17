@@ -65,5 +65,6 @@
     "team": "Mercedes",
     "year": 2020
   },
-  "turns": 10
+  "turns": 10,
+  "trazione": "Bassa"
 }

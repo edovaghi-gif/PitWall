@@ -65,5 +65,6 @@
     "team": "Mercedes",
     "year": 2018
   },
-  "turns": 15
+  "turns": 15,
+  "trazione": "Media"
 }

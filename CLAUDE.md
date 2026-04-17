@@ -48,16 +48,16 @@ app/onboarding.tsx        → 5 slide onboarding con animazione, mostrato solo a
 
 ## External APIs
 
-- **Ergast** via `https://api.jolpi.ca/ergast/f1/` — risultati, standings, piloti, schedule
-- **OpenF1** via `https://api.openf1.org/v1/` — GPS circuiti, live telemetria, scoring post-gara
+- **Ergast** via `https://api.jolpi.ca/ergast/f1/` — results, standings, drivers, schedule
+- **OpenF1** via `https://api.openf1.org/v1/` — circuit GPS, live telemetry, post-race scoring
 
 Prefer dynamic fetch. Never hardcode via API.
 
 ---
 
 ## App Assets
-- Logo: `assets/images/PitWall Logo.png` — PNG trasparente, all screens (`height: 32, width: 160, resizeMode: 'contain'`)
-- Foto muretto: `assets/images/PitWall Photo.png` — sfondo onboarding (opacity 0.25)
+- Logo: `assets/images/PitWall Logo.png` — transparent PNG, all screens (`height: 32, width: 160, resizeMode: 'contain'`)
+- Foto muretto: `assets/images/PitWall Photo.png` — onboarding background (opacity 0.25)
 - All screens: `SafeAreaView` — navbar `paddingTop: 8`, NOT `paddingTop: 52`
 
 ---
@@ -66,13 +66,13 @@ Prefer dynamic fetch. Never hardcode via API.
 
 - `assets/circuits/` — 25 JSON (24 calendar + madrid.json con points:[])
 - `assets/circuit-info/{key}.json` — circuit metadata, DNA, lap records
-  - Fields: `name`, `corners[]`, `turns` (int), `dna{}`, `lapRecord{}`, `qualiRecord{}`
+  - Fields: `name`, `corners[]`, `turns` (int), `trazione` (string), `dna{}`, `lapRecord{}`, `qualiRecord{}`
   - `lapRecord`: `{ time, driver, year }` — from `fetch-lap-records.js`
-  - `turns`: numero curve ufficiale, aggiunto manualmente a tutti i 24 JSON
+  - `turns`: official corner count, added manually to all 24 JSON
   - Manual fix: edit `scripts/lap-records.json`, rerun script then node -e "..." apply loop
 - `assets/quali-pb-2025.json` — 2025 quali personal bests per circuit/driver
-  - Struttura: `{ "Suzuka": { "VER": { "bestLap": "1:26.983", "lapDuration": 86.983 }, ... }, ... }`
-  - Circuit key = `circuit_short_name` OpenF1 (es. "Suzuka", "Monte Carlo", "Yas Marina Circuit")
+  - Structure: `{ "Suzuka": { "VER": { "bestLap": "1:26.983", "lapDuration": 86.983 }, ... }, ... }`
+  - Circuit key = `circuit_short_name` OpenF1 (e.g. "Suzuka", "Monte Carlo", "Yas Marina Circuit")
   - Rerun `fetch-pb-2025.js` after each GP
   - Baku + Yas Marina: no lap data in OpenF1 (archive gaps)
 - Circuit struct: `name`, `session_key`, `viewBox ("0 0 300 300")`, `points: [{x,y,z}]`
@@ -92,17 +92,17 @@ Prefer dynamic fetch. Never hardcode via API.
 | 31 | OCO | Ocon | 43 | COL | Colapinto | 44 | HAM | Hamilton |
 | 55 | SAI | Sainz | 63 | RUS | Russell | 81 | PIA | Piastri | 87 | BEA | Bearman |
 
-### Session key noti — Giappone 2026 (circuit_short_name "Suzuka")
+### Known session keys — Giappone 2026 (circuit_short_name "Suzuka")
 - Practice 1: 11246
 - Practice 2: 11247
 - Practice 3: 11248
 - Qualifying: 11249 (single session 60min, Q1/Q2/Q3 not split)
 - Race: 11253 (53 laps)
 
-### OpenF1 — scoperte importanti
+### OpenF1 — key findings
 - Quali = single session (no Q1/Q2/Q3 split) — one session_key
 - `date_start` populated on normal laps, null on out-laps
-- Laps have `segments_sector_1/2/3`: mini-sector color arrays pre-calc by OpenF1:
+- Laps: `segments_sector_1/2/3` = mini-sector color arrays, pre-calc by OpenF1:
   - 2048 = grey (no time), 2049 = yellow, 2051 = green, 2064 = purple
 - `is_pit_out_lap: true` = pit exit
 - Q1/Q2/Q3 from `/race_control` field `qualifying_phase` (1/2/3)
@@ -120,7 +120,7 @@ Prefer dynamic fetch. Never hardcode via API.
 
 ## Design System
 
-Dark mode all screens. No light colors.
+Dark mode all screens.
 
 | Token | Valore |
 |---|---|
@@ -154,13 +154,13 @@ If fix touches % / proportion calc logic, stop and ask.
 
 ### Tab CIRCUITO
 - 3 tab: CARRIERA / STAGIONI / CIRCUITO
-- Default circuit = prossimo GP dal calendario 2026 Ergast
-- Selector 24 circuiti, nomi formato `"Paese — Circuito"` (es. "Giappone — Suzuka Circuit")
-- Metriche tug-of-war: gare disputate, vittorie, podi, pole, giri veloci, DNF, guadagno pos. medio
-- Standalone: miglior risultato, pos. media
-- Ordine: tutte le barre tug-of-war prima, standalone in fondo
-- Dati da Ergast `/drivers/{driverId}/circuits/{circuitId}/results.json` (paginato)
-- circuitId 2026 confermati: `madring`=Madrid, `vegas`=Las Vegas, `red_bull_ring`=Austria, `villeneuve`=Canada
+- Default circuit = next GP from Ergast 2026 calendar
+- Selector 24 circuits, name format `"Paese — Circuito"` (e.g. "Giappone — Suzuka Circuit")
+- Tug-of-war metrics: races, wins, podiums, poles, fastest laps, DNF, avg pos. gain
+- Standalone: best result, avg pos.
+- Order: all tug-of-war bars first, standalone last
+- Data from Ergast `/drivers/{driverId}/circuits/{circuitId}/results.json` (paginated)
+- circuitId 2026 confirmed: `madring`=Madrid, `vegas`=Las Vegas, `red_bull_ring`=Austria, `villeneuve`=Canada
 
 ---
 
@@ -275,8 +275,8 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 - Closing (green #27AE60): translateX -range→0 loop. Slow `"> > >"` 1200ms, medium `">> >>"` 800ms, fast `">>>>>>>"` 400ms. Ranges: slow=8, medium=14, fast=20.
 - Stable/SC (orange #F39C12): `"● ● ●"` opacity pulse 0.3↔1.0, 900ms per half.
 - Pulling away (red #E10600): translateX 0→-range loop. Same tiers/durations.
-- Soglie: closing `delta < -0.1`, stable `|delta| <= 0.1`, pulling away `delta > 0.1`
-- Intensità: slow 0.1–0.3s/lap, medium 0.3–0.6, fast >0.6
+- Thresholds: closing `delta < -0.1`, stable `|delta| <= 0.1`, pulling away `delta > 0.1`
+- Intensity: slow 0.1–0.3s/lap, medium 0.3–0.6, fast >0.6
 - `getCatchEstimate(attackerNum, currentGap)`: `Math.ceil(gap / closingRate)`, null if not closing or SC/VSC active. Shown as `"~N giri"` if ≤30.
 - Overflow hidden (width 60) clips sliding arrows.
 
@@ -291,8 +291,8 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 
 ### Modal CONDIZIONI PISTA
 - Tap meteo area in header → bottom-sheet modal
-- Mostra: temperatura asfalto + aria, umidità, rainfall, rischio pioggia (regex da race_control messages), vento (velocità + gradi + cardinale)
-- `extractRainRisk(rcData)`: scansiona race_control per "RISK OF RAIN XX%" → stato `raceRainRisk`
+- Shows: track + air temp, humidity, rainfall, rain risk (regex from race_control messages), wind (speed + degrees + cardinal)
+- `extractRainRisk(rcData)`: scans race_control for "RISK OF RAIN XX%" → state `raceRainRisk`
 - Present in race + qualifying
 - `fetchRaceWeather()` also called in qualifying useEffect (120s interval)
 
@@ -332,37 +332,56 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 
 ## Circuito Screen (circuito.tsx)
 
-- 25 circuiti (24 reali + Madrid placeholder)
+- 25 circuits (24 real + Madrid placeholder)
 - `CIRCUIT_INFO_MAP`: maps circuit key → `require()` circuit-info JSON (same pattern as home.tsx)
-- `CIRCUIT_COUNTRY`: maps circuit key → paese (per AI prompt)
+- `CIRCUIT_COUNTRY`: maps circuit key → country (for AI prompt)
 
 ### Header restyling
-- Riga 1: `ROUND X · CITTÀ` (small, #999999)
-- Riga 2: circuit name fontSize 22, fontWeight 900
-- Riga 3: km · giri (#999999)
+- Row 1: `ROUND X · CITTÀ` (small, #999999)
+- Row 2: circuit name fontSize 22, fontWeight 900
+- Row 3: km · giri (#999999)
 
 ### Lap record card
-- `circuitInfo?.lapRecord` → card con tempo #E10600 fontSize 32, sottotitolo `driver · year`
-- Mostrata dopo sector legend, prima della mappa
+- `circuitInfo?.lapRecord` → card with time #E10600 fontSize 32, subtitle `driver · year`
+- Shown after sector legend, before map
 
 ### Stats grid 2×2
-- GIRI, DISTANZA (da `meta.sub` split '·'), CURVE (da `circuitInfo.turns`), G-MAX (Math.max su `corners[].g`)
-- Mostrato dopo mappa/dots, prima di corner detail/DNA
+- GIRI, DISTANZA (from `meta.sub` split '·'), CURVE (from `circuitInfo.turns`), G-MAX (Math.max on `corners[].g`)
+- Shown after map/dots, before corner detail/DNA
+
+### Profilo Tecnico
+- Replaces Sector Complexity. Shown if `circuitInfo?.corners?.length > 0` (hidden for Madrid)
+- 4 rows: Velocità media, Carico aerodinamico, Trazione, Usura gomme
+- Velocità media: `(distanza_km / lapRecord_secs) * 3600`. Labels: ≥240=Altissima, ≥220=Alta, ≥200=Media, else=Bassa
+- Carico aerodinamico: avg G from `corners[].g`. Labels: ≥4.5=Altissimo, ≥3.8=Alto, ≥3.0=Medio, else=Basso
+- Trazione: from `circuitInfo.trazione` field (hardcoded in JSON). `getTractionRating(trazione)` → label+color
+- Usura gomme: from `meta.dna.usura`
+- Removed from DNA card (now lives only in Profilo Tecnico)
+- Block indicators: `getBlocks(rating, color)` — 4 rectangular blocks, filled count: Altissima/Molto Alta=4, Alta=3, Media=2, Bassa=1
+- Field `trazione` added to all 25 circuit-info JSONs
 
 ### AI Anecdotes
-- `fetchAnecdotes(circuitKey, circuitName, lapRecord, country)`: chiama Claude Haiku via `https://a.anthropic.com/v1/messages`
-- Cache AsyncStorage key `anecdotes_{circuitKey}` — carica cache se presente, altrimenti fetch
-- Fallback silenzioso su errore → `setAnecdotes([])`
-- Chiamato su mount (circuito 0) e in `onMomentumScrollEnd` (reset + fetch nuovo circuito)
-- Mostrato in fondo dopo DNA card
+- `fetchAnecdotes(circuitKey, circuitName, lapRecord, country)`: calls Claude Haiku via `https://a.anthropic.com/v1/messages`
+- Cache AsyncStorage key `anecdotes_{circuitKey}` — load cache if present, else fetch
+- Silent fallback on error → `setAnecdotes([])`
+- Called on mount (circuit 0) and in `onMomentumScrollEnd` (reset + fetch new circuit)
+- Shown after DNA card
 
 ### Madrid placeholder
 - `assets/circuits/madrid.json`: `points: []`
-- Guard in pager map: se `points.length === 0` → placeholder View con testo "Tracciato non disponibile\nPrima edizione 2026"
+- Guard in pager: if `points.length === 0` → placeholder View with text "Tracciato non disponibile\nPrima edizione 2026"
 
 ### fetch-lap-records.js
-- Filter `secs < 60` aggiunto per escludere varianti outer/short circuit
-- Correzioni manuali in `scripts/lap-records.json`: Bahrain=De La Rosa 1:31.447 2005, catalunya=Piastri 1:16.330 2025, Silverstone=Verstappen 1:27.097 2020
+- Filter `secs < 60` added to exclude outer/short circuit variants
+- Manual fixes in `scripts/lap-records.json`: Bahrain=De La Rosa 1:31.447 2005, catalunya=Piastri 1:16.330 2025, Silverstone=Verstappen 1:27.097 2020
+
+---
+
+## Prossimi passi
+
+- Date gara in schermata Circuito (da Ergast `/2026.json`)
+- Review grafica generale post-Miami
+- Statistiche circuito aggiuntive: DRS zones, record costruttori, anno prima gara
 
 ---
 

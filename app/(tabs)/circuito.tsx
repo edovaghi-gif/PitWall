@@ -152,6 +152,59 @@ const CORNERS = [
   { id: 10, name: "Anthoines",        sector: 3, desc: "Ultima curva prima del rettilineo di partenza.",                   speed: "105 km/h", g: "2.7G", pointIndex: 80 },
 ];
 
+function getAvgSpeed(lapRecordTime: string | undefined, distanceStr: string): { kmh: number; label: string; pct: number; color: string } {
+  if (!lapRecordTime) return { kmh: 0, label: "N/D", pct: 0, color: "#555555" };
+  try {
+    const parts = lapRecordTime.split(':');
+    const secs = parseInt(parts[0]) * 60 + parseFloat(parts[1]);
+    const distMatch = distanceStr.match(/([\d.]+)\s*km/);
+    if (!distMatch) return { kmh: 0, label: "N/D", pct: 0, color: "#555555" };
+    const dist = parseFloat(distMatch[1]);
+    const kmh = (dist / secs) * 3600;
+    const label = kmh >= 240 ? "Altissima" : kmh >= 220 ? "Alta" : kmh >= 200 ? "Media" : "Bassa";
+    const pct = Math.min(1, Math.max(0, (kmh - 160) / 100));
+    return { kmh: Math.round(kmh), label, pct, color: "#3498DB" };
+  } catch {
+    return { kmh: 0, label: "N/D", pct: 0, color: "#555555" };
+  }
+}
+
+function getAeroLoad(corners: any[]): { value: number; label: string; pct: number } {
+  if (!corners?.length) return { value: 0, label: "N/D", pct: 0 };
+  const avg = corners.reduce((s: number, c: any) => s + (parseFloat(c.g) || 0), 0) / corners.length;
+  const pct = Math.min(1, avg / 5.5);
+  const label = avg >= 4.5 ? "Altissimo" : avg >= 3.8 ? "Alto" : avg >= 3.0 ? "Medio" : "Basso";
+  return { value: avg, label, pct };
+}
+
+function getTractionRating(trazione: string): { label: string; color: string } {
+  switch (trazione) {
+    case "Altissima": return { label: "Altissima", color: "#F39C12" };
+    case "Alta": return { label: "Alta", color: "#F39C12" };
+    case "Media": return { label: "Media", color: "#F39C12" };
+    case "Bassa": return { label: "Bassa", color: "#F39C12" };
+    default: return { label: "N/D", color: "#555555" };
+  }
+}
+
+function getBlocks(rating: string, color: string) {
+  const filled = rating === "Altissima" || rating === "Altissimo" || rating === "Molto Alta" ? 4
+    : rating === "Alta" || rating === "Alto" ? 3
+    : rating === "Media" || rating === "Medio" ? 2
+    : rating === "Bassa" || rating === "Basso" ? 1
+    : 0;
+  return (
+    <View style={{ flexDirection: "row", gap: 4 }}>
+      {[0, 1, 2, 3].map(i => (
+        <View key={i} style={{
+          width: 18, height: 8, borderRadius: 2,
+          backgroundColor: i < filled ? color : "#2A2A2A"
+        }} />
+      ))}
+    </View>
+  );
+}
+
 function makeSectorPaths(points: { x: number; y: number; z: number }[]) {
   const n = points.length;
   const s1End = Math.floor(n / 3);       // boundary between sector 1 and 2
@@ -394,11 +447,44 @@ export default function CircuitoScreen() {
           </View>
         ) : null}
 
+        {/* Profilo Tecnico */}
+        {circuitInfo?.corners?.length > 0 && (() => {
+          const avgSpeed = getAvgSpeed(circuitInfo?.lapRecord?.time, meta.sub);
+          const aeroLoad = getAeroLoad(circuitInfo.corners);
+          const traction = getTractionRating(circuitInfo?.trazione ?? "");
+          const tyreWear = meta.dna.usura;
+
+          const profiloRows = [
+            { label: "Velocità media", sublabel: avgSpeed.kmh > 0 ? `${avgSpeed.kmh} km/h` : "—", rating: avgSpeed.label, color: "#3498DB" },
+            { label: "Carico aerodinamico", sublabel: aeroLoad.value > 0 ? `${aeroLoad.value.toFixed(1)}G avg` : "", rating: aeroLoad.label, color: "#9B59B6" },
+            { label: "Trazione", sublabel: "", rating: traction.label, color: "#F39C12" },
+            { label: "Usura gomme", sublabel: "", rating: tyreWear, color: "#E10600" },
+          ];
+
+          return (
+            <View style={{ backgroundColor: "#141414", borderRadius: 12, padding: 16, marginBottom: 4 }}>
+              <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 4 }}>PROFILO TECNICO</Text>
+              {profiloRows.map((row, i) => (
+                <View key={i} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10, borderBottomWidth: i < profiloRows.length - 1 ? 0.5 : 0, borderBottomColor: "#2A2A2A" }}>
+                  <View>
+                    <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600" }}>{row.label}</Text>
+                    {row.sublabel ? <Text style={{ color: "#555555", fontSize: 10, marginTop: 2 }}>{row.sublabel}</Text> : null}
+                  </View>
+                  <View style={{ alignItems: "flex-end", gap: 4 }}>
+                    {getBlocks(row.rating, row.color)}
+                    <Text style={{ color: row.color, fontSize: 10, fontWeight: "700" }}>{row.rating}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          );
+        })()}
+
         {/* DNA */}
         <View style={styles.card}>
           <Text style={styles.cardLabel}>DNA del circuito</Text>
           <View style={styles.dnaRow}><Text style={styles.dnaKey}>Tipo</Text><Text style={styles.dnaVal}>{meta.dna.tipo}</Text></View>
-          <View style={styles.dnaRow}><Text style={styles.dnaKey}>Usura gomme</Text><Text style={styles.dnaVal}>{meta.dna.usura}</Text></View>
+
           <View style={styles.dnaRow}><Text style={styles.dnaKey}>Importanza qualifica</Text><Text style={styles.dnaVal}>{meta.dna.qualifica}</Text></View>
           <View style={styles.dnaRow}><Text style={styles.dnaKey}>Safety car</Text><Text style={styles.dnaVal}>{meta.dna.sc}</Text></View>
           <View style={styles.dnaRow}><Text style={styles.dnaKey}>Sorpassi</Text><Text style={styles.dnaVal}>{meta.dna.sorpassi}</Text></View>

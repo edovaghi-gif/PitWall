@@ -37,18 +37,21 @@ const PAGE_W = Dimensions.get("window").width - 32;
 
 const SECTOR_COLORS = ["#E10600", "#0067FF", "#FFC906"];
 
-// Calendar order
+const CANCELLED_CIRCUITS = new Set(['bahrain', 'jeddah']);
+
+// 2026 Calendar order
 const CIRCUITS = [
-  { key: "bahrain",     data: bahrainData },
-  { key: "jeddah",     data: jeddahData },
   { key: "melbourne",  data: melbourneData },
   { key: "suzuka",     data: suzukaData },
+  { key: "bahrain",    data: bahrainData },
+  { key: "jeddah",     data: jeddahData },
   { key: "shanghai",   data: shanghaiData },
   { key: "miami",      data: miamiData },
   { key: "imola",      data: imolaData },
   { key: "monaco",     data: monacoData },
   { key: "montreal",   data: montrealData },
   { key: "barcelona",  data: barcelonaData },
+  { key: "madrid",     data: madridData },
   { key: "spielberg",  data: spielbergData },
   { key: "silverstone",data: silverstoneData },
   { key: "budapest",   data: budapestData },
@@ -63,7 +66,6 @@ const CIRCUITS = [
   { key: "lasvegas",   data: lasVegasData },
   { key: "lusail",     data: lusailData },
   { key: "abudhabi",   data: abudhabiData },
-  { key: "madrid",     data: madridData },
 ];
 
 type Meta = {
@@ -138,6 +140,24 @@ const CIRCUIT_COUNTRY: Record<string, string> = {
   saopaulo: "Brasile", lasvegas: "USA", lusail: "Qatar", abudhabi: "Abu Dhabi",
   madrid: "Spagna",
 };
+
+const CIRCUIT_TO_ERGAST_ID: Record<string, string> = {
+  bahrain: "bahrain", jeddah: "jeddah", melbourne: "albert_park",
+  suzuka: "suzuka", shanghai: "shanghai", miami: "miami",
+  imola: "imola", monaco: "monaco", montreal: "villeneuve",
+  barcelona: "catalunya", madrid: "madring", spielberg: "red_bull_ring",
+  silverstone: "silverstone", budapest: "hungaroring", spa: "spa",
+  zandvoort: "zandvoort", monza: "monza", baku: "baku",
+  singapore: "marina_bay", austin: "americas", mexico: "rodriguez",
+  saopaulo: "interlagos", lasvegas: "vegas", lusail: "losail",
+  abudhabi: "yas_marina",
+};
+
+function formatRaceDate(dateStr: string): string {
+  const months = ["gen","feb","mar","apr","mag","giu","lug","ago","set","ott","nov","dic"];
+  const d = new Date(dateStr);
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
 
 const CORNERS = [
   { id: 1,  name: "Sainte Devote",    sector: 1, desc: "Prima curva del GP, spesso teatro di incidenti al via.",           speed: "65 km/h",  g: "3.2G", pointIndex: 0  },
@@ -224,13 +244,28 @@ export default function CircuitoScreen() {
   const [selectedCorner, setSelectedCorner] = useState<any>(null);
   const [anecdotes, setAnecdotes] = useState<{titolo: string, testo: string}[]>([]);
   const [loadingAnecdotes, setLoadingAnecdotes] = useState(false);
+  const [raceCalendar, setRaceCalendar] = useState<Record<string, { round: string; date: string }>>({});
 
   useEffect(() => {
     navigation.setOptions({ title: "", headerShown: false });
     const c = CIRCUITS[0];
     const m = CIRCUIT_META[c.key];
     fetchAnecdotes(c.key, m.display, CIRCUIT_INFO_MAP[c.key]?.lapRecord?.time ?? '—', CIRCUIT_COUNTRY[c.key] ?? '');
+    fetchCalendar();
   }, []);
+
+  async function fetchCalendar() {
+    try {
+      const res = await fetch('https://api.jolpi.ca/ergast/f1/2026.json?limit=30');
+      const data = await res.json();
+      const races = data.MRData.RaceTable.Races;
+      const map: Record<string, { round: string; date: string }> = {};
+      for (const race of races) {
+        map[race.Circuit.circuitId] = { round: race.round, date: race.date };
+      }
+      setRaceCalendar(map);
+    } catch {}
+  }
 
   async function fetchAnecdotes(circuitKey: string, circuitName: string, lapRecord: string, country: string) {
     const cacheKey = `anecdotes_${circuitKey}`;
@@ -282,19 +317,37 @@ export default function CircuitoScreen() {
           <Image source={logo} style={{ height: 32, width: 160, resizeMode: 'contain' }} />
         </View>
 
-        <View style={{ gap: 4, marginBottom: 4 }}>
-          <Text style={{ color: "#999999", fontSize: 11, fontWeight: "700", letterSpacing: 2 }}>
-            ROUND {currentIndex + 1} · {meta.sub.split('·')[0].trim().toUpperCase()}
-          </Text>
-          <Text style={{ color: "#FFFFFF", fontSize: 22, fontWeight: "900", letterSpacing: -0.5 }}>
-            {meta.display.toUpperCase()}
-          </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
-            <Text style={{ color: "#999999", fontSize: 12 }}>
-              {meta.sub.split('·').slice(1).join('·').trim()}
-            </Text>
-          </View>
-        </View>
+        {(() => {
+          const ergastId = CIRCUIT_TO_ERGAST_ID[current.key];
+          const raceInfo = ergastId ? raceCalendar[ergastId] : null;
+          return (
+            <View style={{ gap: 4, marginBottom: 4 }}>
+              <Text style={{ color: CANCELLED_CIRCUITS.has(current.key) ? "#555555" : "#FFFFFF", fontSize: 22, fontWeight: "900", letterSpacing: -0.5 }}>
+                {meta.display.toUpperCase()}
+              </Text>
+              {CANCELLED_CIRCUITS.has(current.key) ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <View style={{ backgroundColor: "#555555", borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                    <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "800" }}>ANNULLATA</Text>
+                  </View>
+                  <Text style={{ color: "#555555", fontSize: 12, fontWeight: "600" }}>2026</Text>
+                </View>
+              ) : raceInfo ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <View style={{ backgroundColor: "#E10600", borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                    <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "800" }}>R{raceInfo.round}</Text>
+                  </View>
+                  <Text style={{ color: "#999999", fontSize: 12, fontWeight: "600" }}>{formatRaceDate(raceInfo.date)}</Text>
+                </View>
+              ) : null}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
+                <Text style={{ color: "#999999", fontSize: 12 }}>
+                  {meta.sub.split('·').slice(1).join('·').trim()}
+                </Text>
+              </View>
+            </View>
+          );
+        })()}
 
         <View style={styles.sectorLegend}>
           {["Settore 1", "Settore 2", "Settore 3"].map((s, i) => (

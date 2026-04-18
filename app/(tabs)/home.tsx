@@ -5,6 +5,18 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const logo = require('../../assets/images/PitWall Logo.png');
 const qualiPb2025 = require('../../assets/quali-pb-2025.json');
 
+const TEAM_LOGOS: Record<string, any> = {
+  'Mercedes': require('../../assets/images/mercedes.png'),
+  'McLaren': require('../../assets/images/mclaren.png'),
+  'Ferrari': require('../../assets/images/ferrari.png'),
+  'Red Bull': require('../../assets/images/redbull.png'),
+  'Aston Martin': require('../../assets/images/astonmartin.png'),
+  'Alpine F1 Team': require('../../assets/images/alpine.png'),
+  'Haas F1 Team': require('../../assets/images/haas.png'),
+  'Audi': require('../../assets/images/audi.png'),
+  'Cadillac': require('../../assets/images/cadillac.png'),
+};
+
 const CIRCUIT_INFO_MAP: Record<string, any> = {
   "Sakhir": require('../../assets/circuit-info/bahrain.json'),
   "Jeddah": require('../../assets/circuit-info/jeddah.json'),
@@ -1605,6 +1617,11 @@ export default function HomeScreen() {
           return (
             <View key={i} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: "#0A0A0A" }}>
               <Text style={{ color: "#333333", fontSize: 11, width: 20 }}>{s.position}</Text>
+              {TEAM_LOGOS[s.Constructor?.name] ? (
+                <Image source={TEAM_LOGOS[s.Constructor?.name]} style={{ width: 32, height: 20, marginRight: 10, resizeMode: 'contain' }} />
+              ) : (
+                <View style={{ width: 32, height: 20, marginRight: 10 }} />
+              )}
               <Text style={{ color: "#CCCCCC", fontSize: 15, fontWeight: "500", flex: 1 }}>{s.Constructor.name}</Text>
               <View style={{ flexDirection: "row", alignItems: "baseline", gap: 2 }}>
                 <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600", fontVariant: ["tabular-nums"] }}>{pts.toLocaleString("it-IT")}</Text>

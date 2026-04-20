@@ -1498,7 +1498,7 @@ export default function HomeScreen() {
 
         {raceLiveTab === 'pace' && (
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 12, paddingVertical: 6 }}>
+<View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 12, paddingVertical: 6 }}>
               <TouchableOpacity
                 onPress={() => setShowLapTimes(prev => !prev)}
                 style={{ backgroundColor: showLapTimes ? '#E10600' : '#1A1A1A', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}
@@ -1648,7 +1648,6 @@ export default function HomeScreen() {
                 setStintsTimelineWidth(w);
               }}
             />
-            {(() => { console.log('STINTS timeline width:', stintsTimelineWidth, 'raceLap:', raceLap, 'total:', raceTotalLaps); console.log('ALB raw stints:', JSON.stringify(raceStintsRef.current.filter((s: any) => s.driver_number === 23))); })()}
             {(!raceStintsRef.current.length || raceTotalLaps === null) ? (
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ color: '#444', fontSize: 13 }}>Dati stints non disponibili</Text>

@@ -74,6 +74,17 @@ function formatDelta(delta: number): { text: string; color: string } {
   };
 }
 
+function getPaceColor(lap: { time: number | null; isPit: boolean; isOut: boolean; isSafetyCarLap: boolean }, driverNumber: number, overallBestLap: number | null, driverAverages: Record<number, number>): { bg: string; isSpecial: boolean; label?: string } {
+  if (lap.isPit) return { bg: '#FFFFFF', isSpecial: true, label: 'PIT' };
+  if (lap.isOut) return { bg: '#FFFFFF', isSpecial: true, label: 'OUT' };
+  if (!lap.time) return { bg: '#2A2A2A', isSpecial: false };
+  if (lap.isSafetyCarLap) return { bg: '#F39C12', isSpecial: false };
+  if (overallBestLap !== null && Math.abs(lap.time - overallBestLap) < 0.001) return { bg: '#9B59B6', isSpecial: false };
+  const avg = driverAverages[driverNumber];
+  if (avg !== undefined && lap.time <= avg) return { bg: '#27AE60', isSpecial: false };
+  return { bg: '#E8A000', isSpecial: false };
+}
+
 function getRaceSectorColor(value: number | null, sector: 1|2|3, allLaps: Record<number, any>, completedAt: number | null): string {
   if (value === null) return '#2A2A2A';
   if (completedAt !== null && Date.now() - completedAt > 8000) return '#2A2A2A';
@@ -110,7 +121,7 @@ export default function HomeScreen() {
   const FP_DEV_MODE = false;
   const FP_DEV_CIRCUIT = "Suzuka";
   const FP_DEV_YEAR = 2026;
-  const RACE_DEV_MODE = false;
+  const RACE_DEV_MODE = true;
   const RACE_DEV_SESSION_KEY = 11253;
 
   const [fpSessions, setFpSessions] = useState<{key: number, name: string, finished: boolean}[]>([]);
@@ -140,6 +151,10 @@ export default function HomeScreen() {
   const [raceRainRisk, setRaceRainRisk] = useState<string | null>(null);
   const [raceEvents, setRaceEvents] = useState<Array<{time: string, type: string, message: string}>>([]);
   const [eventsExpanded, setEventsExpanded] = useState(false);
+  const [raceLiveTab, setRaceLiveTab] = useState<'classifica' | 'pace' | 'stints'>('classifica');
+  const [paceData, setPaceData] = useState<Record<number, Array<{lap: number, time: number | null, isPit: boolean, isOut: boolean, isSafetyCarLap: boolean}>>>({});
+  const [showLapTimes, setShowLapTimes] = useState(false);
+  const paceScrollRef = useRef<ScrollView>(null);
   const [showWeatherModal, setShowWeatherModal] = useState(false);
   const previousIntervalsRef = useRef<Record<number, number>>({});
   const raceStintsRef = useRef<any[]>([]);
@@ -209,6 +224,54 @@ export default function HomeScreen() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function fetchPaceData(sessionKey: number) {
+    const data = await safeFetch(`https://api.openf1.org/v1/laps?session_key=${sessionKey}`);
+    if (!Array.isArray(data)) return;
+
+    // Build SC/VSC windows from raceControlRef as {startLap, endLap} pairs using lap_number field
+    const rcEvents = raceControlRef.current;
+    const scWindows: Array<{startLap: number, endLap: number}> = [];
+    let scStartLap: number | null = null;
+    for (const e of rcEvents) {
+      const msg: string = e.message ?? '';
+      const lapNum: number | null = e.lap_number ?? null;
+      const isSCDeployed = msg.includes('SAFETY CAR DEPLOYED') && !msg.includes('VIRTUAL');
+      const isVSCDeployed = msg.includes('VIRTUAL SAFETY CAR DEPLOYED') || msg.includes('VSC DEPLOYED');
+      const isSCEnd = msg.includes('SAFETY CAR IN THIS LAP');
+      const isVSCEnd = msg.includes('VIRTUAL SAFETY CAR ENDING') || msg.includes('VSC ENDING');
+      if ((isSCDeployed || isVSCDeployed) && lapNum !== null && scStartLap === null) scStartLap = lapNum;
+      if ((isSCEnd || isVSCEnd) && lapNum !== null && scStartLap !== null) {
+        scWindows.push({ startLap: scStartLap, endLap: lapNum });
+        scStartLap = null;
+      }
+    }
+    if (scStartLap !== null) scWindows.push({ startLap: scStartLap, endLap: Infinity });
+
+    const byDriver: Record<number, Array<{lap: number, time: number | null, isPit: boolean, isOut: boolean, isSafetyCarLap: boolean}>> = {};
+    for (const lap of data) {
+      const num = lap.driver_number;
+      if (!num) continue;
+      if (!byDriver[num]) byDriver[num] = [];
+      const isSafetyCarLap = scWindows.some(w => lap.lap_number >= w.startLap && lap.lap_number <= w.endLap);
+      byDriver[num].push({
+        lap: lap.lap_number,
+        time: lap.lap_duration ?? null,
+        isPit: false,
+        isOut: lap.is_pit_out_lap === true,
+        isSafetyCarLap,
+      });
+    }
+    for (const driverLaps of Object.values(byDriver)) {
+      driverLaps.sort((a, b) => a.lap - b.lap);
+      for (let i = 0; i < driverLaps.length; i++) {
+        if (driverLaps[i].isOut && i > 0) {
+          driverLaps[i - 1].isPit = true;
+        }
+      }
+    }
+    setPaceData(byDriver);
   }
 
   async function fetchHomeHeadshots() {
@@ -474,9 +537,7 @@ export default function HomeScreen() {
     const sessionKey = activeSession.session_key;
     try {
       const data = await safeFetch(`https://api.openf1.org/v1/weather?session_key=${sessionKey}`);
-      console.log('Weather result:', JSON.stringify(data).slice(0, 200));
       if (!Array.isArray(data) || data.length === 0) return;
-      console.log('Setting weather:', JSON.stringify(data[data.length - 1]));
       setRaceWeather(data[data.length - 1]);
     } catch {}
   }
@@ -586,7 +647,6 @@ export default function HomeScreen() {
         await new Promise(resolve => setTimeout(resolve, 400));
         const driversData = await safeFetch(`https://api.openf1.org/v1/drivers?session_key=${sessionKey}`);
         if (Array.isArray(driversData) && driversData.length > 0) {
-          console.log('Driver headshot_url:', driversData[0]?.headshot_url);
           raceDriversCacheRef.current = driversData;
         }
       }
@@ -594,9 +654,6 @@ export default function HomeScreen() {
     const drivers = raceDriversCacheRef.current;
 
     if (!Array.isArray(positionData) || !Array.isArray(intervalsData) || !Array.isArray(rcData)) return;
-    console.log('ALO interval raw:', intervalsData.filter((i: any) => i.driver_number === 14).slice(-1)[0])
-    console.log('BOT interval raw:', intervalsData.filter((i: any) => i.driver_number === 77).slice(-1)[0])
-    console.log('ALB interval raw:', intervalsData.filter((i: any) => i.driver_number === 23).slice(-1)[0])
 
     // raceLap: max lap_number from positionData, fallback totalLaps
     let maxLapFound: number | null = null;
@@ -613,8 +670,6 @@ export default function HomeScreen() {
     if (currentLap > 0) {
       await new Promise(resolve => setTimeout(resolve, 400));
       const lapsData = await safeFetch(`https://api.openf1.org/v1/laps?session_key=${sessionKey}&lap_number=${currentLap}`);
-      console.log('sectorInterval result:', JSON.stringify(lapsData)?.slice(0, 100));
-      console.log('sector sample:', JSON.stringify(lapsData?.[0])?.slice(0, 300));
       if (Array.isArray(lapsData)) {
         for (const lap of lapsData) {
           if (!lap.driver_number) continue;
@@ -1130,9 +1185,7 @@ export default function HomeScreen() {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           dnfRef.current = new Set(data.map((l: any) => l.driver_number));
-          console.log('dnfRef finishers:', [...dnfRef.current]);
         } else {
-          console.log('dnfRef: no last-lap data returned, size=0');
         }
       } catch {}
     })();
@@ -1152,6 +1205,12 @@ export default function HomeScreen() {
   useEffect(() => {
     setSelectedQPhase(activeQualiPhase as "Q1" | "Q2" | "Q3" | null);
   }, [activeQualiPhase]);
+
+  useEffect(() => {
+    if (raceLiveTab !== 'pace') return;
+    const sessionKey = RACE_DEV_MODE ? RACE_DEV_SESSION_KEY : activeSession?.session_key;
+    if (sessionKey) fetchPaceData(sessionKey);
+  }, [raceLiveTab]);
 
   if (loading) {
     return (
@@ -1252,24 +1311,40 @@ export default function HomeScreen() {
             ))}
           </View>
         )}
-        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" }}>
-          <Text style={{ color: "#555555", fontSize: 10, width: 22 }}> </Text>
-          <View style={{ width: 12, marginRight: 10 }} />
-          <Text style={{ color: "#555555", fontSize: 10, flex: 1 }}> </Text>
-          <TouchableOpacity onPress={() => setShowGapToLeader(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={{ color: showGapToLeader ? "#E10600" : "#555555", fontSize: 10, fontStyle: "italic", marginRight: 12 }}>
-              {showGapToLeader ? "GAP" : "INTERVAL"}
-            </Text>
-          </TouchableOpacity>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <Text numberOfLines={1} style={{ color: "#444", fontSize: 9, letterSpacing: 1, width: 36, textAlign: "right" }}>S1 S2 S3</Text>
-            <Text style={{ color: "#444", fontSize: 9, letterSpacing: 1, width: 68, textAlign: "right" }}>LAP TIME</Text>
-            <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>CPD</Text>
-            <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>AGE</Text>
-            <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>PIT</Text>
-          </View>
+        <View style={{ flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: '#1A1A1A', marginBottom: 0 }}>
+          {(['classifica', 'pace', 'stints'] as const).map(tab => (
+            <TouchableOpacity
+              key={tab}
+              onPress={() => setRaceLiveTab(tab)}
+              style={{ flex: 1, paddingVertical: 10, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: raceLiveTab === tab ? '#E10600' : 'transparent' }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.5, color: raceLiveTab === tab ? '#FFFFFF' : '#444' }}>
+                {tab.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
-        <ScrollView>
+
+        {raceLiveTab === 'classifica' && (
+          <>
+            <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" }}>
+              <Text style={{ color: "#555555", fontSize: 10, width: 22 }}> </Text>
+              <View style={{ width: 12, marginRight: 10 }} />
+              <Text style={{ color: "#555555", fontSize: 10, flex: 1 }}> </Text>
+              <TouchableOpacity onPress={() => setShowGapToLeader(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={{ color: showGapToLeader ? "#E10600" : "#555555", fontSize: 10, fontStyle: "italic", marginRight: 12 }}>
+                  {showGapToLeader ? "GAP" : "INTERVAL"}
+                </Text>
+              </TouchableOpacity>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text numberOfLines={1} style={{ color: "#444", fontSize: 9, letterSpacing: 1, width: 36, textAlign: "right" }}>S1 S2 S3</Text>
+                <Text style={{ color: "#444", fontSize: 9, letterSpacing: 1, width: 68, textAlign: "right" }}>LAP TIME</Text>
+                <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>CPD</Text>
+                <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>AGE</Text>
+                <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>PIT</Text>
+              </View>
+            </View>
+            <ScrollView>
           {raceDrivers.length === 0 ? (
             <View style={{ padding: 32, alignItems: "center" }}>
               <ActivityIndicator size="small" color="#E10600" />
@@ -1392,6 +1467,108 @@ export default function HomeScreen() {
             })
           )}
         </ScrollView>
+          </>
+        )}
+
+        {raceLiveTab === 'pace' && (
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 12, paddingVertical: 6 }}>
+              <TouchableOpacity
+                onPress={() => setShowLapTimes(prev => !prev)}
+                style={{ backgroundColor: showLapTimes ? '#E10600' : '#1A1A1A', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}
+              >
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 1 }}>1:23</Text>
+              </TouchableOpacity>
+            </View>
+            {(() => {
+              const allLapNumbers = Array.from(new Set(
+                Object.values(paceData).flat().map(l => l.lap)
+              )).sort((a, b) => a - b);
+              const drivers = raceDrivers.filter(d => !d.isDnf && !d.isLapped);
+              const cellWidth = showLapTimes ? 42 : 14;
+
+              const validTimes = Object.values(paceData).flat()
+                .filter(l => !l.isPit && !l.isOut && !l.isSafetyCarLap && l.time !== null && l.time > 60 && l.time < 200)
+                .map(l => l.time as number);
+              const overallBestLap = validTimes.length > 0 ? Math.min(...validTimes) : null;
+
+              const driverAverages: Record<number, number> = {};
+              for (const [numStr, laps] of Object.entries(paceData)) {
+                const valid = laps.filter(l => !l.isPit && !l.isOut && !l.isSafetyCarLap && l.time !== null && l.time > 60 && l.time < 200).map(l => l.time as number);
+                if (valid.length > 0) driverAverages[Number(numStr)] = valid.reduce((a, b) => a + b, 0) / valid.length;
+              }
+
+              return (
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>
+                  <View style={{ flexDirection: 'row' }}>
+                    <View style={{ width: 52 }}>
+                      <View style={{ height: 16 }} />
+                      {drivers.map(driver => (
+                        <View key={driver.driver_number} style={{ height: 26, flexDirection: 'row', alignItems: 'center', paddingVertical: 3 }}>
+                          <View style={{ width: 2, height: 20, borderRadius: 1, backgroundColor: driver.team_colour, marginRight: 6, marginLeft: 12 }} />
+                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{driver.name_acronym}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    <ScrollView
+                      ref={paceScrollRef}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      onContentSizeChange={() => paceScrollRef.current?.scrollToEnd({ animated: false })}
+                    >
+                      <View>
+                        <View style={{ flexDirection: 'row', gap: 2, marginBottom: 2, height: 16, alignItems: 'center' }}>
+                          {allLapNumbers.map(lapNum => (
+                            <View key={lapNum} style={{ width: cellWidth, alignItems: 'center' }}>
+                              <Text style={{ color: '#333', fontSize: 8 }}>{lapNum}</Text>
+                            </View>
+                          ))}
+                        </View>
+                        {drivers.map(driver => {
+                          const laps = paceData[driver.driver_number] ?? [];
+                          const lapMap: Record<number, typeof laps[0]> = {};
+                          for (const l of laps) lapMap[l.lap] = l;
+                          return (
+                            <View key={driver.driver_number} style={{ flexDirection: 'row', gap: 2, marginBottom: 3, height: 20 }}>
+                              {allLapNumbers.map(lapNum => {
+                                const lap = lapMap[lapNum];
+                                if (!lap) return <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 2, backgroundColor: '#0A0A0A' }} />;
+                                const { bg, isSpecial, label } = getPaceColor(lap, driver.driver_number, overallBestLap, driverAverages);
+                                return (
+                                  <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 2, backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }}>
+                                    {isSpecial && label ? (
+                                      <Text style={{ color: '#E10600', fontSize: 7, fontWeight: '700' }}>{showLapTimes ? label : label[0]}</Text>
+                                    ) : showLapTimes && lap.time != null ? (
+                                      <Text style={{ color: '#000', fontSize: 7, fontWeight: '700' }}>
+                                        {(() => {
+                                          const t = lap.time;
+                                          const m = Math.floor(t / 60);
+                                          const s = (t % 60).toFixed(1).padStart(4, '0');
+                                          return `${m}:${s}`;
+                                        })()}
+                                      </Text>
+                                    ) : null}
+                                  </View>
+                                );
+                              })}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </ScrollView>
+                  </View>
+                </ScrollView>
+              );
+            })()}
+          </View>
+        )}
+
+        {raceLiveTab === 'stints' && (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 }}>
+            <Text style={{ color: '#444', fontSize: 13, letterSpacing: 1 }}>STINTS — IN ARRIVO</Text>
+          </View>
+        )}
+
         <Modal transparent animationType="slide" visible={showWeatherModal} onRequestClose={() => setShowWeatherModal(false)}>
           <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowWeatherModal(false)} />
           <View style={{ backgroundColor: "#141414", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 }}>

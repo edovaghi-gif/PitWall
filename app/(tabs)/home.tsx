@@ -226,11 +226,36 @@ export default function HomeScreen() {
     }
   }
 
-  async function fetchPaceData(sessionKey: number) {
+  async function fetchPaceData(sessionKey: number): Promise<Record<number, Array<{lap: number, time: number | null, isPit: boolean, isOut: boolean, isSafetyCarLap: boolean}>>> {
     const data = await safeFetch(`https://api.openf1.org/v1/laps?session_key=${sessionKey}`);
-    if (!Array.isArray(data)) return;
+    if (!Array.isArray(data)) return {};
 
-    // Build SC/VSC windows from raceControlRef as {startLap, endLap} pairs using lap_number field
+    const byDriver: Record<number, Array<{lap: number, time: number | null, isPit: boolean, isOut: boolean, isSafetyCarLap: boolean}>> = {};
+    for (const lap of data) {
+      const num = lap.driver_number;
+      if (!num) continue;
+      if (!byDriver[num]) byDriver[num] = [];
+      byDriver[num].push({
+        lap: lap.lap_number,
+        time: lap.lap_duration ?? null,
+        isPit: false,
+        isOut: lap.is_pit_out_lap === true,
+        isSafetyCarLap: false,
+      });
+    }
+    for (const driverLaps of Object.values(byDriver)) {
+      driverLaps.sort((a, b) => a.lap - b.lap);
+      for (let i = 0; i < driverLaps.length; i++) {
+        if (driverLaps[i].isOut && i > 0) {
+          driverLaps[i - 1].isPit = true;
+        }
+      }
+    }
+    setPaceData(byDriver);
+    return byDriver;
+  }
+
+  function recomputeScFlags(byDriver: Record<number, Array<{lap: number, time: number | null, isPit: boolean, isOut: boolean, isSafetyCarLap: boolean}>>) {
     const rcEvents = raceControlRef.current;
     const scWindows: Array<{startLap: number, endLap: number}> = [];
     let scStartLap: number | null = null;
@@ -249,29 +274,14 @@ export default function HomeScreen() {
     }
     if (scStartLap !== null) scWindows.push({ startLap: scStartLap, endLap: Infinity });
 
-    const byDriver: Record<number, Array<{lap: number, time: number | null, isPit: boolean, isOut: boolean, isSafetyCarLap: boolean}>> = {};
-    for (const lap of data) {
-      const num = lap.driver_number;
-      if (!num) continue;
-      if (!byDriver[num]) byDriver[num] = [];
-      const isSafetyCarLap = scWindows.some(w => lap.lap_number >= w.startLap && lap.lap_number <= w.endLap);
-      byDriver[num].push({
-        lap: lap.lap_number,
-        time: lap.lap_duration ?? null,
-        isPit: false,
-        isOut: lap.is_pit_out_lap === true,
-        isSafetyCarLap,
-      });
+    const updated: typeof byDriver = {};
+    for (const [numStr, laps] of Object.entries(byDriver)) {
+      updated[Number(numStr)] = laps.map(l => ({
+        ...l,
+        isSafetyCarLap: scWindows.some(w => l.lap >= w.startLap && l.lap <= w.endLap),
+      }));
     }
-    for (const driverLaps of Object.values(byDriver)) {
-      driverLaps.sort((a, b) => a.lap - b.lap);
-      for (let i = 0; i < driverLaps.length; i++) {
-        if (driverLaps[i].isOut && i > 0) {
-          driverLaps[i - 1].isPit = true;
-        }
-      }
-    }
-    setPaceData(byDriver);
+    setPaceData(updated);
   }
 
   async function fetchHomeHeadshots() {
@@ -654,6 +664,7 @@ export default function HomeScreen() {
     const drivers = raceDriversCacheRef.current;
 
     if (!Array.isArray(positionData) || !Array.isArray(intervalsData) || !Array.isArray(rcData)) return;
+    raceControlRef.current = rcData;
 
     // raceLap: max lap_number from positionData, fallback totalLaps
     let maxLapFound: number | null = null;
@@ -1209,7 +1220,12 @@ export default function HomeScreen() {
   useEffect(() => {
     if (raceLiveTab !== 'pace') return;
     const sessionKey = RACE_DEV_MODE ? RACE_DEV_SESSION_KEY : activeSession?.session_key;
-    if (sessionKey) fetchPaceData(sessionKey);
+    if (!sessionKey) return;
+    (async () => {
+      const byDriver = await fetchPaceData(sessionKey);
+      await fetchRaceData();
+      recomputeScFlags(byDriver);
+    })();
   }, [raceLiveTab]);
 
   if (loading) {
@@ -1487,14 +1503,28 @@ export default function HomeScreen() {
               const drivers = raceDrivers.filter(d => !d.isDnf && !d.isLapped);
               const cellWidth = showLapTimes ? 42 : 14;
 
+              const scWindowsForRender: Array<{startLap: number, endLap: number}> = [];
+              let _scStart: number | null = null;
+              for (const e of raceControlRef.current) {
+                const msg: string = e.message ?? '';
+                const lapNum: number | null = e.lap_number ?? null;
+                if (lapNum === null) continue;
+                const isStart = (msg.includes('SAFETY CAR DEPLOYED') && !msg.includes('VIRTUAL')) || msg.includes('VIRTUAL SAFETY CAR DEPLOYED') || msg.includes('VSC DEPLOYED');
+                const isEnd = msg.includes('SAFETY CAR IN THIS LAP') || msg.includes('VIRTUAL SAFETY CAR ENDING') || msg.includes('VSC ENDING');
+                if (isStart && _scStart === null) _scStart = lapNum;
+                if (isEnd && _scStart !== null) { scWindowsForRender.push({ startLap: _scStart, endLap: lapNum }); _scStart = null; }
+              }
+              if (_scStart !== null) scWindowsForRender.push({ startLap: _scStart, endLap: 9999 });
+              const isScLapFn = (lapNum: number) => scWindowsForRender.some(w => lapNum >= w.startLap && lapNum <= w.endLap);
+
               const validTimes = Object.values(paceData).flat()
-                .filter(l => !l.isPit && !l.isOut && !l.isSafetyCarLap && l.time !== null && l.time > 60 && l.time < 200)
+                .filter(l => !l.isPit && !l.isOut && !isScLapFn(l.lap) && l.time !== null && l.time > 60 && l.time < 200)
                 .map(l => l.time as number);
               const overallBestLap = validTimes.length > 0 ? Math.min(...validTimes) : null;
 
               const driverAverages: Record<number, number> = {};
               for (const [numStr, laps] of Object.entries(paceData)) {
-                const valid = laps.filter(l => !l.isPit && !l.isOut && !l.isSafetyCarLap && l.time !== null && l.time > 60 && l.time < 200).map(l => l.time as number);
+                const valid = laps.filter(l => !l.isPit && !l.isOut && !isScLapFn(l.lap) && l.time !== null && l.time > 60 && l.time < 200).map(l => l.time as number);
                 if (valid.length > 0) driverAverages[Number(numStr)] = valid.reduce((a, b) => a + b, 0) / valid.length;
               }
 
@@ -1533,7 +1563,7 @@ export default function HomeScreen() {
                               {allLapNumbers.map(lapNum => {
                                 const lap = lapMap[lapNum];
                                 if (!lap) return <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 2, backgroundColor: '#0A0A0A' }} />;
-                                const { bg, isSpecial, label } = getPaceColor(lap, driver.driver_number, overallBestLap, driverAverages);
+                                const { bg, isSpecial, label } = getPaceColor({ ...lap, isSafetyCarLap: isScLapFn(lap.lap) }, driver.driver_number, overallBestLap, driverAverages);
                                 return (
                                   <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 2, backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }}>
                                     {isSpecial && label ? (

@@ -74,11 +74,11 @@ function formatDelta(delta: number): { text: string; color: string } {
   };
 }
 
-function getPaceColor(lap: { time: number | null; isPit: boolean; isOut: boolean; isSafetyCarLap: boolean }, driverNumber: number, overallBestLap: number | null, driverAverages: Record<number, number>): { bg: string; isSpecial: boolean; label?: string } {
-  if (lap.isPit) return { bg: '#FFFFFF', isSpecial: true, label: 'PIT' };
-  if (lap.isOut) return { bg: '#FFFFFF', isSpecial: true, label: 'OUT' };
+function getPaceColor(lap: { time: number | null; isPit: boolean; isOut: boolean; isSafetyCarLap: boolean }, driverNumber: number, overallBestLap: number | null, driverAverages: Record<number, number>): { bg: string; isSpecial: boolean; label?: string; isSc?: boolean } {
+  if (lap.isPit) return { bg: '#FFFFFF', isSpecial: true, label: 'PIT', isSc: lap.isSafetyCarLap };
+  if (lap.isOut) return { bg: '#FFFFFF', isSpecial: true, label: 'OUT', isSc: lap.isSafetyCarLap };
   if (!lap.time) return { bg: '#2A2A2A', isSpecial: false };
-  if (lap.isSafetyCarLap) return { bg: '#F39C12', isSpecial: false };
+  if (lap.isSafetyCarLap) return { bg: '#0A0A0A', isSpecial: false, isSc: true };
   if (overallBestLap !== null && Math.abs(lap.time - overallBestLap) < 0.001) return { bg: '#9B59B6', isSpecial: false };
   const avg = driverAverages[driverNumber];
   if (avg !== undefined && lap.time <= avg) return { bg: '#27AE60', isSpecial: false };
@@ -1517,6 +1517,21 @@ export default function HomeScreen() {
               if (_scStart !== null) scWindowsForRender.push({ startLap: _scStart, endLap: 9999 });
               const isScLapFn = (lapNum: number) => scWindowsForRender.some(w => lapNum >= w.startLap && lapNum <= w.endLap);
 
+              const vscWindowsForRender: Array<{startLap: number, endLap: number}> = [];
+              let _vscStart: number | null = null;
+              for (const e of raceControlRef.current) {
+                const msg: string = e.message ?? '';
+                const lapNum: number | null = e.lap_number ?? null;
+                if (lapNum === null) continue;
+                const isVscStart = msg.includes('VIRTUAL SAFETY CAR DEPLOYED') || msg.includes('VSC DEPLOYED');
+                const isVscEnd = msg.includes('VIRTUAL SAFETY CAR ENDING') || msg.includes('VSC ENDING');
+                if (isVscStart && _vscStart === null) _vscStart = lapNum;
+                if (isVscEnd && _vscStart !== null) { vscWindowsForRender.push({ startLap: _vscStart, endLap: lapNum }); _vscStart = null; }
+              }
+              if (_vscStart !== null) vscWindowsForRender.push({ startLap: _vscStart, endLap: 9999 });
+              const isVscLapFn = (lapNum: number) => vscWindowsForRender.some(w => lapNum >= w.startLap && lapNum <= w.endLap);
+              const isPureScLapFn = (lapNum: number) => isScLapFn(lapNum) && !isVscLapFn(lapNum);
+
               const validTimes = Object.values(paceData).flat()
                 .filter(l => !l.isPit && !l.isOut && !isScLapFn(l.lap) && l.time !== null && l.time > 60 && l.time < 200)
                 .map(l => l.time as number);
@@ -1532,7 +1547,7 @@ export default function HomeScreen() {
                 <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>
                   <View style={{ flexDirection: 'row' }}>
                     <View style={{ width: 52 }}>
-                      <View style={{ height: 16 }} />
+                      <View style={{ height: 24 }} />
                       {drivers.map(driver => (
                         <View key={driver.driver_number} style={{ height: 26, flexDirection: 'row', alignItems: 'center', paddingVertical: 3 }}>
                           <View style={{ width: 2, height: 20, borderRadius: 1, backgroundColor: driver.team_colour, marginRight: 6, marginLeft: 12 }} />
@@ -1547,12 +1562,21 @@ export default function HomeScreen() {
                       onContentSizeChange={() => paceScrollRef.current?.scrollToEnd({ animated: false })}
                     >
                       <View>
-                        <View style={{ flexDirection: 'row', gap: 2, marginBottom: 2, height: 16, alignItems: 'center' }}>
-                          {allLapNumbers.map(lapNum => (
-                            <View key={lapNum} style={{ width: cellWidth, alignItems: 'center' }}>
-                              <Text style={{ color: '#333', fontSize: 8 }}>{lapNum}</Text>
-                            </View>
-                          ))}
+                        <View style={{ flexDirection: 'row', gap: 2, marginBottom: 2, height: 24, alignItems: 'flex-end' }}>
+                          {allLapNumbers.map(lapNum => {
+                            const isVsc = isVscLapFn(lapNum);
+                            const isSc = isPureScLapFn(lapNum);
+                            return (
+                              <View key={lapNum} style={{ width: cellWidth, alignItems: 'center' }}>
+                                {isVsc ? (
+                                  <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>VSC</Text>
+                                ) : isSc ? (
+                                  <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>SC</Text>
+                                ) : null}
+                                <Text style={{ color: '#333', fontSize: 8 }}>{lapNum}</Text>
+                              </View>
+                            );
+                          })}
                         </View>
                         {drivers.map(driver => {
                           const laps = paceData[driver.driver_number] ?? [];
@@ -1563,13 +1587,13 @@ export default function HomeScreen() {
                               {allLapNumbers.map(lapNum => {
                                 const lap = lapMap[lapNum];
                                 if (!lap) return <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 2, backgroundColor: '#0A0A0A' }} />;
-                                const { bg, isSpecial, label } = getPaceColor({ ...lap, isSafetyCarLap: isScLapFn(lap.lap) }, driver.driver_number, overallBestLap, driverAverages);
+                                const { bg, isSpecial, label, isSc } = getPaceColor({ ...lap, isSafetyCarLap: isScLapFn(lap.lap) }, driver.driver_number, overallBestLap, driverAverages);
                                 return (
-                                  <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 2, backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }}>
+                                  <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 2, backgroundColor: bg, justifyContent: 'center', alignItems: 'center', borderWidth: isSc ? 1 : 0, borderColor: '#F39C12' }}>
                                     {isSpecial && label ? (
                                       <Text style={{ color: '#E10600', fontSize: 7, fontWeight: '700' }}>{showLapTimes ? label : label[0]}</Text>
                                     ) : showLapTimes && lap.time != null ? (
-                                      <Text style={{ color: '#000', fontSize: 7, fontWeight: '700' }}>
+                                      <Text style={{ color: isSc ? '#F39C12' : '#000', fontSize: 7, fontWeight: '700' }}>
                                         {(() => {
                                           const t = lap.time;
                                           const m = Math.floor(t / 60);

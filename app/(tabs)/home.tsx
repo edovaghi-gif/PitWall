@@ -154,6 +154,7 @@ export default function HomeScreen() {
   const [raceLiveTab, setRaceLiveTab] = useState<'classifica' | 'pace' | 'stints'>('classifica');
   const [paceData, setPaceData] = useState<Record<number, Array<{lap: number, time: number | null, isPit: boolean, isOut: boolean, isSafetyCarLap: boolean}>>>({});
   const [showLapTimes, setShowLapTimes] = useState(false);
+  const [stintsTimelineWidth, setStintsTimelineWidth] = useState(0);
   const paceScrollRef = useRef<ScrollView>(null);
   const [showWeatherModal, setShowWeatherModal] = useState(false);
   const previousIntervalsRef = useRef<Record<number, number>>({});
@@ -227,29 +228,38 @@ export default function HomeScreen() {
   }
 
   async function fetchPaceData(sessionKey: number): Promise<Record<number, Array<{lap: number, time: number | null, isPit: boolean, isOut: boolean, isSafetyCarLap: boolean}>>> {
-    const data = await safeFetch(`https://api.openf1.org/v1/laps?session_key=${sessionKey}`);
+    const [data, stintsData] = await Promise.all([
+      safeFetch(`https://api.openf1.org/v1/laps?session_key=${sessionKey}`),
+      safeFetch(`https://api.openf1.org/v1/stints?session_key=${sessionKey}`),
+    ]);
     if (!Array.isArray(data)) return {};
+
+    // Build pit/out sets from stints (authoritative)
+    const pitLaps = new Set<string>();  // `${driver_number}_${lap_start - 1}`
+    const outLaps = new Set<string>();  // `${driver_number}_${lap_start}`
+    if (Array.isArray(stintsData)) {
+      for (const stint of stintsData) {
+        if (!stint.driver_number || stint.lap_start == null) continue;
+        if (stint.stint_number > 1) {
+          pitLaps.add(`${stint.driver_number}_${stint.lap_start - 1}`);
+          outLaps.add(`${stint.driver_number}_${stint.lap_start}`);
+        }
+      }
+    }
 
     const byDriver: Record<number, Array<{lap: number, time: number | null, isPit: boolean, isOut: boolean, isSafetyCarLap: boolean}>> = {};
     for (const lap of data) {
       const num = lap.driver_number;
       if (!num) continue;
       if (!byDriver[num]) byDriver[num] = [];
+      const key = `${num}_${lap.lap_number}`;
       byDriver[num].push({
         lap: lap.lap_number,
         time: lap.lap_duration ?? null,
-        isPit: false,
-        isOut: lap.is_pit_out_lap === true,
+        isPit: pitLaps.has(key),
+        isOut: outLaps.has(key),
         isSafetyCarLap: false,
       });
-    }
-    for (const driverLaps of Object.values(byDriver)) {
-      driverLaps.sort((a, b) => a.lap - b.lap);
-      for (let i = 0; i < driverLaps.length; i++) {
-        if (driverLaps[i].isOut && i > 0) {
-          driverLaps[i - 1].isPit = true;
-        }
-      }
     }
     setPaceData(byDriver);
     return byDriver;
@@ -1500,7 +1510,17 @@ export default function HomeScreen() {
               const allLapNumbers = Array.from(new Set(
                 Object.values(paceData).flat().map(l => l.lap)
               )).sort((a, b) => a - b);
-              const drivers = raceDrivers.filter(d => !d.isDnf && !d.isLapped);
+              const raceDriverNums = new Set(raceDrivers.map(d => d.driver_number));
+              const extraDrivers = raceDriversCacheRef.current
+                .filter((d: any) => d.driver_number && !raceDriverNums.has(d.driver_number))
+                .map((d: any) => ({
+                  driver_number: d.driver_number,
+                  name_acronym: d.name_acronym ?? String(d.driver_number),
+                  team_colour: d.team_colour ? `#${d.team_colour}` : '#FFFFFF',
+                  isDnf: false,
+                  isLapped: false,
+                }));
+              const drivers = [...raceDrivers, ...extraDrivers];
               const cellWidth = showLapTimes ? 42 : 14;
 
               const scWindowsForRender: Array<{startLap: number, endLap: number}> = [];
@@ -1618,8 +1638,105 @@ export default function HomeScreen() {
         )}
 
         {raceLiveTab === 'stints' && (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 }}>
-            <Text style={{ color: '#444', fontSize: 13, letterSpacing: 1 }}>STINTS — IN ARRIVO</Text>
+          <View style={{ flex: 1, paddingHorizontal: 12, paddingTop: 8 }}>
+            {/* Invisible width-measurement view, always rendered */}
+            <View
+              style={{ position: 'absolute', left: 12 + 80, right: 12, height: 0 }}
+              onLayout={(e) => {
+                const w = e.nativeEvent.layout.width;
+                console.log('STINTS timeline width:', w, 'raceLap:', raceLap, 'total:', raceTotalLaps);
+                setStintsTimelineWidth(w);
+              }}
+            />
+            {(() => { console.log('STINTS timeline width:', stintsTimelineWidth, 'raceLap:', raceLap, 'total:', raceTotalLaps); console.log('ALB raw stints:', JSON.stringify(raceStintsRef.current.filter((s: any) => s.driver_number === 23))); })()}
+            {(!raceStintsRef.current.length || raceTotalLaps === null) ? (
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: '#444', fontSize: 13 }}>Dati stints non disponibili</Text>
+              </View>
+            ) : (
+              <View style={{ flex: 1 }}>
+                {/* Lap scale header */}
+                {(() => {
+                  const total = raceTotalLaps!;
+                  const ticks = [0, 0.25, 0.5, 0.75, 1].map(p => Math.round(p * (total - 1)) + 1);
+                  return (
+                    <View style={{ flexDirection: 'row', marginLeft: 80, marginBottom: 4, height: 12 }}>
+                      {stintsTimelineWidth > 0 && ticks.map((lap, i) => (
+                        <View key={i} style={{ position: 'absolute', left: (ticks[i] - 1) / (total - 1) * stintsTimelineWidth }}>
+                          <Text style={{ color: '#444', fontSize: 8 }}>{lap}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })()}
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20, paddingTop: 4 }}>
+                  {raceDrivers.filter(d => !d.isDnf).map((driver, driverIdx) => {
+                    const total = raceTotalLaps!;
+
+                    // Dedup pass 1: unique by lap_start
+                    const seen = new Set<number>();
+                    const deduped1: any[] = [];
+                    for (const s of raceStintsRef.current.filter((s: any) => s.driver_number === driver.driver_number).sort((a: any, b: any) => a.lap_start - b.lap_start)) {
+                      if (!seen.has(s.lap_start)) { seen.add(s.lap_start); deduped1.push({ ...s }); }
+                    }
+                    // Dedup pass 2: merge consecutive same-compound stints within 2 laps
+                    const driverStints: any[] = [];
+                    for (const stint of deduped1) {
+                      const prev = driverStints[driverStints.length - 1];
+                      if (prev && prev.compound === stint.compound && stint.lap_start - prev.lap_start <= 2) {
+                        prev.lap_end = stint.lap_end ?? total;
+                      } else {
+                        driverStints.push(stint);
+                      }
+                    }
+
+                    const pitCount = Math.max(0, driverStints.length - 1);
+                    return (
+                      <View key={driver.driver_number} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                        {/* Left column */}
+                        <View style={{ width: 80, flexDirection: 'row', alignItems: 'center', paddingRight: 8 }}>
+                          <View style={{ width: 2, height: 36, borderRadius: 1, backgroundColor: driver.team_colour, marginRight: 6 }} />
+                          <View>
+                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{driver.name_acronym}</Text>
+                            <Text style={{ color: '#666', fontSize: 8, marginTop: 1 }}>{pitCount}-STOP</Text>
+                          </View>
+                        </View>
+                        {/* Timeline */}
+                        <View style={{ flex: 1, position: 'relative' }}>
+                          <View style={{ height: 24, borderRadius: 3, backgroundColor: '#0A0A0A', flexDirection: 'row', overflow: 'hidden' }}>
+                            {driverStints.map((stint: any, i: number) => {
+                              const lapEnd = stint.lap_end ?? total;
+                              const stintLaps = Math.max(1, lapEnd - stint.lap_start + 1);
+                              const widthPct = (stintLaps / total) * 100;
+                              const tyre = getTyreInfo(stint.compound);
+                              const blockWidthPx = stintsTimelineWidth > 0 ? (stintLaps / total) * stintsTimelineWidth : 0;
+                              const showAge = stint.tyre_age_at_start > 0 && blockWidthPx > 20;
+                              const gap = i < driverStints.length - 1 ? 1 : 0;
+                              return (
+                                <View key={i} style={{ width: `${widthPct}%` as any, height: 24, backgroundColor: tyre.bg, marginRight: gap, flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                                  <Text style={{ color: tyre.textColor, fontSize: 10, fontWeight: '700', lineHeight: 12 }}>{tyre.label}</Text>
+                                  {showAge && (
+                                    <Text style={{ color: tyre.textColor, fontSize: 7, opacity: 0.6, lineHeight: 8 }}>↺{stint.tyre_age_at_start}</Text>
+                                  )}
+                                </View>
+                              );
+                            })}
+                          </View>
+                          {/* NOW line */}
+                          {stintsTimelineWidth > 0 && raceLap !== null && (
+                            <View style={{ position: 'absolute', left: (raceLap / total) * stintsTimelineWidth, top: 0, bottom: 0, width: 1.5, backgroundColor: '#E10600', zIndex: 10 }}>
+                              {driverIdx === 0 && (
+                                <Text style={{ color: '#E10600', fontSize: 8, fontWeight: '700', position: 'absolute', top: -12, left: 2 }}>L{raceLap}</Text>
+                              )}
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
           </View>
         )}
 

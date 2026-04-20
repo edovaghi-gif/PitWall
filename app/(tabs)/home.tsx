@@ -15,6 +15,8 @@ const TEAM_LOGOS: Record<string, any> = {
   'Haas F1 Team': require('../../assets/images/haas.png'),
   'Audi': require('../../assets/images/audi.png'),
   'Cadillac': require('../../assets/images/cadillac.png'),
+  'Racing Bulls': require('../../assets/images/racingbull.png'),
+  'Williams': require('../../assets/images/williams.png'),
 };
 
 const CIRCUIT_INFO_MAP: Record<string, any> = {
@@ -72,6 +74,23 @@ function formatDelta(delta: number): { text: string; color: string } {
   };
 }
 
+function getRaceSectorColor(value: number | null, sector: 1|2|3, allLaps: Record<number, any>, completedAt: number | null): string {
+  if (value === null) return '#2A2A2A';
+  if (completedAt !== null && Date.now() - completedAt > 8000) return '#2A2A2A';
+
+  const allValues = Object.values(allLaps)
+    .map((l: any) => sector === 1 ? l.s1 : sector === 2 ? l.s2 : l.s3)
+    .filter((v): v is number => typeof v === 'number' && v > 0);
+
+  if (allValues.length === 0) return '#999999';
+
+  const best = Math.min(...allValues);
+
+  if (value <= best + 0.05) return '#9B59B6';
+  if (value <= best * 1.015) return '#27AE60';
+  return '#F39C12';
+}
+
 export default function HomeScreen() {
   const [lastRace, setLastRace] = useState<any>(null);
   const [standings, setStandings] = useState<any[]>([]);
@@ -119,10 +138,15 @@ export default function HomeScreen() {
   const [raceYellowSectors, setRaceYellowSectors] = useState<number[]>([]);
   const [raceBattle, setRaceBattle] = useState<any | null>(null);
   const [raceRainRisk, setRaceRainRisk] = useState<string | null>(null);
+  const [raceEvents, setRaceEvents] = useState<Array<{time: string, type: string, message: string}>>([]);
+  const [eventsExpanded, setEventsExpanded] = useState(false);
   const [showWeatherModal, setShowWeatherModal] = useState(false);
   const previousIntervalsRef = useRef<Record<number, number>>({});
   const raceStintsRef = useRef<any[]>([]);
   const raceDriversCacheRef = useRef<any[]>([]);
+  const raceLapsRef = useRef<Record<number, { s1: number|null, s2: number|null, s3: number|null, lapTime: number|null, lapNumber: number|null }>>({});
+  const raceCurrentLapRef = useRef<number>(0);
+  const sectorCompleteTimeRef = useRef<Record<number, number>>({});
   const dnfRef = useRef<Set<number>>(new Set());
   const [expandedRaceDriver, setExpandedRaceDriver] = useState<number | null>(null);
   const [showGapToLeader, setShowGapToLeader] = useState(false);
@@ -553,20 +577,18 @@ export default function HomeScreen() {
     const totalLaps = TOTAL_LAPS[activeSession.circuit_short_name] ?? 50;
     let positionData: any[], intervalsData: any[], rcData: any[];
     try {
-      const fetchPromises: Promise<any>[] = [
-        safeFetch(`https://api.openf1.org/v1/position?session_key=${sessionKey}`),
-        safeFetch(`https://api.openf1.org/v1/intervals?session_key=${sessionKey}`),
-        safeFetch(`https://api.openf1.org/v1/race_control?session_key=${sessionKey}`),
-      ];
+      positionData = await safeFetch(`https://api.openf1.org/v1/position?session_key=${sessionKey}`);
+      await new Promise(resolve => setTimeout(resolve, 400));
+      intervalsData = await safeFetch(`https://api.openf1.org/v1/intervals?session_key=${sessionKey}`);
+      await new Promise(resolve => setTimeout(resolve, 400));
+      rcData = await safeFetch(`https://api.openf1.org/v1/race_control?session_key=${sessionKey}`);
       if (raceDriversCacheRef.current.length === 0) {
-        fetchPromises.push(safeFetch(`https://api.openf1.org/v1/drivers?session_key=${sessionKey}`));
-      }
-      const results = await Promise.all(fetchPromises);
-      [positionData, intervalsData, rcData] = results;
-      const driversData = results[3];
-      if (Array.isArray(driversData) && driversData.length > 0) {
-        console.log('Driver headshot_url:', driversData[0]?.headshot_url);
-        raceDriversCacheRef.current = driversData;
+        await new Promise(resolve => setTimeout(resolve, 400));
+        const driversData = await safeFetch(`https://api.openf1.org/v1/drivers?session_key=${sessionKey}`);
+        if (Array.isArray(driversData) && driversData.length > 0) {
+          console.log('Driver headshot_url:', driversData[0]?.headshot_url);
+          raceDriversCacheRef.current = driversData;
+        }
       }
     } catch { return; }
     const drivers = raceDriversCacheRef.current;
@@ -583,7 +605,40 @@ export default function HomeScreen() {
         maxLapFound = entry.lap_number;
       }
     }
-    setRaceLap(maxLapFound ?? totalLaps);
+    const resolvedLap = maxLapFound ?? totalLaps;
+    setRaceLap(resolvedLap);
+    raceCurrentLapRef.current = resolvedLap;
+
+    const currentLap = resolvedLap;
+    if (currentLap > 0) {
+      await new Promise(resolve => setTimeout(resolve, 400));
+      const lapsData = await safeFetch(`https://api.openf1.org/v1/laps?session_key=${sessionKey}&lap_number=${currentLap}`);
+      console.log('sectorInterval result:', JSON.stringify(lapsData)?.slice(0, 100));
+      console.log('sector sample:', JSON.stringify(lapsData?.[0])?.slice(0, 300));
+      if (Array.isArray(lapsData)) {
+        for (const lap of lapsData) {
+          if (!lap.driver_number) continue;
+          const prev = raceLapsRef.current[lap.driver_number];
+          const isNewLap = prev?.lapNumber != null && prev.lapNumber !== lap.lap_number;
+          if (isNewLap) {
+            delete raceLapsRef.current[lap.driver_number];
+            delete sectorCompleteTimeRef.current[lap.driver_number];
+          }
+          const hadS3 = prev?.s3 != null;
+          const nowHasS3 = lap.duration_sector_3 != null;
+          if (!hadS3 && nowHasS3) {
+            sectorCompleteTimeRef.current[lap.driver_number] = Date.now();
+          }
+          raceLapsRef.current[lap.driver_number] = {
+            s1: lap.duration_sector_1 ?? null,
+            s2: lap.duration_sector_2 ?? null,
+            s3: lap.duration_sector_3 ?? null,
+            lapTime: lap.lap_duration ?? null,
+            lapNumber: lap.lap_number ?? null,
+          };
+        }
+      }
+    }
 
     // Latest position per driver
     const latestPosition: Record<number, number> = {};
@@ -652,6 +707,24 @@ export default function HomeScreen() {
     const activeSectors = Object.keys(yellowSectors).map(Number).filter(s => s > 0).sort((a, b) => a - b);
     const hasGenericYellow = yellowSectors[0] !== undefined;
     setRaceYellowSectors(hasGenericYellow && activeSectors.length === 0 ? [-1] : activeSectors);
+
+    const events = rcData
+      .filter((e: any) => e.message && e.message.length > 2)
+      .slice(-5)
+      .reverse()
+      .map((e: any) => {
+        const date = new Date(e.date);
+        const time = `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}:${String(date.getSeconds()).padStart(2,'0')}`;
+        const category = e.category ?? '';
+        let type = 'DIR';
+        if (category === 'Flag') type = 'FLAG';
+        else if (category === 'SafetyCar') type = 'SC';
+        else if (category === 'Drs') type = 'DRS';
+        else if (e.message?.includes('INVESTIGATION') || e.message?.includes('INFRINGEMENT')) type = 'INV';
+        else if (e.message?.includes('PENALTY')) type = 'PEN';
+        return { time, type, message: e.message };
+      });
+    setRaceEvents(events);
 
     // Build driver list
     const driverMap: Record<number, any> = {};
@@ -1147,6 +1220,38 @@ export default function HomeScreen() {
             </View>
           );
         })()}
+        {raceEvents.length > 0 && (
+          <View style={{ borderBottomWidth: 0.5, borderBottomColor: '#0D0D0D' }}>
+            <TouchableOpacity
+              onPress={() => setEventsExpanded(prev => !prev)}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: eventsExpanded ? 0.5 : 0, borderBottomColor: '#0A0A0A' }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{
+                  backgroundColor: raceEvents[0].type === 'INV' ? '#F39C12' : raceEvents[0].type === 'FLAG' ? '#E10600' : '#1A1A1A',
+                  borderRadius: 3, paddingHorizontal: 5, paddingVertical: 1
+                }}>
+                  <Text style={{ color: raceEvents[0].type === 'INV' || raceEvents[0].type === 'FLAG' ? '#000' : '#555', fontSize: 9, fontWeight: '700' }}>{raceEvents[0].type}</Text>
+                </View>
+                <Text style={{ color: '#FFFFFF', fontSize: 11 }} numberOfLines={1}>{raceEvents[0].message}</Text>
+              </View>
+              <Text style={{ color: '#444', fontSize: 11 }}>{eventsExpanded ? '▲' : '▼'}</Text>
+            </TouchableOpacity>
+
+            {eventsExpanded && raceEvents.map((event, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: '#0A0A0A', opacity: i === 0 ? 1 : 0.5 }}>
+                <Text style={{ color: '#444', fontSize: 10, fontVariant: ['tabular-nums'], width: 56, marginRight: 6 }}>{event.time}</Text>
+                <View style={{
+                  backgroundColor: event.type === 'INV' ? '#F39C12' : event.type === 'FLAG' ? '#E10600' : event.type === 'PEN' ? '#E10600' : '#1A1A1A',
+                  borderRadius: 3, paddingHorizontal: 5, paddingVertical: 1, marginRight: 8, minWidth: 32
+                }}>
+                  <Text style={{ color: event.type === 'INV' || event.type === 'FLAG' || event.type === 'PEN' ? '#000' : '#555', fontSize: 9, fontWeight: '700' }}>{event.type}</Text>
+                </View>
+                <Text style={{ color: i === 0 ? '#FFFFFF' : '#666', fontSize: 11, flex: 1, lineHeight: 15 }} numberOfLines={2}>{event.message}</Text>
+              </View>
+            ))}
+          </View>
+        )}
         <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" }}>
           <Text style={{ color: "#555555", fontSize: 10, width: 22 }}> </Text>
           <View style={{ width: 12, marginRight: 10 }} />
@@ -1157,6 +1262,8 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Text numberOfLines={1} style={{ color: "#444", fontSize: 9, letterSpacing: 1, width: 36, textAlign: "right" }}>S1 S2 S3</Text>
+            <Text style={{ color: "#444", fontSize: 9, letterSpacing: 1, width: 68, textAlign: "right" }}>LAP TIME</Text>
             <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>CPD</Text>
             <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>AGE</Text>
             <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>PIT</Text>
@@ -1207,6 +1314,30 @@ export default function HomeScreen() {
                       <Text style={{ fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"], marginRight: 12, color: intervalColor }}>
                         {intervalDisplay}
                       </Text>
+                      {(() => {
+                        const lapData = raceLapsRef.current[driver.driver_number];
+                        const completedAt = sectorCompleteTimeRef.current[driver.driver_number] ?? null;
+                        const s1Color = getRaceSectorColor(lapData?.s1 ?? null, 1, raceLapsRef.current, completedAt);
+                        const s2Color = getRaceSectorColor(lapData?.s2 ?? null, 2, raceLapsRef.current, completedAt);
+                        const s3Color = getRaceSectorColor(lapData?.s3 ?? null, 3, raceLapsRef.current, completedAt);
+                        return (
+                          <>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginRight: 8 }}>
+                              <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: s1Color }} />
+                              <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: s2Color }} />
+                              <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: s3Color }} />
+                            </View>
+                            <Text style={{ color: lapData?.lapTime ? '#FFFFFF' : '#333', fontSize: 12, fontVariant: ['tabular-nums'], fontWeight: '500', width: 68, textAlign: 'right' }}>
+                              {lapData?.lapTime ? formatLapTime(lapData.lapTime) : '—'}
+                            </Text>
+                            {(!lapData?.lapTime && lapData?.lapNumber === raceLap) && (
+                              <View style={{ backgroundColor: '#F39C12', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 4 }}>
+                                <Text style={{ color: '#000', fontSize: 10, fontWeight: '800' }}>PIT</Text>
+                              </View>
+                            )}
+                          </>
+                        );
+                      })()}
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                         <View style={{ backgroundColor: tyre.bg, borderRadius: 4, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
                           <Text style={{ color: tyre.textColor, fontSize: 11, fontWeight: "800" }}>{tyre.label}</Text>

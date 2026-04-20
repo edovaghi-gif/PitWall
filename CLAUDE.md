@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guide Claude Code repo.
+Claude Code repo guide.
 
 ## Commands
 
@@ -51,7 +51,7 @@ app/onboarding.tsx        → 5 slide onboarding con animazione, mostrato solo a
 - **Ergast** via `https://api.jolpi.ca/ergast/f1/` — results, standings, drivers, schedule
 - **OpenF1** via `https://api.openf1.org/v1/` — circuit GPS, live telemetry, post-race scoring
 
-Prefer dynamic fetch. Never hardcode via API.
+Dynamic fetch. Never hardcode via API.
 
 ---
 
@@ -171,7 +171,7 @@ If fix touches % / proportion calc logic, stop and ask.
 ## Scoring Prediction
 
 ### Fonte dati
-OpenF1 only. Never use Ergast for post-race scoring.
+OpenF1 only. Never Ergast for post-race scoring.
 
 ### Endpoint OpenF1
 - Podio reale: `/position?session_key={key}`
@@ -395,15 +395,42 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 - Stat del weekend: no bg, solo left border `#E10600`
 - Ultima gara: no card bg, headshot 32×32 + barra team 2×20px, pill LEADER/gap
 - Classifica piloti: headshot 28×28, nome `#CCC` fontSize 15, punti `#FFF` fontSize 13 + "pt" `#444`
-- Classifica costruttori: no headshot, no dot, solo pos/nome/punti
+- Classifica costruttori: logo team 32×20 + pos/nome/punti (no headshot, no dot)
 - `fetchHomeHeadshots()`: fetch `/sessions?year=2026&session_type=Race` → last session_key → `/drivers` → map acronym→headshot_url
+
+## Team Logos
+
+- Tutti 11 loghi in `assets/images/` (NON in sottocartella teams/)
+- Files: `mercedes.png`, `mclaren.png`, `ferrari.png`, `redbull.png`, `astonmartin.png`, `alpine.png`, `haas.png`, `audi.png`, `cadillac.png`, `racingbull.png`, `williams.png`
+- `TEAM_LOGOS` in `home.tsx`: mappa nome costruttore Ergast → `require()`
+- Chiavi esatte: `'Mercedes'`, `'McLaren'`, `'Ferrari'`, `'Red Bull'`, `'Aston Martin'`, `'Alpine F1 Team'`, `'Haas F1 Team'`, `'Audi'`, `'Cadillac'`, `'Racing Bulls'`, `'Williams'`
 
 ---
 
 ## Prossimi passi
 
-- Team logos in assets/images/teams/ — da implementare in costruttori e H2H
-- Redesign: Live Race, Circuito, H2H, Prediction
+### Next features live race
+- Events feed (da `race_control` già fetched)
+- S1/S2/S3 in expand (da `/laps`)
+- Compound + tyre age pallino (da `/stints`)
+- Radio toggle (da `/team_radio` `recording_url`)
+- Undercut/overcut simulator
+- Schermate Pace + Stints dedicate
+- Telemetria post-gara (`/car_data` + `/location`)
+- GPS piloti live su mappa circuito
+
+### Scartate (no dati pubblici)
+- Pit window
+- Gomma health
+
+### Redesign rimanente
+- Live Race, Circuito, H2H, Prediction
+
+### Claude Design workflow
+- Design: mockup web → screenshot → prompt manuale per Code
+- NO handoff diretto — codice generato web, not React Native
+
+### Altro
 - Statistiche circuito aggiuntive: DRS zones, record costruttori, anno prima gara
 
 ---

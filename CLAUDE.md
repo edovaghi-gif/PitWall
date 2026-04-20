@@ -116,6 +116,9 @@ Dynamic fetch. Never hardcode via API.
 - SC: `race_control` `category === "SafetyCar"` + message contains `"DEPLOYED"` but NOT `"VIRTUAL"`
 - VSC: `category === "SafetyCar"` + message contains `"VIRTUAL SAFETY CAR DEPLOYED"` or `"VSC DEPLOYED"`
 - Yellow flag: `race_control` `flag === "YELLOW"` + `sector` field (int, may be null = track-wide)
+- `race_control` `lap_number` field affidabile per SC window detection
+- `raceControlRef.current` deve essere popolato da `fetchRaceData` (non solo `fetchRaceControl`) — aggiungere `raceControlRef.current = rcData` dopo fetch in `fetchRaceData`
+- SC windows: start su `"SAFETY CAR DEPLOYED"`, end su `"SAFETY CAR IN THIS LAP"`; VSC: `"VIRTUAL SAFETY CAR DEPLOYED"`/`"VSC DEPLOYED"` → `"VIRTUAL SAFETY CAR ENDING"`/`"VSC ENDING"`
 
 ---
 
@@ -418,6 +421,9 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 - Schermate Pace + Stints dedicate
 - Telemetria post-gara (`/car_data` + `/location`)
 - GPS piloti live su mappa circuito
+
+### Implementato (Live Race)
+- PACE tab: griglia tempi giro per pilota, colori verde/giallo/viola/bordo-SC, P/O compatti, label SC/VSC su header giri
 
 ### Scartate (no dati pubblici)
 - Pit window

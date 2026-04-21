@@ -228,10 +228,9 @@ export default function HomeScreen() {
   }
 
   async function fetchPaceData(sessionKey: number): Promise<Record<number, Array<{lap: number, time: number | null, isPit: boolean, isOut: boolean, isSafetyCarLap: boolean}>>> {
-    const [data, stintsData] = await Promise.all([
-      safeFetch(`https://api.openf1.org/v1/laps?session_key=${sessionKey}`),
-      safeFetch(`https://api.openf1.org/v1/stints?session_key=${sessionKey}`),
-    ]);
+    const data = await safeFetch(`https://api.openf1.org/v1/laps?session_key=${sessionKey}`);
+    await new Promise(r => setTimeout(r, 500));
+    const stintsData = await safeFetch(`https://api.openf1.org/v1/stints?session_key=${sessionKey}`);
     if (!Array.isArray(data)) return {};
 
     // Build pit/out sets from stints (authoritative)
@@ -1510,17 +1509,12 @@ export default function HomeScreen() {
               const allLapNumbers = Array.from(new Set(
                 Object.values(paceData).flat().map(l => l.lap)
               )).sort((a, b) => a - b);
-              const raceDriverNums = new Set(raceDrivers.map(d => d.driver_number));
-              const extraDrivers = raceDriversCacheRef.current
-                .filter((d: any) => d.driver_number && !raceDriverNums.has(d.driver_number))
-                .map((d: any) => ({
-                  driver_number: d.driver_number,
-                  name_acronym: d.name_acronym ?? String(d.driver_number),
-                  team_colour: d.team_colour ? `#${d.team_colour}` : '#FFFFFF',
-                  isDnf: false,
-                  isLapped: false,
-                }));
-              const drivers = [...raceDrivers, ...extraDrivers];
+              const driverOrder = raceDrivers.map((d: any) => d.driver_number);
+              const allCached = raceDriversCacheRef.current;
+              const drivers = [
+                ...driverOrder.map((num: number) => allCached.find((d: any) => d.driver_number === num)).filter(Boolean),
+                ...allCached.filter((d: any) => !driverOrder.includes(d.driver_number))
+              ];
               const cellWidth = showLapTimes ? 42 : 14;
 
               const scWindowsForRender: Array<{startLap: number, endLap: number}> = [];
@@ -1570,8 +1564,8 @@ export default function HomeScreen() {
                       <View style={{ height: 24 }} />
                       {drivers.map(driver => (
                         <View key={driver.driver_number} style={{ height: 26, flexDirection: 'row', alignItems: 'center', paddingVertical: 3 }}>
-                          <View style={{ width: 2, height: 20, borderRadius: 1, backgroundColor: driver.team_colour, marginRight: 6, marginLeft: 12 }} />
-                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{driver.name_acronym}</Text>
+                          <View style={{ width: 2, height: 20, borderRadius: 1, backgroundColor: driver.team_colour ? (driver.team_colour.startsWith('#') ? driver.team_colour : `#${driver.team_colour}`) : '#FFFFFF', marginRight: 6, marginLeft: 12 }} />
+                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{driver.name_acronym ?? driver.acronym ?? String(driver.driver_number)}</Text>
                         </View>
                       ))}
                     </View>
@@ -1694,9 +1688,9 @@ export default function HomeScreen() {
                       <View key={driver.driver_number} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                         {/* Left column */}
                         <View style={{ width: 80, flexDirection: 'row', alignItems: 'center', paddingRight: 8 }}>
-                          <View style={{ width: 2, height: 36, borderRadius: 1, backgroundColor: driver.team_colour, marginRight: 6 }} />
+                          <View style={{ width: 2, height: 36, borderRadius: 1, backgroundColor: driver.team_colour ? (driver.team_colour.startsWith('#') ? driver.team_colour : `#${driver.team_colour}`) : '#FFFFFF', marginRight: 6 }} />
                           <View>
-                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{driver.name_acronym}</Text>
+                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{driver.name_acronym ?? driver.acronym ?? String(driver.driver_number)}</Text>
                             <Text style={{ color: '#666', fontSize: 8, marginTop: 1 }}>{pitCount}-STOP</Text>
                           </View>
                         </View>

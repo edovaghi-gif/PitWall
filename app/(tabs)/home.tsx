@@ -1379,7 +1379,7 @@ export default function HomeScreen() {
                   <Text style={{ color: !showGapToLeader ? '#FFFFFF' : '#444', fontSize: 7, fontFamily: MONO }}>INT</Text>
                 </View>
                 <View style={{ alignItems: 'center', gap: 2 }}>
-                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: showGapToLeader ? '#E10600' : '#1A1A1A', borderWidth: 0.5, borderColor: showGapToLeader ? '#E10600' : '#333' }} />
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: showGapToLeader ? '#00C850' : '#1A1A1A', borderWidth: 0.5, borderColor: showGapToLeader ? '#00C850' : '#333' }} />
                   <Text style={{ color: showGapToLeader ? '#FFFFFF' : '#444', fontSize: 7, fontFamily: MONO }}>GAP</Text>
                 </View>
               </TouchableOpacity>
@@ -1518,9 +1518,16 @@ export default function HomeScreen() {
 <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 12, paddingVertical: 6 }}>
               <TouchableOpacity
                 onPress={() => setShowLapTimes(prev => !prev)}
-                style={{ backgroundColor: showLapTimes ? '#E10600' : '#1A1A1A', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#0D0D0D', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}
               >
-                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 1 }}>1:23</Text>
+                <View style={{ alignItems: 'center', gap: 2 }}>
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: !showLapTimes ? '#00C850' : '#1A1A1A', borderWidth: 0.5, borderColor: !showLapTimes ? '#00C850' : '#333' }} />
+                  <Text style={{ color: !showLapTimes ? '#FFFFFF' : '#444', fontSize: 7, fontFamily: MONO }}>GRAF</Text>
+                </View>
+                <View style={{ alignItems: 'center', gap: 2 }}>
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: showLapTimes ? '#00C850' : '#1A1A1A', borderWidth: 0.5, borderColor: showLapTimes ? '#00C850' : '#333' }} />
+                  <Text style={{ color: showLapTimes ? '#FFFFFF' : '#444', fontSize: 7, fontFamily: MONO }}>LAP</Text>
+                </View>
               </TouchableOpacity>
             </View>
             {(() => {
@@ -1598,7 +1605,7 @@ export default function HomeScreen() {
                         {allLapNumbers.map(lapNum => {
                           const isVsc = isVscLapFn(lapNum);
                           const isSc = isPureScLapFn(lapNum);
-                          const slotW = showLapTimes ? cellWidth : 20;
+                          const slotW = showLapTimes ? cellWidth + 4 : 20;
                           return (
                             <View key={lapNum} style={{ width: slotW, alignItems: 'center' }}>
                               {isVsc ? (
@@ -1657,7 +1664,7 @@ export default function HomeScreen() {
                             // Build trend sequences (consecutive laps of same trend, 3+ length)
                             const slotWidth = 20;
                             const trendSequences: Array<{ startIdx: number; length: number; trend: 'improving' | 'worsening' }> = [];
-                            if (!showLapTimes) {
+                            {
                               let seqStart = -1;
                               let seqTrend: 'improving' | 'worsening' | null = null;
                               let seqLen = 0;
@@ -1683,25 +1690,45 @@ export default function HomeScreen() {
                             return (
                               <View key={driver.driver_number} style={{ flexDirection: 'row', height: 36, alignItems: 'center', position: 'relative' }}>
                                 {/* Trend sequence overlays */}
-                                {trendSequences.map((seq, si) => (
-                                  <View key={`trend-${si}`} style={{
-                                    position: 'absolute',
-                                    left: seq.startIdx * slotWidth + 1,
-                                    width: seq.length * slotWidth - 4,
-                                    height: 22,
-                                    top: 7,
-                                    borderRadius: 11,
-                                    borderWidth: 1,
-                                    borderColor: seq.trend === 'improving' ? '#27AE60' : '#E10600',
-                                    backgroundColor: 'transparent',
-                                    zIndex: 0,
-                                  }} />
-                                ))}
+                                {trendSequences.map((seq, si) => {
+                                  const slotW = showLapTimes ? cellWidth + 4 : slotWidth;
+                                  const trendColor = seq.trend === 'improving' ? '#27AE60' : '#E10600';
+                                  if (showLapTimes) {
+                                    return (
+                                      <View key={`trend-${si}`} style={{
+                                        position: 'absolute',
+                                        left: seq.startIdx * slotW + 2,
+                                        width: seq.length * slotW - 6,
+                                        height: 22,
+                                        top: 7,
+                                        borderRadius: 6,
+                                        borderWidth: 1.5,
+                                        borderColor: trendColor,
+                                        backgroundColor: 'transparent',
+                                        zIndex: 0,
+                                      }} />
+                                    );
+                                  }
+                                  return (
+                                    <View key={`trend-${si}`} style={{
+                                      position: 'absolute',
+                                      left: seq.startIdx * slotW + 1,
+                                      width: seq.length * slotW - 4,
+                                      height: 22,
+                                      top: 7,
+                                      borderRadius: 11,
+                                      borderWidth: 1,
+                                      borderColor: trendColor,
+                                      backgroundColor: 'transparent',
+                                      zIndex: 0,
+                                    }} />
+                                  );
+                                })}
                                 {allLapNumbers.map(lapNum => {
                                   const lap = lapMap[lapNum];
                                   if (!lap) {
                                     return showLapTimes
-                                      ? <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#0A0A0A', marginRight: 2 }} />
+                                      ? <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#0A0A0A', marginRight: 4 }} />
                                       : <View key={lapNum} style={{ width: slotWidth, height: 36, justifyContent: 'center', alignItems: 'center', zIndex: 1 }}>
                                           <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#0A0A0A' }} />
                                         </View>;
@@ -1710,18 +1737,18 @@ export default function HomeScreen() {
                                   if (showLapTimes) {
                                     if (isSpecial && label) {
                                       return (
-                                        <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', marginRight: 2 }}>
+                                        <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', marginRight: 4 }}>
                                           <Text style={{ color: '#E10600', fontSize: 7, fontWeight: '700' }}>{label}</Text>
                                         </View>
                                       );
                                     }
                                     if (lap.time == null) {
-                                      return <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#0A0A0A', marginRight: 2 }} />;
+                                      return <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#0A0A0A', marginRight: 4 }} />;
                                     }
                                     const cellColor = isSc ? '#F39C12' : bg;
                                     return (
-                                      <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#000000', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: cellColor, marginRight: 2 }}>
-                                        <Text style={{ color: cellColor, fontSize: 7, fontWeight: '700' }}>
+                                      <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: isSc ? '#F39C12' : '#000000', justifyContent: 'center', alignItems: 'center', borderWidth: isSc ? 0 : 1, borderColor: isSc ? 'transparent' : cellColor, marginRight: 4 }}>
+                                        <Text style={{ color: isSc ? '#000000' : cellColor, fontSize: 9, fontWeight: '700', fontFamily: MONO }}>
                                           {(() => {
                                             const t = lap.time;
                                             const m = Math.floor(t / 60);

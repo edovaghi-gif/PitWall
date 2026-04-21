@@ -152,6 +152,8 @@ export default function HomeScreen() {
   const [raceEvents, setRaceEvents] = useState<Array<{time: string, type: string, message: string}>>([]);
   const [eventsExpanded, setEventsExpanded] = useState(false);
   const [raceLiveTab, setRaceLiveTab] = useState<'classifica' | 'pace' | 'stints'>('classifica');
+  const MONO = 'JetBrainsMono_700Bold';
+  const MONO_REG = 'JetBrainsMono_400Regular';
   const [paceData, setPaceData] = useState<Record<number, Array<{lap: number, time: number | null, isPit: boolean, isOut: boolean, isSafetyCarLap: boolean}>>>({});
   const [showLapTimes, setShowLapTimes] = useState(false);
   const [stintsTimelineWidth, setStintsTimelineWidth] = useState(0);
@@ -1274,29 +1276,29 @@ export default function HomeScreen() {
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12 }}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Animated.View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#E10600", marginRight: 8, opacity: pulseAnim }} />
-            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "800", letterSpacing: 1 }}>
+            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "800", letterSpacing: 1, fontFamily: MONO }}>
               GIRO {raceLap ?? "—"}/{raceTotalLaps ?? "—"}
             </Text>
           </View>
           <TouchableOpacity onPress={() => setShowWeatherModal(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={{ color: "#999999", fontSize: 13, fontWeight: "600" }}>
+            <Text style={{ color: "#999999", fontSize: 13, fontWeight: "600", fontFamily: MONO }}>
               {raceWeather?.track_temperature ?? "—"}°C {raceWeather?.rainfall ? "🌧" : "☀️"} ›
             </Text>
           </TouchableOpacity>
         </View>
         {raceRedFlagActive && (
           <View style={{ backgroundColor: "#E10600", marginHorizontal: 16, borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12, marginBottom: 8 }}>
-            <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 13, textAlign: "center" }}>🚩 RED FLAG</Text>
+            <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 13, textAlign: "center", fontFamily: MONO }}>🚩 RED FLAG</Text>
           </View>
         )}
         {raceSafetyCarActive && (
           <View style={{ backgroundColor: "#F39C12", marginHorizontal: 16, borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12, marginBottom: 8 }}>
-            <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 13, textAlign: "center" }}>🚗 SAFETY CAR IN PISTA</Text>
+            <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 13, textAlign: "center", fontFamily: MONO }}>🚗 SAFETY CAR IN PISTA</Text>
           </View>
         )}
         {raceVscActive && (
           <View style={{ backgroundColor: "#F39C12", marginHorizontal: 16, marginBottom: 8, borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#D4890A", borderStyle: "dashed" }}>
-            <Text style={{ color: "#000000", fontWeight: "800", fontSize: 12, letterSpacing: 1 }}>🚗 VIRTUAL SAFETY CAR</Text>
+            <Text style={{ color: "#000000", fontWeight: "800", fontSize: 12, letterSpacing: 1, fontFamily: MONO }}>🚗 VIRTUAL SAFETY CAR</Text>
           </View>
         )}
         {raceYellowSectors.length > 0 && (() => {
@@ -1305,7 +1307,7 @@ export default function HomeScreen() {
             : `⚠️ GIALLA ${raceYellowSectors.join(' · ')}`;
           return (
             <View style={{ backgroundColor: "#F39C12", marginHorizontal: 16, marginBottom: 8, borderRadius: 6, paddingVertical: 4, paddingHorizontal: 12, flexDirection: "row", alignItems: "center" }}>
-              <Text style={{ color: "#000000", fontWeight: "700", fontSize: 11, letterSpacing: 0.5 }}>{yellowLabel}</Text>
+              <Text style={{ color: "#000000", fontWeight: "700", fontSize: 11, letterSpacing: 0.5, fontFamily: MONO }}>{yellowLabel}</Text>
             </View>
           );
         })()}
@@ -1322,21 +1324,21 @@ export default function HomeScreen() {
                 }}>
                   <Text style={{ color: raceEvents[0].type === 'INV' || raceEvents[0].type === 'FLAG' ? '#000' : '#555', fontSize: 9, fontWeight: '700' }}>{raceEvents[0].type}</Text>
                 </View>
-                <Text style={{ color: '#FFFFFF', fontSize: 11 }} numberOfLines={1}>{raceEvents[0].message}</Text>
+                <Text style={{ color: '#FFFFFF', fontSize: 11, fontFamily: MONO_REG }} numberOfLines={1}>{raceEvents[0].message}</Text>
               </View>
               <Text style={{ color: '#444', fontSize: 11 }}>{eventsExpanded ? '▲' : '▼'}</Text>
             </TouchableOpacity>
 
             {eventsExpanded && raceEvents.map((event, i) => (
               <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: '#0A0A0A', opacity: i === 0 ? 1 : 0.5 }}>
-                <Text style={{ color: '#444', fontSize: 10, fontVariant: ['tabular-nums'], width: 56, marginRight: 6 }}>{event.time}</Text>
+                <Text style={{ color: '#444', fontSize: 10, fontVariant: ['tabular-nums'], width: 56, marginRight: 6, fontFamily: MONO_REG }}>{event.time}</Text>
                 <View style={{
                   backgroundColor: event.type === 'INV' ? '#F39C12' : event.type === 'FLAG' ? '#E10600' : event.type === 'PEN' ? '#E10600' : '#1A1A1A',
                   borderRadius: 3, paddingHorizontal: 5, paddingVertical: 1, marginRight: 8, minWidth: 32
                 }}>
                   <Text style={{ color: event.type === 'INV' || event.type === 'FLAG' || event.type === 'PEN' ? '#000' : '#555', fontSize: 9, fontWeight: '700' }}>{event.type}</Text>
                 </View>
-                <Text style={{ color: i === 0 ? '#FFFFFF' : '#666', fontSize: 11, flex: 1, lineHeight: 15 }} numberOfLines={2}>{event.message}</Text>
+                <Text style={{ color: i === 0 ? '#FFFFFF' : '#666', fontSize: 11, flex: 1, lineHeight: 15, fontFamily: MONO_REG }} numberOfLines={2}>{event.message}</Text>
               </View>
             ))}
           </View>
@@ -1348,7 +1350,7 @@ export default function HomeScreen() {
               onPress={() => setRaceLiveTab(tab)}
               style={{ flex: 1, paddingVertical: 10, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: raceLiveTab === tab ? '#E10600' : 'transparent' }}
             >
-              <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.5, color: raceLiveTab === tab ? '#FFFFFF' : '#444' }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.5, color: raceLiveTab === tab ? '#FFFFFF' : '#444', fontFamily: MONO }}>
                 {tab.toUpperCase()}
               </Text>
             </TouchableOpacity>
@@ -1358,21 +1360,20 @@ export default function HomeScreen() {
         {raceLiveTab === 'classifica' && (
           <>
             <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" }}>
-              <Text style={{ color: "#555555", fontSize: 10, width: 22 }}> </Text>
-              <View style={{ width: 12, marginRight: 10 }} />
-              <Text style={{ color: "#555555", fontSize: 10, flex: 1 }}> </Text>
+              <View style={{ width: 20 }} />
+              <View style={{ width: 14 }} />
+              <View style={{ width: 32, marginHorizontal: 6 }} />
+              <View style={{ width: 34 }} />
               <TouchableOpacity onPress={() => setShowGapToLeader(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={{ color: showGapToLeader ? "#E10600" : "#555555", fontSize: 10, fontStyle: "italic", marginRight: 12 }}>
+                <Text style={{ color: showGapToLeader ? "#E10600" : "#555555", fontSize: 8, fontStyle: "italic", width: 76, textAlign: 'center', fontFamily: MONO }}>
                   {showGapToLeader ? "GAP" : "INTERVAL"}
                 </Text>
               </TouchableOpacity>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Text numberOfLines={1} style={{ color: "#444", fontSize: 9, letterSpacing: 1, width: 36, textAlign: "right" }}>S1 S2 S3</Text>
-                <Text style={{ color: "#444", fontSize: 9, letterSpacing: 1, width: 68, textAlign: "right" }}>LAP TIME</Text>
-                <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>CPD</Text>
-                <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>AGE</Text>
-                <Text style={{ color: "#555555", fontSize: 9, width: 20, textAlign: "center" }}>PIT</Text>
-              </View>
+              <Text numberOfLines={1} style={{ color: "#444", fontSize: 8, width: 52, textAlign: "center", marginLeft: 8, fontFamily: MONO }}>S1 S2 S3</Text>
+              <Text style={{ color: "#444", fontSize: 8, width: 72, textAlign: "right", marginLeft: 6, fontFamily: MONO }}>LAP TIME</Text>
+              <Text style={{ color: "#555555", fontSize: 8, width: 22, textAlign: "center", marginLeft: 10, fontFamily: MONO }}>CPD</Text>
+              <Text style={{ color: "#555555", fontSize: 8, width: 22, textAlign: "center", marginLeft: 6, fontFamily: MONO }}>AGE</Text>
+              <Text style={{ color: "#555555", fontSize: 8, width: 18, textAlign: "center", marginLeft: 6, fontFamily: MONO }}>PIT</Text>
             </View>
             <ScrollView>
           {raceDrivers.length === 0 ? (
@@ -1407,16 +1408,16 @@ export default function HomeScreen() {
                     activeOpacity={0.7}
                     onPress={() => setExpandedRaceDriver(isExpanded ? null : driver.driver_number)}
                   >
-                    <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#1A1A1A" }}>
-                      <Text style={{ color: "#999999", fontSize: 13, width: 22 }}>{driver.position}</Text>
-                      <View style={{ width: 2, height: 40, backgroundColor: teamColor, borderRadius: 1, marginRight: 10 }} />
+                    <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 7, borderBottomWidth: 0.5, borderBottomColor: "#1A1A1A" }}>
+                      <Text style={{ color: "#999999", fontSize: 12, width: 20, fontFamily: MONO }}>{driver.position}</Text>
+                      <View style={{ width: 14, alignItems: 'center', justifyContent: 'center' }}><View style={{ width: 2, height: 20, backgroundColor: teamColor, borderRadius: 1 }} /></View>
                       {driver.headshot_url ? (
-                        <Image source={{ uri: driver.headshot_url }} style={{ width: 32, height: 32, borderRadius: 16, marginRight: 8, backgroundColor: "#2A2A2A" }} resizeMode="cover" />
+                        <Image source={{ uri: driver.headshot_url }} style={{ width: 32, height: 32, borderRadius: 16, marginHorizontal: 6, backgroundColor: "#2A2A2A" }} resizeMode="cover" />
                       ) : (
-                        <View style={{ width: 32, height: 32, borderRadius: 16, marginRight: 8, backgroundColor: "#2A2A2A" }} />
+                        <View style={{ width: 32, height: 32, borderRadius: 16, marginHorizontal: 6, backgroundColor: "#2A2A2A" }} />
                       )}
-                      <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "700", flex: 1 }}>{driver.name_acronym}</Text>
-                      <Text style={{ fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"], marginRight: 12, color: intervalColor }}>
+                      <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "700", width: 34, fontFamily: MONO }}>{driver.name_acronym}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "700", fontVariant: ["tabular-nums"], width: 76, textAlign: 'left', color: intervalColor, fontFamily: MONO }}>
                         {intervalDisplay}
                       </Text>
                       {(() => {
@@ -1427,31 +1428,29 @@ export default function HomeScreen() {
                         const s3Color = getRaceSectorColor(lapData?.s3 ?? null, 3, raceLapsRef.current, completedAt);
                         return (
                           <>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginRight: 8 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, width: 52, marginLeft: 8 }}>
                               <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: s1Color }} />
                               <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: s2Color }} />
                               <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: s3Color }} />
                             </View>
-                            <Text style={{ color: lapData?.lapTime ? '#FFFFFF' : '#333', fontSize: 12, fontVariant: ['tabular-nums'], fontWeight: '500', width: 68, textAlign: 'right' }}>
+                            <Text style={{ color: lapData?.lapTime ? '#FFFFFF' : '#333', fontSize: 11, fontVariant: ['tabular-nums'], fontWeight: '500', width: 72, textAlign: 'right', marginLeft: 6, fontFamily: MONO }}>
                               {lapData?.lapTime ? formatLapTime(lapData.lapTime) : '—'}
                             </Text>
                             {(!lapData?.lapTime && lapData?.lapNumber === raceLap) && (
                               <View style={{ backgroundColor: '#F39C12', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 4 }}>
-                                <Text style={{ color: '#000', fontSize: 10, fontWeight: '800' }}>PIT</Text>
+                                <Text style={{ color: '#000', fontSize: 9, fontWeight: '800' }}>PIT</Text>
                               </View>
                             )}
                           </>
                         );
                       })()}
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <View style={{ backgroundColor: tyre.bg, borderRadius: 4, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
-                          <Text style={{ color: tyre.textColor, fontSize: 11, fontWeight: "800" }}>{tyre.label}</Text>
-                        </View>
-                        {driver.tyre_age !== null && (
-                          <Text style={{ color: "#999999", fontSize: 11 }}>{driver.tyre_age}</Text>
-                        )}
-                        <Text style={{ color: "#555555", fontSize: 11 }}>{driver.stops > 0 ? `${driver.stops}S` : ""}</Text>
+                      <View style={{ backgroundColor: tyre.bg, borderRadius: 4, width: 22, height: 22, alignItems: "center", justifyContent: "center", marginLeft: 10 }}>
+                        <Text style={{ color: tyre.textColor, fontSize: 10, fontWeight: "800" }}>{tyre.label}</Text>
                       </View>
+                      {driver.tyre_age !== null && (
+                        <Text style={{ color: "#999999", fontSize: 10, width: 22, marginLeft: 6, fontFamily: MONO }}>{driver.tyre_age}</Text>
+                      )}
+                      <Text style={{ color: "#555555", fontSize: 10, width: 18, marginLeft: 6, fontFamily: MONO_REG }}>{driver.stops > 0 ? `${driver.stops}S` : ""}</Text>
                     </View>
                   </TouchableOpacity>
                   {isExpanded && !driver.isDnf && (

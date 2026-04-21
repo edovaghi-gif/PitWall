@@ -119,6 +119,11 @@ Dynamic fetch. Never hardcode via API.
 - `race_control` `lap_number` field affidabile per SC window detection
 - `raceControlRef.current` deve essere popolato da `fetchRaceData` (non solo `fetchRaceControl`) — aggiungere `raceControlRef.current = rcData` dopo fetch in `fetchRaceData`
 - SC windows: start su `"SAFETY CAR DEPLOYED"`, end su `"SAFETY CAR IN THIS LAP"`; VSC: `"VIRTUAL SAFETY CAR DEPLOYED"`/`"VSC DEPLOYED"` → `"VIRTUAL SAFETY CAR ENDING"`/`"VSC ENDING"`
+- `/laps` max ~1108 entries per gara (no pagination)
+- PIT/OUT da `/stints` (`lap_start-1`=pit, `lap_start`=out) — NON da `lap_duration`
+- Stint dedup: per `(driver_number, stint_number)`, tieni `lap_start` minore
+- Rate limiting: sequential fetch 500ms delay, mai `Promise.all`
+- ALB Giappone: 5 pit reali (test Williams) — dati corretti
 
 ---
 
@@ -424,6 +429,8 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 
 ### Implementato (Live Race)
 - PACE tab: griglia tempi giro per pilota, colori verde/giallo/viola/bordo-SC, P/O compatti, label SC/VSC su header giri
+- STINTS tab: timeline orizzontale compound per pilota, NOW line rossa, dedup stint, tyre age
+- PACE tab: pallini + trend Robinhood (bordo verde/rosso su sequenze 3+ giri), PIT/OUT da /stints, tutti 22 piloti, slot quadrati allineati
 
 ### Scartate (no dati pubblici)
 - Pit window

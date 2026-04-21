@@ -156,6 +156,7 @@ export default function HomeScreen() {
   const [showLapTimes, setShowLapTimes] = useState(false);
   const [stintsTimelineWidth, setStintsTimelineWidth] = useState(0);
   const paceScrollRef = useRef<ScrollView>(null);
+  const paceHeaderScrollRef = useRef<ScrollView>(null);
   const [showWeatherModal, setShowWeatherModal] = useState(false);
   const previousIntervalsRef = useRef<Record<number, number>>({});
   const raceStintsRef = useRef<any[]>([]);
@@ -1205,13 +1206,12 @@ export default function HomeScreen() {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           dnfRef.current = new Set(data.map((l: any) => l.driver_number));
-        } else {
         }
       } catch {}
+      fetchRaceData();
+      fetchRaceStints();
+      fetchRaceWeather();
     })();
-    fetchRaceData();
-    fetchRaceStints();
-    fetchRaceWeather();
     const dataInterval = setInterval(fetchRaceData, 15000);
     const stintsInterval = setInterval(fetchRaceStints, 30000);
     const weatherInterval = setInterval(fetchRaceWeather, 120000);
@@ -1231,9 +1231,13 @@ export default function HomeScreen() {
     const sessionKey = RACE_DEV_MODE ? RACE_DEV_SESSION_KEY : activeSession?.session_key;
     if (!sessionKey) return;
     (async () => {
-      await fetchRaceData();
-      await fetchRaceStints();
+      // Fetch pace data immediately — don't wait for fetchRaceData
       const byDriver = await fetchPaceData(sessionKey);
+      // Then update SC flags in background using whatever raceControlRef already has
+      recomputeScFlags(byDriver);
+      // Then fetch race data in background to refresh raceControlRef and raceDriversCacheRef
+      await fetchRaceData();
+      // Recompute SC flags again now that raceControlRef is fresh
       recomputeScFlags(byDriver);
     })();
   }, [raceLiveTab]);
@@ -1512,10 +1516,19 @@ export default function HomeScreen() {
               )).sort((a, b) => a - b);
               const driverOrder = raceDrivers.map((d: any) => d.driver_number);
               const allCached = raceDriversCacheRef.current;
+              const raceDriverMeta: Record<number, {isDnf: boolean, isLapped: boolean, position: number}> = {};
+              for (const d of raceDrivers) raceDriverMeta[d.driver_number] = { isDnf: d.isDnf, isLapped: d.isLapped, position: d.position ?? 999 };
               const drivers = [
                 ...driverOrder.map((num: number) => allCached.find((d: any) => d.driver_number === num)).filter(Boolean),
                 ...allCached.filter((d: any) => !driverOrder.includes(d.driver_number))
-              ];
+              ].sort((a: any, b: any) => {
+                const am = raceDriverMeta[a.driver_number] ?? { isDnf: false, isLapped: false, position: 999 };
+                const bm = raceDriverMeta[b.driver_number] ?? { isDnf: false, isLapped: false, position: 999 };
+                const aScore = am.isDnf ? 2 : am.isLapped ? 1 : 0;
+                const bScore = bm.isDnf ? 2 : bm.isLapped ? 1 : 0;
+                if (aScore !== bScore) return aScore - bScore;
+                return am.position - bm.position;
+              });
               const cellWidth = showLapTimes ? 42 : 14;
 
               const scWindowsForRender: Array<{startLap: number, endLap: number}> = [];
@@ -1559,74 +1572,169 @@ export default function HomeScreen() {
               }
 
               return (
-                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>
+                <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row' }}>
-                    <View style={{ width: 52 }}>
-                      <View style={{ height: 24 }} />
-                      {drivers.map(driver => (
-                        <View key={driver.driver_number} style={{ height: 26, flexDirection: 'row', alignItems: 'center', paddingVertical: 3 }}>
-                          <View style={{ width: 2, height: 20, borderRadius: 1, backgroundColor: driver.team_colour ? (driver.team_colour.startsWith('#') ? driver.team_colour : `#${driver.team_colour}`) : '#FFFFFF', marginRight: 6, marginLeft: 12 }} />
-                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{driver.name_acronym ?? driver.acronym ?? String(driver.driver_number)}</Text>
-                        </View>
-                      ))}
-                    </View>
+                    <View style={{ width: 52 }} />
                     <ScrollView
-                      ref={paceScrollRef}
+                      ref={paceHeaderScrollRef}
                       horizontal
                       showsHorizontalScrollIndicator={false}
-                      onContentSizeChange={() => paceScrollRef.current?.scrollToEnd({ animated: false })}
+                      scrollEnabled={false}
                     >
-                      <View>
-                        <View style={{ flexDirection: 'row', gap: 2, marginBottom: 2, height: 24, alignItems: 'flex-end' }}>
-                          {allLapNumbers.map(lapNum => {
-                            const isVsc = isVscLapFn(lapNum);
-                            const isSc = isPureScLapFn(lapNum);
-                            return (
-                              <View key={lapNum} style={{ width: cellWidth, alignItems: 'center' }}>
-                                {isVsc ? (
-                                  <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>VSC</Text>
-                                ) : isSc ? (
-                                  <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>SC</Text>
-                                ) : null}
-                                <Text style={{ color: '#333', fontSize: 8 }}>{lapNum}</Text>
-                              </View>
-                            );
-                          })}
-                        </View>
-                        {drivers.map(driver => {
-                          const laps = paceData[driver.driver_number] ?? [];
-                          const lapMap: Record<number, typeof laps[0]> = {};
-                          for (const l of laps) lapMap[l.lap] = l;
+                      <View style={{ flexDirection: 'row', height: 20, alignItems: 'flex-end' }}>
+                        {allLapNumbers.map(lapNum => {
+                          const isVsc = isVscLapFn(lapNum);
+                          const isSc = isPureScLapFn(lapNum);
+                          const slotW = showLapTimes ? cellWidth : 20;
                           return (
-                            <View key={driver.driver_number} style={{ flexDirection: 'row', gap: 2, height: 26, alignItems: 'center' }}>
-                              {allLapNumbers.map(lapNum => {
-                                const lap = lapMap[lapNum];
-                                if (!lap) return <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 2, backgroundColor: '#0A0A0A' }} />;
-                                const { bg, isSpecial, label, isSc } = getPaceColor({ ...lap, isSafetyCarLap: isScLapFn(lap.lap) }, driver.driver_number, overallBestLap, driverAverages);
-                                return (
-                                  <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 2, backgroundColor: bg, justifyContent: 'center', alignItems: 'center', borderWidth: isSc ? 1 : 0, borderColor: '#F39C12' }}>
-                                    {isSpecial && label ? (
-                                      <Text style={{ color: '#E10600', fontSize: 7, fontWeight: '700' }}>{showLapTimes ? label : label[0]}</Text>
-                                    ) : showLapTimes && lap.time != null ? (
-                                      <Text style={{ color: isSc ? '#F39C12' : '#000', fontSize: 7, fontWeight: '700' }}>
-                                        {(() => {
-                                          const t = lap.time;
-                                          const m = Math.floor(t / 60);
-                                          const s = (t % 60).toFixed(1).padStart(4, '0');
-                                          return `${m}:${s}`;
-                                        })()}
-                                      </Text>
-                                    ) : null}
-                                  </View>
-                                );
-                              })}
+                            <View key={lapNum} style={{ width: slotW, alignItems: 'center' }}>
+                              {isVsc ? (
+                                <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>VSC</Text>
+                              ) : isSc ? (
+                                <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>SC</Text>
+                              ) : null}
+                              <Text style={{ color: '#888', fontSize: 8 }}>{lapNum}</Text>
                             </View>
                           );
                         })}
                       </View>
                     </ScrollView>
                   </View>
-                </ScrollView>
+                  <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20, gap: 2 }}>
+                    <View style={{ flexDirection: 'row' }}>
+                      <View style={{ width: 52 }}>
+                        {drivers.map(driver => (
+                          <View key={driver.driver_number} style={{ height: 36, flexDirection: 'row', alignItems: 'center' }}>
+                            <View style={{ width: 2, height: 20, borderRadius: 1, backgroundColor: driver.team_colour ? (driver.team_colour.startsWith('#') ? driver.team_colour : `#${driver.team_colour}`) : '#FFFFFF', marginRight: 6, marginLeft: 12 }} />
+                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{driver.name_acronym ?? driver.acronym ?? String(driver.driver_number)}</Text>
+                          </View>
+                        ))}
+                      </View>
+                      <ScrollView
+                        ref={paceScrollRef}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        onContentSizeChange={() => paceScrollRef.current?.scrollToEnd({ animated: false })}
+                        onScroll={(e) => paceHeaderScrollRef.current?.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false })}
+                        scrollEventThrottle={16}
+                      >
+                        <View>
+                          {drivers.map(driver => {
+                            const laps = paceData[driver.driver_number] ?? [];
+                            const lapMap: Record<number, typeof laps[0]> = {};
+                            for (const l of laps) lapMap[l.lap] = l;
+
+                            // Compute pace trend per lap
+                            const cleanLaps = laps
+                              .filter(l => !l.isPit && !l.isOut && !isScLapFn(l.lap) && l.time !== null && l.time > 60 && l.time < 200)
+                              .sort((a, b) => a.lap - b.lap);
+                            const trendMap = new Map<number, 'improving' | 'worsening'>();
+                            for (let i = 3; i < cleanLaps.length; i++) {
+                              const prev = cleanLaps.slice(i - 3, i);
+                              const curr = cleanLaps.slice(i, i + 3);
+                              if (prev.length < 3 || curr.length < 3) continue;
+                              const avgPrev = prev.reduce((s, l) => s + (l.time as number), 0) / 3;
+                              const avgCurr = curr.reduce((s, l) => s + (l.time as number), 0) / 3;
+                              const trend: 'improving' | 'worsening' | null =
+                                avgPrev - avgCurr > 0.2 ? 'improving' :
+                                avgCurr - avgPrev > 0.2 ? 'worsening' : null;
+                              if (trend) curr.forEach(l => trendMap.set(l.lap, trend));
+                            }
+
+                            // Build trend sequences (consecutive laps of same trend, 3+ length)
+                            const slotWidth = 20;
+                            const trendSequences: Array<{ startIdx: number; length: number; trend: 'improving' | 'worsening' }> = [];
+                            if (!showLapTimes) {
+                              let seqStart = -1;
+                              let seqTrend: 'improving' | 'worsening' | null = null;
+                              let seqLen = 0;
+                              for (let idx = 0; idx < allLapNumbers.length; idx++) {
+                                const lapNum = allLapNumbers[idx];
+                                const t = trendMap.get(lapNum) ?? null;
+                                if (t && t === seqTrend) {
+                                  seqLen++;
+                                } else {
+                                  if (seqTrend && seqLen >= 3) {
+                                    trendSequences.push({ startIdx: seqStart, length: seqLen, trend: seqTrend });
+                                  }
+                                  seqStart = idx;
+                                  seqTrend = t;
+                                  seqLen = 1;
+                                }
+                              }
+                              if (seqTrend && seqLen >= 3) {
+                                trendSequences.push({ startIdx: seqStart, length: seqLen, trend: seqTrend });
+                              }
+                            }
+
+                            return (
+                              <View key={driver.driver_number} style={{ flexDirection: 'row', height: 36, alignItems: 'center', position: 'relative' }}>
+                                {/* Trend sequence overlays */}
+                                {trendSequences.map((seq, si) => (
+                                  <View key={`trend-${si}`} style={{
+                                    position: 'absolute',
+                                    left: seq.startIdx * slotWidth + 1,
+                                    width: seq.length * slotWidth - 4,
+                                    height: 22,
+                                    top: 7,
+                                    borderRadius: 11,
+                                    borderWidth: 1,
+                                    borderColor: seq.trend === 'improving' ? '#27AE60' : '#E10600',
+                                    backgroundColor: 'transparent',
+                                    zIndex: 0,
+                                  }} />
+                                ))}
+                                {allLapNumbers.map(lapNum => {
+                                  const lap = lapMap[lapNum];
+                                  if (!lap) {
+                                    return showLapTimes
+                                      ? <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 2, backgroundColor: '#0A0A0A', marginRight: 2 }} />
+                                      : <View key={lapNum} style={{ width: slotWidth, height: 36, justifyContent: 'center', alignItems: 'center', zIndex: 1 }}>
+                                          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#0A0A0A' }} />
+                                        </View>;
+                                  }
+                                  const { bg, isSpecial, label, isSc } = getPaceColor({ ...lap, isSafetyCarLap: isScLapFn(lap.lap) }, driver.driver_number, overallBestLap, driverAverages);
+                                  if (showLapTimes) {
+                                    return (
+                                      <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 2, backgroundColor: bg, justifyContent: 'center', alignItems: 'center', borderWidth: isSc ? 1 : 0, borderColor: '#F39C12', marginRight: 2 }}>
+                                        {isSpecial && label ? (
+                                          <Text style={{ color: '#E10600', fontSize: 7, fontWeight: '700' }}>{label[0]}</Text>
+                                        ) : lap.time != null ? (
+                                          <Text style={{ color: isSc ? '#F39C12' : '#000', fontSize: 7, fontWeight: '700' }}>
+                                            {(() => {
+                                              const t = lap.time;
+                                              const m = Math.floor(t / 60);
+                                              const s = (t % 60).toFixed(1).padStart(4, '0');
+                                              return `${m}:${s}`;
+                                            })()}
+                                          </Text>
+                                        ) : null}
+                                      </View>
+                                    );
+                                  }
+                                  if (isSpecial && label) {
+                                    return (
+                                      <View key={lapNum} style={{ width: slotWidth, height: 36, justifyContent: 'center', alignItems: 'center', zIndex: 1 }}>
+                                        <View style={{ width: 14, height: 16, borderRadius: 2, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }}>
+                                          <Text style={{ color: '#E10600', fontSize: 6, fontWeight: '700' }}>{label[0]}</Text>
+                                        </View>
+                                      </View>
+                                    );
+                                  }
+                                  return (
+                                    <View key={lapNum} style={{ width: slotWidth, height: 36, justifyContent: 'center', alignItems: 'center', zIndex: 1 }}>
+                                      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: bg, borderWidth: isSc ? 1 : 0, borderColor: '#F39C12' }} />
+                                    </View>
+                                  );
+                                })}
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </ScrollView>
+                    </View>
+                  </ScrollView>
+                </View>
               );
             })()}
           </View>

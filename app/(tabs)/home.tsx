@@ -1701,27 +1701,34 @@ export default function HomeScreen() {
                                   const lap = lapMap[lapNum];
                                   if (!lap) {
                                     return showLapTimes
-                                      ? <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 2, backgroundColor: '#0A0A0A', marginRight: 2 }} />
+                                      ? <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#0A0A0A', marginRight: 2 }} />
                                       : <View key={lapNum} style={{ width: slotWidth, height: 36, justifyContent: 'center', alignItems: 'center', zIndex: 1 }}>
                                           <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#0A0A0A' }} />
                                         </View>;
                                   }
                                   const { bg, isSpecial, label, isSc } = getPaceColor({ ...lap, isSafetyCarLap: isScLapFn(lap.lap) }, driver.driver_number, overallBestLap, driverAverages);
                                   if (showLapTimes) {
+                                    if (isSpecial && label) {
+                                      return (
+                                        <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', marginRight: 2 }}>
+                                          <Text style={{ color: '#E10600', fontSize: 7, fontWeight: '700' }}>{label}</Text>
+                                        </View>
+                                      );
+                                    }
+                                    if (lap.time == null) {
+                                      return <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#0A0A0A', marginRight: 2 }} />;
+                                    }
+                                    const cellColor = isSc ? '#F39C12' : bg;
                                     return (
-                                      <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 2, backgroundColor: bg, justifyContent: 'center', alignItems: 'center', borderWidth: isSc ? 1 : 0, borderColor: '#F39C12', marginRight: 2 }}>
-                                        {isSpecial && label ? (
-                                          <Text style={{ color: '#E10600', fontSize: 7, fontWeight: '700' }}>{label[0]}</Text>
-                                        ) : lap.time != null ? (
-                                          <Text style={{ color: isSc ? '#F39C12' : '#000', fontSize: 7, fontWeight: '700' }}>
-                                            {(() => {
-                                              const t = lap.time;
-                                              const m = Math.floor(t / 60);
-                                              const s = (t % 60).toFixed(1).padStart(4, '0');
-                                              return `${m}:${s}`;
-                                            })()}
-                                          </Text>
-                                        ) : null}
+                                      <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#000000', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: cellColor, marginRight: 2 }}>
+                                        <Text style={{ color: cellColor, fontSize: 7, fontWeight: '700' }}>
+                                          {(() => {
+                                            const t = lap.time;
+                                            const m = Math.floor(t / 60);
+                                            const s = (t % 60).toFixed(1).padStart(4, '0');
+                                            return `${m}:${s}`;
+                                          })()}
+                                        </Text>
                                       </View>
                                     );
                                   }

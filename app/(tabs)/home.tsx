@@ -1231,8 +1231,9 @@ export default function HomeScreen() {
     const sessionKey = RACE_DEV_MODE ? RACE_DEV_SESSION_KEY : activeSession?.session_key;
     if (!sessionKey) return;
     (async () => {
-      const byDriver = await fetchPaceData(sessionKey);
       await fetchRaceData();
+      await fetchRaceStints();
+      const byDriver = await fetchPaceData(sessionKey);
       recomputeScFlags(byDriver);
     })();
   }, [raceLiveTab]);
@@ -1597,7 +1598,7 @@ export default function HomeScreen() {
                           const lapMap: Record<number, typeof laps[0]> = {};
                           for (const l of laps) lapMap[l.lap] = l;
                           return (
-                            <View key={driver.driver_number} style={{ flexDirection: 'row', gap: 2, marginBottom: 3, height: 20 }}>
+                            <View key={driver.driver_number} style={{ flexDirection: 'row', gap: 2, height: 26, alignItems: 'center' }}>
                               {allLapNumbers.map(lapNum => {
                                 const lap = lapMap[lapNum];
                                 if (!lap) return <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 2, backgroundColor: '#0A0A0A' }} />;

@@ -617,8 +617,8 @@ export default function HomeScreen() {
   function WeatherRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
     return (
       <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5 }}>
-        <Text style={{ color: "#999999", fontSize: 13 }}>{label}</Text>
-        <Text style={{ color: highlight ? "#F39C12" : "#FFFFFF", fontSize: 13, fontWeight: "600" }}>{value}</Text>
+        <Text style={{ color: "#999999", fontSize: 11, fontFamily: MONO_REG }}>{label}</Text>
+        <Text style={{ color: highlight ? "#F39C12" : "#FFFFFF", fontSize: 12, fontFamily: MONO }}>{value}</Text>
       </View>
     );
   }
@@ -1268,6 +1268,8 @@ export default function HomeScreen() {
   }
 
   if (isRace) {
+    const weatherLabel = !raceWeather ? '—' : raceWeather.rainfall ? 'WET' : 'DRY';
+    const weatherColor = !raceWeather ? '#999' : raceWeather.rainfall ? '#4FC3F7' : '#E8A000';
     return (
       <View style={{ flex: 1, backgroundColor: "#0A0A0A", paddingTop: 52 }}>
         <View style={styles.navbar}>
@@ -1280,25 +1282,32 @@ export default function HomeScreen() {
               GIRO {raceLap ?? "—"}/{raceTotalLaps ?? "—"}
             </Text>
           </View>
-          <TouchableOpacity onPress={() => setShowWeatherModal(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={{ color: "#999999", fontSize: 13, fontWeight: "600", fontFamily: MONO }}>
-              {raceWeather?.track_temperature ?? "—"}°C {raceWeather?.rainfall ? "🌧" : "☀️"} ›
-            </Text>
+          <TouchableOpacity onPress={() => setShowWeatherModal(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ color: "#999999", fontSize: 13, fontFamily: MONO }}>{raceWeather?.track_temperature ?? "—"}°C{' '}</Text>
+            <Text style={{ color: weatherColor, fontSize: 11, fontWeight: '700', fontFamily: MONO }}>{weatherLabel}</Text>
+            <Text style={{ color: "#999999", fontSize: 13, fontFamily: MONO }}>{' '}›</Text>
           </TouchableOpacity>
         </View>
         {raceRedFlagActive && (
-          <View style={{ backgroundColor: "#E10600", marginHorizontal: 16, borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12, marginBottom: 8 }}>
-            <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 13, textAlign: "center", fontFamily: MONO }}>🚩 RED FLAG</Text>
+          <View style={{ backgroundColor: '#1A0000', borderWidth: 1, borderColor: '#E10600', marginHorizontal: 12, marginVertical: 4, borderRadius: 4, paddingHorizontal: 12, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Animated.View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#E10600', opacity: pulseAnim }} />
+              <Text style={{ color: '#E10600', fontSize: 10 }}>▲</Text>
+              <Text style={{ color: '#E10600', fontSize: 12, fontWeight: '700', letterSpacing: 2, fontFamily: MONO }}>RED FLAG</Text>
+            </View>
+            <Text style={{ color: '#E10600', fontSize: 9, letterSpacing: 1.5, fontFamily: MONO, opacity: 0.7 }}>LAPS COUNTING</Text>
           </View>
         )}
-        {raceSafetyCarActive && (
-          <View style={{ backgroundColor: "#F39C12", marginHorizontal: 16, borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12, marginBottom: 8 }}>
-            <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 13, textAlign: "center", fontFamily: MONO }}>🚗 SAFETY CAR IN PISTA</Text>
-          </View>
-        )}
-        {raceVscActive && (
-          <View style={{ backgroundColor: "#F39C12", marginHorizontal: 16, marginBottom: 8, borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#D4890A", borderStyle: "dashed" }}>
-            <Text style={{ color: "#000000", fontWeight: "800", fontSize: 12, letterSpacing: 1, fontFamily: MONO }}>🚗 VIRTUAL SAFETY CAR</Text>
+        {(raceSafetyCarActive || raceVscActive) && (
+          <View style={{ backgroundColor: '#1A1500', borderWidth: 1, borderColor: '#F39C12', marginHorizontal: 12, marginVertical: 4, borderRadius: 4, paddingHorizontal: 12, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Animated.View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#F39C12', opacity: pulseAnim }} />
+              <Text style={{ color: '#F39C12', fontSize: 10 }}>▲</Text>
+              <Text style={{ color: '#F39C12', fontSize: 12, fontWeight: '700', letterSpacing: 2, fontFamily: MONO }}>
+                {raceSafetyCarActive ? 'SAFETY CAR' : 'VIRTUAL SC'}
+              </Text>
+            </View>
+            <Text style={{ color: '#F39C12', fontSize: 9, letterSpacing: 1.5, fontFamily: MONO, opacity: 0.7 }}>LAPS COUNTING</Text>
           </View>
         )}
         {raceYellowSectors.length > 0 && (() => {
@@ -1359,21 +1368,26 @@ export default function HomeScreen() {
 
         {raceLiveTab === 'classifica' && (
           <>
-            <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" }}>
-              <View style={{ width: 20 }} />
-              <View style={{ width: 14 }} />
-              <View style={{ width: 32, marginHorizontal: 6 }} />
-              <View style={{ width: 34 }} />
-              <TouchableOpacity onPress={() => setShowGapToLeader(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={{ color: showGapToLeader ? "#E10600" : "#555555", fontSize: 8, fontStyle: "italic", width: 76, textAlign: 'center', fontFamily: MONO }}>
-                  {showGapToLeader ? "GAP" : "INTERVAL"}
-                </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" }}>
+              <View style={{ width: 18 }} />
+              <View style={{ width: 10 }} />
+              <View style={{ width: 32, marginHorizontal: 4 }} />
+              <View style={{ width: 32 }} />
+              <TouchableOpacity onPress={() => setShowGapToLeader(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: 72, gap: 10 }}>
+                <View style={{ alignItems: 'center', gap: 2 }}>
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: !showGapToLeader ? '#00C850' : '#1A1A1A', borderWidth: 0.5, borderColor: !showGapToLeader ? '#00C850' : '#333' }} />
+                  <Text style={{ color: !showGapToLeader ? '#FFFFFF' : '#444', fontSize: 7, fontFamily: MONO }}>INT</Text>
+                </View>
+                <View style={{ alignItems: 'center', gap: 2 }}>
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: showGapToLeader ? '#E10600' : '#1A1A1A', borderWidth: 0.5, borderColor: showGapToLeader ? '#E10600' : '#333' }} />
+                  <Text style={{ color: showGapToLeader ? '#FFFFFF' : '#444', fontSize: 7, fontFamily: MONO }}>GAP</Text>
+                </View>
               </TouchableOpacity>
-              <Text numberOfLines={1} style={{ color: "#444", fontSize: 8, width: 52, textAlign: "center", marginLeft: 8, fontFamily: MONO }}>S1 S2 S3</Text>
-              <Text style={{ color: "#444", fontSize: 8, width: 72, textAlign: "right", marginLeft: 6, fontFamily: MONO }}>LAP TIME</Text>
-              <Text style={{ color: "#555555", fontSize: 8, width: 22, textAlign: "center", marginLeft: 10, fontFamily: MONO }}>CPD</Text>
-              <Text style={{ color: "#555555", fontSize: 8, width: 22, textAlign: "center", marginLeft: 6, fontFamily: MONO }}>AGE</Text>
-              <Text style={{ color: "#555555", fontSize: 8, width: 18, textAlign: "center", marginLeft: 6, fontFamily: MONO }}>PIT</Text>
+              <Text numberOfLines={1} style={{ color: "#444", fontSize: 8, width: 46, textAlign: "center", marginLeft: 6, fontFamily: MONO }}>S1 S2 S3</Text>
+              <Text style={{ color: "#444", fontSize: 8, width: 68, textAlign: "right", marginLeft: 4, fontFamily: MONO }}>LAP TIME</Text>
+              <Text style={{ color: "#555555", fontSize: 8, width: 20, textAlign: "center", marginLeft: 8, fontFamily: MONO }}>CPD</Text>
+              <Text style={{ color: "#555555", fontSize: 8, width: 20, textAlign: "center", marginLeft: 4, fontFamily: MONO }}>AGE</Text>
+              <Text style={{ color: "#555555", fontSize: 8, width: 16, textAlign: "center", marginLeft: 4, fontFamily: MONO }}>PIT</Text>
             </View>
             <ScrollView>
           {raceDrivers.length === 0 ? (
@@ -1408,16 +1422,16 @@ export default function HomeScreen() {
                     activeOpacity={0.7}
                     onPress={() => setExpandedRaceDriver(isExpanded ? null : driver.driver_number)}
                   >
-                    <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 7, borderBottomWidth: 0.5, borderBottomColor: "#1A1A1A" }}>
-                      <Text style={{ color: "#999999", fontSize: 12, width: 20, fontFamily: MONO }}>{driver.position}</Text>
-                      <View style={{ width: 14, alignItems: 'center', justifyContent: 'center' }}><View style={{ width: 2, height: 20, backgroundColor: teamColor, borderRadius: 1 }} /></View>
+                    <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 7, borderBottomWidth: 0.5, borderBottomColor: "#1A1A1A" }}>
+                      <Text style={{ color: "#999999", fontSize: 12, width: 18, fontFamily: MONO }}>{driver.position}</Text>
+                      <View style={{ width: 10, alignItems: 'center', justifyContent: 'center' }}><View style={{ width: 2, height: 20, backgroundColor: teamColor, borderRadius: 1 }} /></View>
                       {driver.headshot_url ? (
-                        <Image source={{ uri: driver.headshot_url }} style={{ width: 32, height: 32, borderRadius: 16, marginHorizontal: 6, backgroundColor: "#2A2A2A" }} resizeMode="cover" />
+                        <Image source={{ uri: driver.headshot_url }} style={{ width: 32, height: 32, borderRadius: 16, marginHorizontal: 4, backgroundColor: "#2A2A2A" }} resizeMode="cover" />
                       ) : (
-                        <View style={{ width: 32, height: 32, borderRadius: 16, marginHorizontal: 6, backgroundColor: "#2A2A2A" }} />
+                        <View style={{ width: 32, height: 32, borderRadius: 16, marginHorizontal: 4, backgroundColor: "#2A2A2A" }} />
                       )}
-                      <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "700", width: 34, fontFamily: MONO }}>{driver.name_acronym}</Text>
-                      <Text style={{ fontSize: 12, fontWeight: "700", fontVariant: ["tabular-nums"], width: 76, textAlign: 'left', color: intervalColor, fontFamily: MONO }}>
+                      <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "700", width: 32, fontFamily: MONO }}>{driver.name_acronym}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "700", fontVariant: ["tabular-nums"], width: 72, textAlign: 'left', color: intervalColor, fontFamily: MONO }}>
                         {intervalDisplay}
                       </Text>
                       {(() => {
@@ -1428,12 +1442,12 @@ export default function HomeScreen() {
                         const s3Color = getRaceSectorColor(lapData?.s3 ?? null, 3, raceLapsRef.current, completedAt);
                         return (
                           <>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, width: 52, marginLeft: 8 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, width: 46, marginLeft: 6 }}>
                               <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: s1Color }} />
                               <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: s2Color }} />
                               <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: s3Color }} />
                             </View>
-                            <Text style={{ color: lapData?.lapTime ? '#FFFFFF' : '#333', fontSize: 11, fontVariant: ['tabular-nums'], fontWeight: '500', width: 72, textAlign: 'right', marginLeft: 6, fontFamily: MONO }}>
+                            <Text style={{ color: lapData?.lapTime ? '#FFFFFF' : '#333', fontSize: 11, fontVariant: ['tabular-nums'], fontWeight: '500', width: 68, textAlign: 'right', marginLeft: 4, fontFamily: MONO }}>
                               {lapData?.lapTime ? formatLapTime(lapData.lapTime) : '—'}
                             </Text>
                             {(!lapData?.lapTime && lapData?.lapNumber === raceLap) && (
@@ -1444,13 +1458,13 @@ export default function HomeScreen() {
                           </>
                         );
                       })()}
-                      <View style={{ backgroundColor: tyre.bg, borderRadius: 4, width: 22, height: 22, alignItems: "center", justifyContent: "center", marginLeft: 10 }}>
+                      <View style={{ backgroundColor: tyre.bg, borderRadius: 4, width: 20, height: 20, alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
                         <Text style={{ color: tyre.textColor, fontSize: 10, fontWeight: "800" }}>{tyre.label}</Text>
                       </View>
                       {driver.tyre_age !== null && (
-                        <Text style={{ color: "#999999", fontSize: 10, width: 22, marginLeft: 6, fontFamily: MONO }}>{driver.tyre_age}</Text>
+                        <Text style={{ color: "#999999", fontSize: 10, width: 20, marginLeft: 4, textAlign: 'center', fontFamily: MONO }}>{driver.tyre_age}</Text>
                       )}
-                      <Text style={{ color: "#555555", fontSize: 10, width: 18, marginLeft: 6, fontFamily: MONO_REG }}>{driver.stops > 0 ? `${driver.stops}S` : ""}</Text>
+                      <Text style={{ color: "#555555", fontSize: 10, width: 16, marginLeft: 4, textAlign: 'center', fontFamily: MONO_REG }}>{driver.stops > 0 ? `${driver.stops}S` : ""}</Text>
                     </View>
                   </TouchableOpacity>
                   {isExpanded && !driver.isDnf && (
@@ -1845,24 +1859,27 @@ export default function HomeScreen() {
           <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowWeatherModal(false)} />
           <View style={{ backgroundColor: "#141414", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 }}>
             <View style={{ width: 40, height: 4, backgroundColor: "#2A2A2A", borderRadius: 2, alignSelf: "center", marginBottom: 20 }} />
-            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "800", letterSpacing: 1, marginBottom: 20 }}>CONDIZIONI PISTA</Text>
+            <Text style={{ color: "#FFFFFF", fontSize: 13, fontFamily: MONO, letterSpacing: 2, marginBottom: 20 }}>CONDIZIONI PISTA</Text>
             {!raceWeather ? (
               <Text style={{ color: "#999999", fontSize: 13, textAlign: "center", paddingVertical: 24 }}>Dati meteo non disponibili</Text>
             ) : (
               <>
-                <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 8 }}>🌡 TEMPERATURA</Text>
-                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                <Text style={{ color: "#555555", fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>TEMPERATURA</Text>
+                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 4, padding: 14, marginBottom: 16 }}>
                   <WeatherRow label="Asfalto" value={`${raceWeather.track_temperature ?? "—"}°C`} />
                   <WeatherRow label="Aria" value={`${raceWeather.air_temperature ?? "—"}°C`} />
                 </View>
-                <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 8 }}>💧 UMIDITÀ & PIOGGIA</Text>
-                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                <Text style={{ color: "#555555", fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>UMIDITÀ</Text>
+                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 4, padding: 14, marginBottom: 16 }}>
                   <WeatherRow label="Umidità" value={`${raceWeather.humidity ?? "—"}%`} />
-                  <WeatherRow label="Pioggia in corso" value={raceWeather.rainfall ? "Sì 🌧" : "No ☀️"} />
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5 }}>
+                    <Text style={{ color: "#999999", fontSize: 11, fontFamily: MONO_REG }}>Pioggia in corso</Text>
+                    <Text style={{ color: raceWeather.rainfall ? '#4FC3F7' : '#E8A000', fontSize: 12, fontFamily: MONO }}>{raceWeather.rainfall ? 'WET' : 'DRY'}</Text>
+                  </View>
                   {raceRainRisk !== null && <WeatherRow label="Rischio pioggia" value={raceRainRisk} highlight={parseInt(raceRainRisk) > 30} />}
                 </View>
-                <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 8 }}>💨 VENTO</Text>
-                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 10, padding: 14 }}>
+                <Text style={{ color: "#555555", fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>VENTO</Text>
+                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 4, padding: 14 }}>
                   <WeatherRow label="Velocità" value={`${raceWeather.wind_speed ?? "—"} m/s`} />
                   <WeatherRow label="Direzione" value={raceWeather.wind_direction != null ? `${raceWeather.wind_direction}° (${getWindDirection(raceWeather.wind_direction)})` : "—"} />
                 </View>
@@ -1875,6 +1892,8 @@ export default function HomeScreen() {
   }
 
   if (isQualifying) {
+    const weatherLabel = !raceWeather ? '—' : raceWeather.rainfall ? 'WET' : 'DRY';
+    const weatherColor = !raceWeather ? '#999' : raceWeather.rainfall ? '#4FC3F7' : '#E8A000';
     return (
       <View style={{ flex: 1, backgroundColor: "#0A0A0A", paddingTop: 52 }}>
         <View style={styles.navbar}>
@@ -1887,10 +1906,10 @@ export default function HomeScreen() {
               {activeQualiPhase ? `${activeQualiPhase} IN CORSO` : "QUALIFICHE IN CORSO"}
             </Text>
           </View>
-          <TouchableOpacity onPress={() => setShowWeatherModal(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={{ color: "#999999", fontSize: 13, fontWeight: "600" }}>
-              {raceWeather?.track_temperature ?? "—"}°C {raceWeather?.rainfall ? "🌧" : "☀️"} ›
-            </Text>
+          <TouchableOpacity onPress={() => setShowWeatherModal(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ color: "#999999", fontSize: 13, fontFamily: MONO }}>{raceWeather?.track_temperature ?? "—"}°C{' '}</Text>
+            <Text style={{ color: weatherColor, fontSize: 11, fontWeight: '700', fontFamily: MONO }}>{weatherLabel}</Text>
+            <Text style={{ color: "#999999", fontSize: 13, fontFamily: MONO }}>{' '}›</Text>
           </TouchableOpacity>
         </View>
         <View style={{ flexDirection: "row", paddingHorizontal: 16, marginBottom: 12, gap: 8 }}>
@@ -2039,24 +2058,27 @@ export default function HomeScreen() {
           <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowWeatherModal(false)} />
           <View style={{ backgroundColor: "#141414", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 }}>
             <View style={{ width: 40, height: 4, backgroundColor: "#2A2A2A", borderRadius: 2, alignSelf: "center", marginBottom: 20 }} />
-            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "800", letterSpacing: 1, marginBottom: 20 }}>CONDIZIONI PISTA</Text>
+            <Text style={{ color: "#FFFFFF", fontSize: 13, fontFamily: MONO, letterSpacing: 2, marginBottom: 20 }}>CONDIZIONI PISTA</Text>
             {!raceWeather ? (
               <Text style={{ color: "#999999", fontSize: 13, textAlign: "center", paddingVertical: 24 }}>Dati meteo non disponibili</Text>
             ) : (
               <>
-                <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 8 }}>🌡 TEMPERATURA</Text>
-                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                <Text style={{ color: "#555555", fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>TEMPERATURA</Text>
+                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 4, padding: 14, marginBottom: 16 }}>
                   <WeatherRow label="Asfalto" value={`${raceWeather.track_temperature ?? "—"}°C`} />
                   <WeatherRow label="Aria" value={`${raceWeather.air_temperature ?? "—"}°C`} />
                 </View>
-                <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 8 }}>💧 UMIDITÀ & PIOGGIA</Text>
-                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                <Text style={{ color: "#555555", fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>UMIDITÀ</Text>
+                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 4, padding: 14, marginBottom: 16 }}>
                   <WeatherRow label="Umidità" value={`${raceWeather.humidity ?? "—"}%`} />
-                  <WeatherRow label="Pioggia in corso" value={raceWeather.rainfall ? "Sì 🌧" : "No ☀️"} />
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5 }}>
+                    <Text style={{ color: "#999999", fontSize: 11, fontFamily: MONO_REG }}>Pioggia in corso</Text>
+                    <Text style={{ color: raceWeather.rainfall ? '#4FC3F7' : '#E8A000', fontSize: 12, fontFamily: MONO }}>{raceWeather.rainfall ? 'WET' : 'DRY'}</Text>
+                  </View>
                   {raceRainRisk !== null && <WeatherRow label="Rischio pioggia" value={raceRainRisk} highlight={parseInt(raceRainRisk) > 30} />}
                 </View>
-                <Text style={{ color: "#999999", fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 8 }}>💨 VENTO</Text>
-                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 10, padding: 14 }}>
+                <Text style={{ color: "#555555", fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>VENTO</Text>
+                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 4, padding: 14 }}>
                   <WeatherRow label="Velocità" value={`${raceWeather.wind_speed ?? "—"} m/s`} />
                   <WeatherRow label="Direzione" value={raceWeather.wind_direction != null ? `${raceWeather.wind_direction}° (${getWindDirection(raceWeather.wind_direction)})` : "—"} />
                 </View>

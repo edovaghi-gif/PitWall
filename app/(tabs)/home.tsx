@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Animated, Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GlassView } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
@@ -162,6 +162,7 @@ export default function HomeScreen() {
   const [showLapTimes, setShowLapTimes] = useState(false);
   const [stintsTimelineWidth, setStintsTimelineWidth] = useState(0);
   const paceScrollRef = useRef<ScrollView>(null);
+  const paceHeaderScrollRef = useRef<ScrollView>(null);
   const weatherBottomSheetRef = useRef<BottomSheet>(null);
   const previousIntervalsRef = useRef<Record<number, number>>({});
   const raceStintsRef = useRef<any[]>([]);
@@ -173,6 +174,8 @@ export default function HomeScreen() {
   const [expandedRaceDriver, setExpandedRaceDriver] = useState<number | null>(null);
   const [expandedPaceDriver, setExpandedPaceDriver] = useState<number | null>(null);
   const [selectedPaceBar, setSelectedPaceBar] = useState<{ driverNumber: number; lapNum: number } | null>(null);
+  const [selectedTrend, setSelectedTrend] = useState<{ driverNumber: number; seqIdx: number } | null>(null);
+  const [trendTooltip, setTrendTooltip] = useState<{ y: number; content: { label: string; totalStr: string; perLapStr: string; color: string } } | null>(null);
   const [showGapToLeader, setShowGapToLeader] = useState(false);
   const [homeHeadshots, setHomeHeadshots] = useState<Record<string, string>>({});
   const gapHistoryRef = useRef<Record<number, Array<{gap: number, stint: number, timestamp: number}>>>({});
@@ -1601,12 +1604,40 @@ export default function HomeScreen() {
               }
 
               return showLapTimes ? (
-                // LAP MODE — single horizontal ScrollView, header inside, no sync needed
+                // LAP MODE — sticky header + vertical ScrollView for driver rows
+                <TouchableOpacity activeOpacity={1} onPress={() => { setSelectedTrend(null); setTrendTooltip(null); }} style={{ flex: 1 }}>
+                {/* STICKY HEADER — outside vertical ScrollView */}
+                <View style={{ flexDirection: 'row' }}>
+                  <View style={{ width: 52 }} />
+                  <ScrollView
+                    ref={paceHeaderScrollRef}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    scrollEnabled={false}
+                  >
+                    <View style={{ flexDirection: 'row', height: 36, alignItems: 'flex-end', paddingBottom: 4 }}>
+                      {allLapNumbers.map(lapNum => {
+                        const isVsc = isVscLapFn(lapNum);
+                        const isSc = isPureScLapFn(lapNum);
+                        return (
+                          <View key={lapNum} style={{ width: cellWidth + 6, alignItems: 'center' }}>
+                            {isVsc ? (
+                              <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>VSC</Text>
+                            ) : isSc ? (
+                              <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>SC</Text>
+                            ) : null}
+                            <Text style={{ color: '#888', fontSize: 8 }}>{lapNum}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                </View>
+                {/* SCROLLABLE CONTENT — vertical ScrollView, no header inside */}
                 <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>
                   <View style={{ flexDirection: 'row' }}>
                     {/* Fixed name column */}
                     <View style={{ width: 52 }}>
-                      <View style={{ height: 20 }} />
                       {drivers.map(driver => {
                         const teamColor = driver.team_colour ? (driver.team_colour.startsWith('#') ? driver.team_colour : `#${driver.team_colour}`) : '#FFFFFF';
                         return (
@@ -1617,33 +1648,17 @@ export default function HomeScreen() {
                         );
                       })}
                     </View>
-                    {/* Single horizontal ScrollView — header + all driver rows, zero sync */}
+                    {/* Single horizontal ScrollView — all driver rows, syncs header via onScroll */}
                     <ScrollView
                       ref={paceScrollRef}
                       horizontal
                       showsHorizontalScrollIndicator={false}
                       scrollEventThrottle={16}
+                      onScroll={(e) => paceHeaderScrollRef.current?.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false })}
                     >
                       <View>
-                        {/* Lap number header */}
-                        <View style={{ flexDirection: 'row', height: 20, alignItems: 'flex-end' }}>
-                          {allLapNumbers.map(lapNum => {
-                            const isVsc = isVscLapFn(lapNum);
-                            const isSc = isPureScLapFn(lapNum);
-                            return (
-                              <View key={lapNum} style={{ width: cellWidth + 6, alignItems: 'center' }}>
-                                {isVsc ? (
-                                  <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>VSC</Text>
-                                ) : isSc ? (
-                                  <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>SC</Text>
-                                ) : null}
-                                <Text style={{ color: '#888', fontSize: 8 }}>{lapNum}</Text>
-                              </View>
-                            );
-                          })}
-                        </View>
                         {/* Driver rows */}
-                        {drivers.map(driver => {
+                        {drivers.map((driver, rowIndex) => {
                           const laps = paceData[driver.driver_number] ?? [];
                           const lapMap: Record<number, typeof laps[0]> = {};
                           for (const l of laps) lapMap[l.lap] = l;
@@ -1694,16 +1709,49 @@ export default function HomeScreen() {
                           }
 
                           return (
-                            <View key={driver.driver_number} style={{ flexDirection: 'row', height: 36, alignItems: 'center', position: 'relative' }}>
+                            <TouchableOpacity key={driver.driver_number} activeOpacity={1} onPress={() => { setSelectedTrend(null); setTrendTooltip(null); }} style={{ flexDirection: 'row', height: 36, alignItems: 'center', position: 'relative' }}>
                               {trendSequences.map((seq, si) => {
                                 const slotW = cellWidth + 6;
                                 const trendColor = seq.trend === 'improving' ? '#27AE60' : '#E10600';
+                                const trendBg = seq.trend === 'improving' ? 'rgba(39,174,96,0.18)' : 'rgba(225,6,0,0.18)';
+                                const lapNums = allLapNumbers.slice(seq.startIdx, seq.startIdx + seq.length);
+                                const firstTime = lapMap[lapNums[0]]?.time;
+                                const lastTime = lapMap[lapNums[lapNums.length - 1]]?.time;
                                 return (
-                                  <View key={`trend-${si}`} style={{
-                                    position: 'absolute', left: seq.startIdx * slotW - 3, width: seq.length * slotW,
-                                    height: 30, top: 3, borderRadius: 10, borderWidth: 0.75, borderColor: trendColor,
-                                    backgroundColor: seq.trend === 'improving' ? 'rgba(39,174,96,0.18)' : 'rgba(225,6,0,0.18)', zIndex: 0,
-                                  }} />
+                                  <TouchableOpacity key={`trend-${si}`} activeOpacity={0.8}
+                                    onPress={(e) => {
+                                      const isActive = selectedTrend?.driverNumber === driver.driver_number && selectedTrend?.seqIdx === si;
+                                      if (isActive) {
+                                        setSelectedTrend(null);
+                                        setTrendTooltip(null);
+                                        return;
+                                      }
+                                      setSelectedTrend({ driverNumber: driver.driver_number, seqIdx: si });
+                                      if (firstTime == null || lastTime == null) return;
+                                      const totalDelta = lastTime - firstTime;
+                                      const perLap = totalDelta / (seq.length - 1);
+                                      const isImproving = seq.trend === 'improving';
+                                      const accentColor = isImproving ? '#27AE60' : '#E10600';
+                                      const screenH = Dimensions.get('window').height;
+                                      (e.target as any).measure((_x: number, _y: number, _w: number, _h: number, _px: number, py: number) => {
+                                        const tooltipY = py < 150 ? py + 36 : py > screenH - 150 ? py - 60 : py - 52;
+                                        setTrendTooltip({
+                                          y: tooltipY,
+                                          content: {
+                                            label: `${isImproving ? '↓ IMPROVING' : '↑ WORSENING'} · ${seq.length} GIRI`,
+                                            totalStr: `${totalDelta > 0 ? '+' : ''}${totalDelta.toFixed(3)}s`,
+                                            perLapStr: `${perLap > 0 ? '+' : ''}${perLap.toFixed(3)}s/giro`,
+                                            color: accentColor,
+                                          },
+                                        });
+                                      });
+                                    }}
+                                    style={{
+                                      position: 'absolute', left: seq.startIdx * slotW - 3, width: seq.length * slotW,
+                                      height: 30, top: 3, borderRadius: 10, borderWidth: 0.75, borderColor: trendColor,
+                                      backgroundColor: trendBg, zIndex: 2,
+                                    }}
+                                  />
                                 );
                               })}
                               {allLapNumbers.map(lapNum => {
@@ -1727,13 +1775,14 @@ export default function HomeScreen() {
                                   </View>
                                 );
                               })}
-                            </View>
+                            </TouchableOpacity>
                           );
                         })}
                       </View>
                     </ScrollView>
                   </View>
                 </ScrollView>
+                </TouchableOpacity>
               ) : (
                 // GRAF MODE — single ScrollView, header inside same scroll area as bars
                 <View style={{ flex: 1 }}>
@@ -1795,9 +1844,14 @@ export default function HomeScreen() {
                       return { driver, isPaceExpanded, paceRowH, lapMap, slotWidth, teamColor, trendSequences };
                     });
 
+                    const expandedRowIdx = rowData.findIndex(r => r.isPaceExpanded);
+                    const avgOverlayBottom = expandedRowIdx >= 0
+                      ? (rowData.length - 1 - expandedRowIdx) * 36 + 6
+                      : -9999;
+
                     return (
                       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>
-                        <View style={{ flexDirection: 'row' }}>
+                        <View style={{ flexDirection: 'row', position: 'relative' }}>
                           <View style={{ width: 52 }}>
                             <View style={{ height: 20 }} />
                             {rowData.map(({ driver, isPaceExpanded, paceRowH, teamColor }) => (
@@ -1812,16 +1866,7 @@ export default function HomeScreen() {
                                   style={{ height: paceRowH, flexDirection: 'row', alignItems: 'center' }}
                                 >
                                   <View style={{ width: 2, height: 20, borderRadius: 1, backgroundColor: teamColor, marginRight: 6, marginLeft: 12 }} />
-                                  <View>
-                                    <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700', fontFamily: MONO }}>{driver.name_acronym ?? driver.acronym ?? String(driver.driver_number)}</Text>
-                                    {isPaceExpanded && (() => {
-                                      const avg = driverAverages[driver.driver_number];
-                                      if (avg === undefined) return null;
-                                      const m = Math.floor(avg / 60);
-                                      const s = (avg % 60).toFixed(3).padStart(6, '0');
-                                      return <Text style={{ color: '#555555', fontSize: 8, fontFamily: MONO }}>AVG {m}:{s}</Text>;
-                                    })()}
-                                  </View>
+                                  <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700', fontFamily: MONO }}>{driver.name_acronym ?? driver.acronym ?? String(driver.driver_number)}</Text>
                                 </TouchableOpacity>
                               </MotiView>
                             ))}
@@ -1860,8 +1905,24 @@ export default function HomeScreen() {
                                     if (!lap) return <View key={lapNum} style={{ width: slotWidth, height: paceRowH, marginRight: isPaceExpanded ? 2 : 1 }} />;
                                     const { bg, isSpecial, label, isSc } = getPaceColor({ ...lap, isSafetyCarLap: isScLapFn(lap.lap) }, driver.driver_number, overallBestLap, driverAverages);
                                     if (isSpecial && label) {
+                                      if (isPaceExpanded) {
+                                        const isSelected = selectedPaceBar?.driverNumber === driver.driver_number && selectedPaceBar?.lapNum === lapNum;
+                                        return (
+                                          <TouchableOpacity
+                                            key={lapNum}
+                                            activeOpacity={1}
+                                            onPress={() => setSelectedPaceBar(isSelected ? null : { driverNumber: driver.driver_number, lapNum })}
+                                            style={{ width: slotWidth, height: 120, position: 'relative', marginRight: 2, justifyContent: 'center', alignItems: 'center' }}
+                                          >
+                                            <Text style={{ position: 'absolute', top: 4, left: 0, right: 0, textAlign: 'center', fontSize: 6, color: '#444444', fontFamily: MONO }}>{lapNum}</Text>
+                                            <View style={{ width: 12, height: 14, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }}>
+                                              <Text style={{ color: '#E10600', fontSize: 7, fontWeight: '700', fontFamily: MONO }}>{label[0]}</Text>
+                                            </View>
+                                          </TouchableOpacity>
+                                        );
+                                      }
                                       return (
-                                        <View key={lapNum} style={{ width: slotWidth, height: paceRowH, justifyContent: 'center', alignItems: 'center', marginRight: isPaceExpanded ? 2 : 1 }}>
+                                        <View key={lapNum} style={{ width: slotWidth, height: paceRowH, justifyContent: 'center', alignItems: 'center', marginRight: 1 }}>
                                           <View style={{ width: 12, height: 14, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }}>
                                             <Text style={{ color: '#E10600', fontSize: 7, fontWeight: '700', fontFamily: MONO }}>{label[0]}</Text>
                                           </View>
@@ -1874,13 +1935,19 @@ export default function HomeScreen() {
                                       const isVscLapExp = isVscLapFn(lapNum);
                                       // SC/VSC label box in expanded row
                                       if (isSc || isVscLapExp) {
+                                        const isSelected = selectedPaceBar?.driverNumber === driver.driver_number && selectedPaceBar?.lapNum === lapNum;
                                         return (
-                                          <View key={lapNum} style={{ width: slotWidth, height: 120, position: 'relative', marginRight: 2, justifyContent: 'center', alignItems: 'center' }}>
+                                          <TouchableOpacity
+                                            key={lapNum}
+                                            activeOpacity={1}
+                                            onPress={() => setSelectedPaceBar(isSelected ? null : { driverNumber: driver.driver_number, lapNum })}
+                                            style={{ width: slotWidth, height: 120, position: 'relative', marginRight: 2, justifyContent: 'center', alignItems: 'center' }}
+                                          >
                                             <Text style={{ position: 'absolute', top: 4, left: 0, right: 0, textAlign: 'center', fontSize: 6, color: '#444444', fontFamily: MONO }}>{lapNum}</Text>
-                                            <View style={{ width: 20, height: 18, backgroundColor: '#000000', borderWidth: 1, borderColor: '#F39C12', justifyContent: 'center', alignItems: 'center' }}>
-                                              <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', fontFamily: MONO }}>{isVscLapExp ? 'VS' : 'SC'}</Text>
+                                            <View style={{ width: 14, height: 16, backgroundColor: '#000000', borderWidth: 1, borderColor: '#F39C12', borderRadius: 0, justifyContent: 'center', alignItems: 'center' }}>
+                                              <Text style={{ color: '#F39C12', fontSize: 5, fontWeight: '700', fontFamily: MONO }}>{isVscLapExp ? 'VS' : 'SC'}</Text>
                                             </View>
-                                          </View>
+                                          </TouchableOpacity>
                                         );
                                       }
                                       const centerY = 60;
@@ -1891,26 +1958,15 @@ export default function HomeScreen() {
                                         const halfHeight = Math.max(2, Math.min(44, Math.round(Math.abs(delta) * 22)));
                                         return delta > 0 ? { barTop: centerY - halfHeight, barH: halfHeight } : { barTop: centerY, barH: halfHeight };
                                       })();
-                                      const isSelected = selectedPaceBar?.driverNumber === driver.driver_number && selectedPaceBar?.lapNum === lapNum;
                                       return (
                                         <TouchableOpacity
                                           key={lapNum}
                                           activeOpacity={1}
-                                          onPress={() => setSelectedPaceBar(isSelected ? null : { driverNumber: driver.driver_number, lapNum })}
+                                          onPress={() => setSelectedPaceBar(prev => prev?.driverNumber === driver.driver_number && prev?.lapNum === lapNum ? null : { driverNumber: driver.driver_number, lapNum })}
                                           style={{ width: slotWidth, height: 120, position: 'relative', marginRight: 2 }}
                                         >
                                           <Text style={{ position: 'absolute', top: 4, left: 0, right: 0, textAlign: 'center', fontSize: 6, color: '#444444', fontFamily: MONO }}>{lapNum}</Text>
                                           <View style={{ position: 'absolute', top: barTop, left: 2, width: 11, height: barH, borderRadius: 0, backgroundColor: barColor, zIndex: 1 }} />
-                                          {isSelected && lap.time != null && driverAvg !== undefined && (
-                                            <View style={{ position: 'absolute', top: Math.max(12, barTop - 38), left: -8, zIndex: 10, backgroundColor: '#1A1A1A', borderRadius: 3, paddingHorizontal: 4, paddingVertical: 2, borderWidth: 0.5, borderColor: '#333333' }}>
-                                              <Text style={{ color: '#FFFFFF', fontSize: 8, fontFamily: MONO }}>
-                                                {Math.floor(lap.time / 60)}:{(lap.time % 60).toFixed(3).padStart(6, '0')}
-                                              </Text>
-                                              <Text style={{ color: delta > 0 ? '#E10600' : '#27AE60', fontSize: 8, fontFamily: MONO }}>
-                                                {delta > 0 ? '+' : ''}{delta.toFixed(3)}
-                                              </Text>
-                                            </View>
-                                          )}
                                         </TouchableOpacity>
                                       );
                                     }
@@ -1940,10 +1996,59 @@ export default function HomeScreen() {
                                       </View>
                                     );
                                   })}
+                                  {isPaceExpanded && (() => {
+                                    if (!selectedPaceBar || selectedPaceBar.driverNumber !== driver.driver_number) return null;
+                                    const selLap = lapMap[selectedPaceBar.lapNum];
+                                    if (!selLap) return null;
+                                    const avg = driverAverages[driver.driver_number];
+                                    const lapIdx = allLapNumbers.indexOf(selectedPaceBar.lapNum);
+                                    const leftPos = lapIdx * (slotWidth + 2) - 4;
+                                    const maxLeft = allLapNumbers.length * (slotWidth + 2) - 80;
+                                    const clampedLeft = Math.max(2, Math.min(leftPos, maxLeft));
+                                    // PIT/OUT: show label only (no delta vs avg)
+                                    const { isSpecial: selIsSpecial, label: selLabel } = getPaceColor({ ...selLap, isSafetyCarLap: isScLapFn(selLap.lap) }, driver.driver_number, overallBestLap, driverAverages);
+                                    if (selIsSpecial && selLabel) {
+                                      return (
+                                        <View key="callout" style={{ position: 'absolute', left: clampedLeft, top: 4, zIndex: 20, backgroundColor: '#1A1A1A', borderRadius: 3, paddingHorizontal: 6, paddingVertical: 3, borderWidth: 0.5, borderColor: '#444444', minWidth: 70 }}>
+                                          {selLap.time != null && (
+                                            <Text style={{ color: '#FFFFFF', fontSize: 8, fontFamily: MONO }}>
+                                              {Math.floor(selLap.time / 60)}:{(selLap.time % 60).toFixed(3).padStart(6, '0')}
+                                            </Text>
+                                          )}
+                                          <Text style={{ color: '#FFFFFF', fontSize: 8, fontFamily: MONO }}>{selLabel}</Text>
+                                        </View>
+                                      );
+                                    }
+                                    if (selLap.time == null || avg === undefined) return null;
+                                    const realDelta = selLap.time - avg;
+                                    const clampedDelta = Math.max(-2.0, Math.min(2.0, realDelta));
+                                    const topPos = clampedDelta > 0 ? 72 : 4;
+                                    return (
+                                      <View key="callout" style={{ position: 'absolute', left: clampedLeft, top: topPos, zIndex: 20, backgroundColor: '#1A1A1A', borderRadius: 3, paddingHorizontal: 6, paddingVertical: 3, borderWidth: 0.5, borderColor: '#444444', minWidth: 70 }}>
+                                        <Text style={{ color: '#FFFFFF', fontSize: 8, fontFamily: MONO }}>
+                                          {Math.floor(selLap.time / 60)}:{(selLap.time % 60).toFixed(3).padStart(6, '0')}
+                                        </Text>
+                                        <Text style={{ color: realDelta > 0 ? '#E10600' : '#27AE60', fontSize: 8, fontFamily: MONO }}>{realDelta > 0 ? '+' : ''}{realDelta.toFixed(3)}s</Text>
+                                      </View>
+                                    );
+                                  })()}
                                 </MotiView>
                               ))}
                             </View>
                           </ScrollView>
+                          {rowData.some(r => r.isPaceExpanded) && (() => {
+                            const expandedRow = rowData.find(r => r.isPaceExpanded);
+                            if (!expandedRow) return null;
+                            const avg = driverAverages[expandedRow.driver.driver_number];
+                            if (avg === undefined) return null;
+                            const m = Math.floor(avg / 60);
+                            const s = (avg % 60).toFixed(3).padStart(6, '0');
+                            return (
+                              <View style={{ position: 'absolute', left: 54, bottom: avgOverlayBottom, zIndex: 10, backgroundColor: 'rgba(0,0,0,0.85)', borderRadius: 2, paddingHorizontal: 3, paddingVertical: 1, pointerEvents: 'none' }}>
+                                <Text style={{ color: '#666666', fontSize: 8, fontFamily: MONO }}>AVG {m}:{s}</Text>
+                              </View>
+                            );
+                          })()}
                         </View>
                       </ScrollView>
                     );
@@ -2454,6 +2559,30 @@ export default function HomeScreen() {
       </View>
     </ScrollView>
     </SafeAreaView>
+
+    {trendTooltip && (
+      <View style={{
+        position: 'absolute',
+        left: 60,
+        top: trendTooltip.y,
+        zIndex: 9999,
+        backgroundColor: '#1A1A1A',
+        borderRadius: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 5,
+        borderWidth: 0.5,
+        borderColor: trendTooltip.content.color,
+        minWidth: 140,
+        pointerEvents: 'none',
+      }}>
+        <Text style={{ color: trendTooltip.content.color, fontSize: 8, fontFamily: MONO, fontWeight: '700' }}>
+          {trendTooltip.content.label}
+        </Text>
+        <Text style={{ color: '#FFFFFF', fontSize: 8, fontFamily: MONO, marginTop: 2 }}>
+          {trendTooltip.content.totalStr} · {trendTooltip.content.perLapStr}
+        </Text>
+      </View>
+    )}
 
     <Modal visible={showFpModal} animationType="slide" presentationStyle="pageSheet">
       <View style={{ flex: 1, backgroundColor: "#0A0A0A", paddingTop: 48 }}>

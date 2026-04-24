@@ -432,6 +432,50 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 - STINTS tab: timeline orizzontale compound per pilota, NOW line rossa, dedup stint, tyre age
 - PACE tab: pallini + trend Robinhood (bordo verde/rosso su sequenze 3+ giri), PIT/OUT da /stints, tutti 22 piloti, slot quadrati allineati
 
+### PACE tab — aggiornamento 22 aprile 2026
+
+#### Toggle GRAF/LAP
+- Replace for the old red pill "1:23" toggle
+- Two-option LED toggle styled like INT/GAP in Classifica
+- Left: "GRAF" (dot mode, `showLapTimes === false`), Right: "LAP" (lap time mode, `showLapTimes === true`)
+- Active LED: `#00C850`, inactive: `#1A1A1A`. Both options use green when active (not red).
+- Same pattern applies to INT/GAP toggle in Classifica: both LEDs are now green.
+
+#### LAP mode cell styling
+- `height: 20`, `borderRadius: 6`, `marginRight: 6`, font `JetBrainsMono_700Bold` fontSize 9
+- SC lap: `backgroundColor: '#F39C12'`, `borderWidth: 0`, `color: '#000000'` — solid fill, distinct from slow laps
+- Slow lap (> driver avg): border-only `#E8A000`, text `#E8A000`, bg `#000000`
+- Fast lap (≤ driver avg): border-only `#27AE60`, text `#27AE60`, bg `#000000`
+- Best lap overall: border-only `#9B59B6`, text `#9B59B6`, bg `#000000`
+- PIT/OUT: `backgroundColor: '#FFFFFF'`, text `#E10600`, full label "PIT"/"OUT"
+- Header slot width must match content: `slotW = cellWidth + 6` (including marginRight)
+- Driver acronym column: `JetBrainsMono_700Bold`, fontSize 13, color `#FFFFFF` (matches Classifica)
+
+#### Trend detection — strict monotonic algorithm
+- `cleanLaps` filter: `l.lap > 1 && !l.isPit && !l.isOut && !isScLapFn(l.lap) && !isVscLapFn(l.lap) && l.time !== null && l.time > 60 && l.time < 200`
+- Direction from first two laps: `t1 < t0` = improving, `t1 > t0` = worsening, equal = skip
+- Extend while **strictly monotonic**: each next lap must be strictly less (improving) or strictly greater (worsening) than previous — equal or reversal breaks the sequence
+- Minimum sequence length: 3 laps
+- Minimum total delta: `0.1 * (seqLen - 1)` seconds (proportional — longer trends require larger total improvement)
+- On confirmed trend: advance `i = end + 2` (1-lap cooldown, prevents adjacent fake trends)
+- On no trend: advance `i = end`
+- Each sequence tagged with unique ID: `trendMap` stores `${direction}-${seqCounter}` (e.g. `improving-3`) to prevent adjacent same-direction sequences from merging
+- `trendSequences` builder compares full tag string (not just direction) to detect sequence boundaries
+
+#### Trend overlay styling (LAP mode)
+- `height: 30`, `top: 3`, `borderRadius: 10`, `borderWidth: 0.75`
+- `left: seq.startIdx * slotW - 3`, `width: seq.length * slotW` (symmetric 3px gap outside cells)
+- `borderColor`: `#27AE60` (improving) or `#E10600` (worsening)
+- `backgroundColor`: `rgba(39,174,96,0.18)` (improving) or `rgba(225,6,0,0.18)` (worsening)
+- `zIndex: 0` (behind cells)
+- `slotW = cellWidth + 6` in LAP mode, `slotWidth` (20) in GRAF mode
+
+#### Trend overlay styling (GRAF/dot mode — unchanged)
+- `height: 22`, `top: 7`, `borderRadius: 11`, `borderWidth: 1`
+- `left: seq.startIdx * slotW + 1`, `width: seq.length * slotW - 4`
+- Same border/bg colors as LAP mode
+- `slotW = slotWidth` (20)
+
 ### Scartate (no dati pubblici)
 - Pit window
 - Gomma health

@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { GlassView } from 'expo-glass-effect';
+import * as Haptics from 'expo-haptics';
+import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { MotiView } from 'moti';
 
 const logo = require('../../assets/images/PitWall Logo.png');
 const qualiPb2025 = require('../../assets/quali-pb-2025.json');
@@ -159,7 +163,9 @@ export default function HomeScreen() {
   const [stintsTimelineWidth, setStintsTimelineWidth] = useState(0);
   const paceScrollRef = useRef<ScrollView>(null);
   const paceHeaderScrollRef = useRef<ScrollView>(null);
-  const [showWeatherModal, setShowWeatherModal] = useState(false);
+  const paceRowScrollRefs = useRef<Map<number, ScrollView | null>>(new Map());
+  const paceScrollXRef = useRef(0);
+  const weatherBottomSheetRef = useRef<BottomSheet>(null);
   const previousIntervalsRef = useRef<Record<number, number>>({});
   const raceStintsRef = useRef<any[]>([]);
   const raceDriversCacheRef = useRef<any[]>([]);
@@ -168,6 +174,7 @@ export default function HomeScreen() {
   const sectorCompleteTimeRef = useRef<Record<number, number>>({});
   const dnfRef = useRef<Set<number>>(new Set());
   const [expandedRaceDriver, setExpandedRaceDriver] = useState<number | null>(null);
+  const [expandedPaceDriver, setExpandedPaceDriver] = useState<number | null>(null);
   const [showGapToLeader, setShowGapToLeader] = useState(false);
   const [homeHeadshots, setHomeHeadshots] = useState<Record<string, string>>({});
   const gapHistoryRef = useRef<Record<number, Array<{gap: number, stint: number, timestamp: number}>>>({});
@@ -1282,33 +1289,37 @@ export default function HomeScreen() {
               GIRO {raceLap ?? "—"}/{raceTotalLaps ?? "—"}
             </Text>
           </View>
-          <TouchableOpacity onPress={() => setShowWeatherModal(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={() => weatherBottomSheetRef.current?.expand()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{ color: "#999999", fontSize: 13, fontFamily: MONO }}>{raceWeather?.track_temperature ?? "—"}°C{' '}</Text>
             <Text style={{ color: weatherColor, fontSize: 11, fontWeight: '700', fontFamily: MONO }}>{weatherLabel}</Text>
             <Text style={{ color: "#999999", fontSize: 13, fontFamily: MONO }}>{' '}›</Text>
           </TouchableOpacity>
         </View>
         {raceRedFlagActive && (
-          <View style={{ backgroundColor: '#1A0000', borderWidth: 1, borderColor: '#E10600', marginHorizontal: 12, marginVertical: 4, borderRadius: 4, paddingHorizontal: 12, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Animated.View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#E10600', opacity: pulseAnim }} />
-              <Text style={{ color: '#E10600', fontSize: 10 }}>▲</Text>
-              <Text style={{ color: '#E10600', fontSize: 12, fontWeight: '700', letterSpacing: 2, fontFamily: MONO }}>RED FLAG</Text>
+          <MotiView from={{ opacity: 0, translateY: -8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 250 }}>
+            <View style={{ backgroundColor: '#1A0000', borderWidth: 1, borderColor: '#E10600', marginHorizontal: 12, marginVertical: 4, borderRadius: 4, paddingHorizontal: 12, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Animated.View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#E10600', opacity: pulseAnim }} />
+                <Text style={{ color: '#E10600', fontSize: 10 }}>▲</Text>
+                <Text style={{ color: '#E10600', fontSize: 12, fontWeight: '700', letterSpacing: 2, fontFamily: MONO }}>RED FLAG</Text>
+              </View>
+              <Text style={{ color: '#E10600', fontSize: 9, letterSpacing: 1.5, fontFamily: MONO, opacity: 0.7 }}>LAPS COUNTING</Text>
             </View>
-            <Text style={{ color: '#E10600', fontSize: 9, letterSpacing: 1.5, fontFamily: MONO, opacity: 0.7 }}>LAPS COUNTING</Text>
-          </View>
+          </MotiView>
         )}
         {(raceSafetyCarActive || raceVscActive) && (
-          <View style={{ backgroundColor: '#1A1500', borderWidth: 1, borderColor: '#F39C12', marginHorizontal: 12, marginVertical: 4, borderRadius: 4, paddingHorizontal: 12, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Animated.View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#F39C12', opacity: pulseAnim }} />
-              <Text style={{ color: '#F39C12', fontSize: 10 }}>▲</Text>
-              <Text style={{ color: '#F39C12', fontSize: 12, fontWeight: '700', letterSpacing: 2, fontFamily: MONO }}>
-                {raceSafetyCarActive ? 'SAFETY CAR' : 'VIRTUAL SC'}
-              </Text>
+          <MotiView from={{ opacity: 0, translateY: -8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 250 }}>
+            <View style={{ backgroundColor: '#1A1500', borderWidth: 1, borderColor: '#F39C12', marginHorizontal: 12, marginVertical: 4, borderRadius: 4, paddingHorizontal: 12, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Animated.View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#F39C12', opacity: pulseAnim }} />
+                <Text style={{ color: '#F39C12', fontSize: 10 }}>▲</Text>
+                <Text style={{ color: '#F39C12', fontSize: 12, fontWeight: '700', letterSpacing: 2, fontFamily: MONO }}>
+                  {raceSafetyCarActive ? 'SAFETY CAR' : 'VIRTUAL SC'}
+                </Text>
+              </View>
+              <Text style={{ color: '#F39C12', fontSize: 9, letterSpacing: 1.5, fontFamily: MONO, opacity: 0.7 }}>LAPS COUNTING</Text>
             </View>
-            <Text style={{ color: '#F39C12', fontSize: 9, letterSpacing: 1.5, fontFamily: MONO, opacity: 0.7 }}>LAPS COUNTING</Text>
-          </View>
+          </MotiView>
         )}
         {raceYellowSectors.length > 0 && (() => {
           const yellowLabel = raceYellowSectors[0] === -1
@@ -1373,7 +1384,7 @@ export default function HomeScreen() {
               <View style={{ width: 10 }} />
               <View style={{ width: 32, marginHorizontal: 4 }} />
               <View style={{ width: 32 }} />
-              <TouchableOpacity onPress={() => setShowGapToLeader(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: 72, gap: 10 }}>
+              <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowGapToLeader(v => !v); }} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: 72, gap: 10 }}>
                 <View style={{ alignItems: 'center', gap: 2 }}>
                   <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: !showGapToLeader ? '#00C850' : '#1A1A1A', borderWidth: 0.5, borderColor: !showGapToLeader ? '#00C850' : '#333' }} />
                   <Text style={{ color: !showGapToLeader ? '#FFFFFF' : '#444', fontSize: 7, fontFamily: MONO }}>INT</Text>
@@ -1420,7 +1431,7 @@ export default function HomeScreen() {
                 <View key={driver.driver_number}>
                   <TouchableOpacity
                     activeOpacity={0.7}
-                    onPress={() => setExpandedRaceDriver(isExpanded ? null : driver.driver_number)}
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setExpandedRaceDriver(isExpanded ? null : driver.driver_number); }}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 7, borderBottomWidth: 0.5, borderBottomColor: "#1A1A1A" }}>
                       <Text style={{ color: "#999999", fontSize: 12, width: 18, fontFamily: MONO }}>{driver.position}</Text>
@@ -1468,7 +1479,7 @@ export default function HomeScreen() {
                     </View>
                   </TouchableOpacity>
                   {isExpanded && !driver.isDnf && (
-                    <View style={{ backgroundColor: "#1A1A1A", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: "#2A2A2A" }}>
+                    <MotiView from={{ opacity: 0, translateY: -6 }} animate={{ opacity: 1, translateY: 0 }} exit={{ opacity: 0, translateY: -6 }} transition={{ type: 'timing', duration: 180 }} style={{ backgroundColor: '#0F0F0F', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: '#2A2A2A' }}>
                       <Text style={{ color: "#999999", fontSize: 10, textTransform: "uppercase", marginBottom: 4 }}>DIETRO</Text>
                       {!driverBehind || driverBehind.isDnf ? (
                         <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>—</Text>
@@ -1503,7 +1514,7 @@ export default function HomeScreen() {
                           ) : null}
                         </View>
                       )}
-                    </View>
+                    </MotiView>
                   )}
                 </View>
               );
@@ -1517,7 +1528,7 @@ export default function HomeScreen() {
           <View style={{ flex: 1 }}>
 <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 12, paddingVertical: 6 }}>
               <TouchableOpacity
-                onPress={() => setShowLapTimes(prev => !prev)}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowLapTimes(prev => !prev); }}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#0D0D0D', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}
               >
                 <View style={{ alignItems: 'center', gap: 2 }}>
@@ -1587,11 +1598,147 @@ export default function HomeScreen() {
 
               const driverAverages: Record<number, number> = {};
               for (const [numStr, laps] of Object.entries(paceData)) {
-                const valid = laps.filter(l => !l.isPit && !l.isOut && !isScLapFn(l.lap) && l.time !== null && l.time > 60 && l.time < 200).map(l => l.time as number);
+                const valid = laps.filter(l => l.lap > 1 && !l.isPit && !l.isOut && !isScLapFn(l.lap) && !isVscLapFn(l.lap) && l.time !== null && l.time > 60 && l.time < 200).map(l => l.time as number);
                 if (valid.length > 0) driverAverages[Number(numStr)] = valid.reduce((a, b) => a + b, 0) / valid.length;
               }
 
-              return (
+              return showLapTimes ? (
+                // LAP MODE — single horizontal ScrollView, header inside, no sync needed
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>
+                  <View style={{ flexDirection: 'row' }}>
+                    {/* Fixed name column */}
+                    <View style={{ width: 52 }}>
+                      <View style={{ height: 20 }} />
+                      {drivers.map(driver => {
+                        const teamColor = driver.team_colour ? (driver.team_colour.startsWith('#') ? driver.team_colour : `#${driver.team_colour}`) : '#FFFFFF';
+                        return (
+                          <View key={driver.driver_number} style={{ height: 36, flexDirection: 'row', alignItems: 'center' }}>
+                            <View style={{ width: 2, height: 20, borderRadius: 1, backgroundColor: teamColor, marginRight: 6, marginLeft: 12 }} />
+                            <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700', fontFamily: MONO }}>{driver.name_acronym ?? driver.acronym ?? String(driver.driver_number)}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                    {/* Single horizontal ScrollView — header + all driver rows, zero sync */}
+                    <ScrollView
+                      ref={paceScrollRef}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      onContentSizeChange={() => paceScrollRef.current?.scrollToEnd({ animated: false })}
+                      scrollEventThrottle={16}
+                    >
+                      <View>
+                        {/* Lap number header */}
+                        <View style={{ flexDirection: 'row', height: 20, alignItems: 'flex-end' }}>
+                          {allLapNumbers.map(lapNum => {
+                            const isVsc = isVscLapFn(lapNum);
+                            const isSc = isPureScLapFn(lapNum);
+                            return (
+                              <View key={lapNum} style={{ width: cellWidth + 6, alignItems: 'center' }}>
+                                {isVsc ? (
+                                  <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>VSC</Text>
+                                ) : isSc ? (
+                                  <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>SC</Text>
+                                ) : null}
+                                <Text style={{ color: '#888', fontSize: 8 }}>{lapNum}</Text>
+                              </View>
+                            );
+                          })}
+                        </View>
+                        {/* Driver rows */}
+                        {drivers.map(driver => {
+                          const laps = paceData[driver.driver_number] ?? [];
+                          const lapMap: Record<number, typeof laps[0]> = {};
+                          for (const l of laps) lapMap[l.lap] = l;
+
+                          const cleanLaps = laps
+                            .filter(l => l.lap > 1 && !l.isPit && !l.isOut && !isScLapFn(l.lap) && !isVscLapFn(l.lap) && l.time !== null && l.time > 60 && l.time < 200)
+                            .sort((a, b) => a.lap - b.lap);
+                          const trendMap = new Map<number, string>();
+                          let seqCounter = 0;
+                          let i = 0;
+                          while (i < cleanLaps.length - 2) {
+                            const t0 = cleanLaps[i].time as number;
+                            const t1 = cleanLaps[i + 1].time as number;
+                            let direction: 'improving' | 'worsening' | null = null;
+                            if (t1 < t0) direction = 'improving';
+                            else if (t1 > t0) direction = 'worsening';
+                            if (!direction) { i++; continue; }
+                            let end = i + 1;
+                            while (end + 1 < cleanLaps.length) {
+                              const prev = cleanLaps[end].time as number;
+                              const next = cleanLaps[end + 1].time as number;
+                              if (direction === 'improving' && next < prev) end++;
+                              else if (direction === 'worsening' && next > prev) end++;
+                              else break;
+                            }
+                            const seqLen = end - i + 1;
+                            const totalDelta = Math.abs((cleanLaps[end].time as number) - (cleanLaps[i].time as number));
+                            if (seqLen >= 3 && totalDelta >= 0.1 * (seqLen - 1)) {
+                              seqCounter++;
+                              const tag = `${direction}-${seqCounter}`;
+                              for (let k = i; k <= end; k++) trendMap.set(cleanLaps[k].lap, tag);
+                              i = end + 2;
+                            } else { i = end; }
+                          }
+
+                          const trendSequences: Array<{ startIdx: number; length: number; trend: 'improving' | 'worsening' }> = [];
+                          {
+                            let seqStart = -1; let seqTag: string | null = null; let seqLen = 0;
+                            for (let idx = 0; idx < allLapNumbers.length; idx++) {
+                              const t = trendMap.get(allLapNumbers[idx]) ?? null;
+                              if (t && t === seqTag) { seqLen++; }
+                              else {
+                                if (seqTag && seqLen >= 3) trendSequences.push({ startIdx: seqStart, length: seqLen, trend: seqTag.startsWith('improving') ? 'improving' : 'worsening' });
+                                seqStart = idx; seqTag = t; seqLen = 1;
+                              }
+                            }
+                            if (seqTag && seqLen >= 3) trendSequences.push({ startIdx: seqStart, length: seqLen, trend: seqTag.startsWith('improving') ? 'improving' : 'worsening' });
+                          }
+
+                          return (
+                            <View key={driver.driver_number} style={{ flexDirection: 'row', height: 36, alignItems: 'center', position: 'relative' }}>
+                              {trendSequences.map((seq, si) => {
+                                const slotW = cellWidth + 6;
+                                const trendColor = seq.trend === 'improving' ? '#27AE60' : '#E10600';
+                                return (
+                                  <View key={`trend-${si}`} style={{
+                                    position: 'absolute', left: seq.startIdx * slotW - 3, width: seq.length * slotW,
+                                    height: 30, top: 3, borderRadius: 10, borderWidth: 0.75, borderColor: trendColor,
+                                    backgroundColor: seq.trend === 'improving' ? 'rgba(39,174,96,0.18)' : 'rgba(225,6,0,0.18)', zIndex: 0,
+                                  }} />
+                                );
+                              })}
+                              {allLapNumbers.map(lapNum => {
+                                const lap = lapMap[lapNum];
+                                if (!lap) return <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#0A0A0A', marginRight: 6 }} />;
+                                const { bg, isSpecial, label, isSc } = getPaceColor({ ...lap, isSafetyCarLap: isScLapFn(lap.lap) }, driver.driver_number, overallBestLap, driverAverages);
+                                if (isSpecial && label) {
+                                  return (
+                                    <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', marginRight: 6 }}>
+                                      <Text style={{ color: '#E10600', fontSize: 7, fontWeight: '700' }}>{label}</Text>
+                                    </View>
+                                  );
+                                }
+                                if (lap.time == null) return <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#0A0A0A', marginRight: 6 }} />;
+                                const cellColor = isSc ? '#F39C12' : bg;
+                                return (
+                                  <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: isSc ? '#F39C12' : '#000000', justifyContent: 'center', alignItems: 'center', borderWidth: isSc ? 0 : 1, borderColor: isSc ? 'transparent' : cellColor, marginRight: 6 }}>
+                                    <Text style={{ color: isSc ? '#000000' : cellColor, fontSize: 9, fontWeight: '700', fontFamily: MONO }}>
+                                      {(() => { const t = lap.time; const m = Math.floor(t / 60); const s = (t % 60).toFixed(1).padStart(4, '0'); return `${m}:${s}`; })()}
+                                    </Text>
+                                  </View>
+                                );
+                              })}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </ScrollView>
+                  </View>
+                </ScrollView>
+              ) : (
+                // GRAF MODE — existing single-ScrollView architecture (unchanged)
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row' }}>
                     <View style={{ width: 52 }} />
@@ -1605,9 +1752,8 @@ export default function HomeScreen() {
                         {allLapNumbers.map(lapNum => {
                           const isVsc = isVscLapFn(lapNum);
                           const isSc = isPureScLapFn(lapNum);
-                          const slotW = showLapTimes ? cellWidth + 4 : 20;
                           return (
-                            <View key={lapNum} style={{ width: slotW, alignItems: 'center' }}>
+                            <View key={lapNum} style={{ width: 14, alignItems: 'center' }}>
                               {isVsc ? (
                                 <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>VSC</Text>
                               ) : isSc ? (
@@ -1620,167 +1766,148 @@ export default function HomeScreen() {
                       </View>
                     </ScrollView>
                   </View>
-                  <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20, gap: 2 }}>
-                    <View style={{ flexDirection: 'row' }}>
-                      <View style={{ width: 52 }}>
-                        {drivers.map(driver => (
-                          <View key={driver.driver_number} style={{ height: 36, flexDirection: 'row', alignItems: 'center' }}>
-                            <View style={{ width: 2, height: 20, borderRadius: 1, backgroundColor: driver.team_colour ? (driver.team_colour.startsWith('#') ? driver.team_colour : `#${driver.team_colour}`) : '#FFFFFF', marginRight: 6, marginLeft: 12 }} />
-                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{driver.name_acronym ?? driver.acronym ?? String(driver.driver_number)}</Text>
+                  {(() => {
+                    const rowData = drivers.map(driver => {
+                      const isPaceExpanded = expandedPaceDriver === driver.driver_number;
+                      const paceRowH = isPaceExpanded ? 64 : 36;
+                      const laps = paceData[driver.driver_number] ?? [];
+                      const lapMap: Record<number, typeof laps[0]> = {};
+                      for (const l of laps) lapMap[l.lap] = l;
+                      const slotWidth = 14;
+                      const teamColor = driver.team_colour ? (driver.team_colour.startsWith('#') ? driver.team_colour : `#${driver.team_colour}`) : '#FFFFFF';
+
+                      const cleanLaps = laps
+                        .filter(l => l.lap > 1 && !l.isPit && !l.isOut && !isScLapFn(l.lap) && !isVscLapFn(l.lap) && l.time !== null && l.time > 60 && l.time < 200)
+                        .sort((a, b) => a.lap - b.lap);
+                      const trendMap = new Map<number, string>();
+                      let seqCounter = 0;
+                      let i = 0;
+                      while (i < cleanLaps.length - 2) {
+                        const t0 = cleanLaps[i].time as number;
+                        const t1 = cleanLaps[i + 1].time as number;
+                        let direction: 'improving' | 'worsening' | null = null;
+                        if (t1 < t0) direction = 'improving';
+                        else if (t1 > t0) direction = 'worsening';
+                        if (!direction) { i++; continue; }
+                        let end = i + 1;
+                        while (end + 1 < cleanLaps.length) {
+                          const prev = cleanLaps[end].time as number;
+                          const next = cleanLaps[end + 1].time as number;
+                          if (direction === 'improving' && next < prev) end++;
+                          else if (direction === 'worsening' && next > prev) end++;
+                          else break;
+                        }
+                        const seqLen = end - i + 1;
+                        const totalDelta = Math.abs((cleanLaps[end].time as number) - (cleanLaps[i].time as number));
+                        if (seqLen >= 3 && totalDelta >= 0.1 * (seqLen - 1)) {
+                          seqCounter++;
+                          const tag = `${direction}-${seqCounter}`;
+                          for (let k = i; k <= end; k++) trendMap.set(cleanLaps[k].lap, tag);
+                          i = end + 2;
+                        } else { i = end; }
+                      }
+
+                      const trendSequences: Array<{ startIdx: number; length: number; trend: 'improving' | 'worsening' }> = [];
+                      {
+                        let seqStart = -1; let seqTag: string | null = null; let seqLen = 0;
+                        for (let idx = 0; idx < allLapNumbers.length; idx++) {
+                          const t = trendMap.get(allLapNumbers[idx]) ?? null;
+                          if (t && t === seqTag) { seqLen++; }
+                          else {
+                            if (seqTag && seqLen >= 3) trendSequences.push({ startIdx: seqStart, length: seqLen, trend: seqTag.startsWith('improving') ? 'improving' : 'worsening' });
+                            seqStart = idx; seqTag = t; seqLen = 1;
+                          }
+                        }
+                        if (seqTag && seqLen >= 3) trendSequences.push({ startIdx: seqStart, length: seqLen, trend: seqTag.startsWith('improving') ? 'improving' : 'worsening' });
+                      }
+
+                      return { driver, isPaceExpanded, paceRowH, lapMap, slotWidth, teamColor, trendSequences };
+                    });
+
+                    return (
+                      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>
+                        <View style={{ flexDirection: 'row' }}>
+                          <View style={{ width: 52 }}>
+                            {rowData.map(({ driver, isPaceExpanded, paceRowH, teamColor }) => (
+                              <MotiView key={driver.driver_number} animate={{ height: paceRowH }} transition={{ type: 'timing', duration: 200 }} style={{ overflow: 'hidden' }}>
+                                <TouchableOpacity
+                                  activeOpacity={0.7}
+                                  onPress={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    setExpandedPaceDriver(prev => prev === driver.driver_number ? null : driver.driver_number);
+                                  }}
+                                  style={{ height: paceRowH, flexDirection: 'row', alignItems: 'center' }}
+                                >
+                                  <View style={{ width: 2, height: 20, borderRadius: 1, backgroundColor: teamColor, marginRight: 6, marginLeft: 12 }} />
+                                  <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700', fontFamily: MONO }}>{driver.name_acronym ?? driver.acronym ?? String(driver.driver_number)}</Text>
+                                </TouchableOpacity>
+                              </MotiView>
+                            ))}
                           </View>
-                        ))}
-                      </View>
-                      <ScrollView
-                        ref={paceScrollRef}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        onContentSizeChange={() => paceScrollRef.current?.scrollToEnd({ animated: false })}
-                        onScroll={(e) => paceHeaderScrollRef.current?.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false })}
-                        scrollEventThrottle={16}
-                      >
-                        <View>
-                          {drivers.map(driver => {
-                            const laps = paceData[driver.driver_number] ?? [];
-                            const lapMap: Record<number, typeof laps[0]> = {};
-                            for (const l of laps) lapMap[l.lap] = l;
-
-                            // Compute pace trend per lap
-                            const cleanLaps = laps
-                              .filter(l => !l.isPit && !l.isOut && !isScLapFn(l.lap) && l.time !== null && l.time > 60 && l.time < 200)
-                              .sort((a, b) => a.lap - b.lap);
-                            const trendMap = new Map<number, 'improving' | 'worsening'>();
-                            for (let i = 3; i < cleanLaps.length; i++) {
-                              const prev = cleanLaps.slice(i - 3, i);
-                              const curr = cleanLaps.slice(i, i + 3);
-                              if (prev.length < 3 || curr.length < 3) continue;
-                              const avgPrev = prev.reduce((s, l) => s + (l.time as number), 0) / 3;
-                              const avgCurr = curr.reduce((s, l) => s + (l.time as number), 0) / 3;
-                              const trend: 'improving' | 'worsening' | null =
-                                avgPrev - avgCurr > 0.2 ? 'improving' :
-                                avgCurr - avgPrev > 0.2 ? 'worsening' : null;
-                              if (trend) curr.forEach(l => trendMap.set(l.lap, trend));
-                            }
-
-                            // Build trend sequences (consecutive laps of same trend, 3+ length)
-                            const slotWidth = 20;
-                            const trendSequences: Array<{ startIdx: number; length: number; trend: 'improving' | 'worsening' }> = [];
-                            {
-                              let seqStart = -1;
-                              let seqTrend: 'improving' | 'worsening' | null = null;
-                              let seqLen = 0;
-                              for (let idx = 0; idx < allLapNumbers.length; idx++) {
-                                const lapNum = allLapNumbers[idx];
-                                const t = trendMap.get(lapNum) ?? null;
-                                if (t && t === seqTrend) {
-                                  seqLen++;
-                                } else {
-                                  if (seqTrend && seqLen >= 3) {
-                                    trendSequences.push({ startIdx: seqStart, length: seqLen, trend: seqTrend });
-                                  }
-                                  seqStart = idx;
-                                  seqTrend = t;
-                                  seqLen = 1;
-                                }
-                              }
-                              if (seqTrend && seqLen >= 3) {
-                                trendSequences.push({ startIdx: seqStart, length: seqLen, trend: seqTrend });
-                              }
-                            }
-
-                            return (
-                              <View key={driver.driver_number} style={{ flexDirection: 'row', height: 36, alignItems: 'center', position: 'relative' }}>
-                                {/* Trend sequence overlays */}
-                                {trendSequences.map((seq, si) => {
-                                  const slotW = showLapTimes ? cellWidth + 4 : slotWidth;
-                                  const trendColor = seq.trend === 'improving' ? '#27AE60' : '#E10600';
-                                  if (showLapTimes) {
-                                    return (
-                                      <View key={`trend-${si}`} style={{
-                                        position: 'absolute',
-                                        left: seq.startIdx * slotW + 2,
-                                        width: seq.length * slotW - 6,
-                                        height: 22,
-                                        top: 7,
-                                        borderRadius: 6,
-                                        borderWidth: 1.5,
-                                        borderColor: trendColor,
-                                        backgroundColor: 'transparent',
-                                        zIndex: 0,
-                                      }} />
-                                    );
-                                  }
-                                  return (
-                                    <View key={`trend-${si}`} style={{
-                                      position: 'absolute',
-                                      left: seq.startIdx * slotW + 1,
-                                      width: seq.length * slotW - 4,
-                                      height: 22,
-                                      top: 7,
-                                      borderRadius: 11,
-                                      borderWidth: 1,
-                                      borderColor: trendColor,
-                                      backgroundColor: 'transparent',
-                                      zIndex: 0,
-                                    }} />
-                                  );
-                                })}
-                                {allLapNumbers.map(lapNum => {
-                                  const lap = lapMap[lapNum];
-                                  if (!lap) {
-                                    return showLapTimes
-                                      ? <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#0A0A0A', marginRight: 4 }} />
-                                      : <View key={lapNum} style={{ width: slotWidth, height: 36, justifyContent: 'center', alignItems: 'center', zIndex: 1 }}>
-                                          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#0A0A0A' }} />
-                                        </View>;
-                                  }
-                                  const { bg, isSpecial, label, isSc } = getPaceColor({ ...lap, isSafetyCarLap: isScLapFn(lap.lap) }, driver.driver_number, overallBestLap, driverAverages);
-                                  if (showLapTimes) {
+                          <ScrollView
+                            ref={paceScrollRef}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            onContentSizeChange={() => paceScrollRef.current?.scrollToEnd({ animated: false })}
+                            onScroll={(e) => paceHeaderScrollRef.current?.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false })}
+                            scrollEventThrottle={16}
+                          >
+                            <View>
+                              {rowData.map(({ driver, isPaceExpanded, paceRowH, lapMap, slotWidth, trendSequences }) => (
+                                <MotiView key={driver.driver_number} animate={{ height: paceRowH }} transition={{ type: 'timing', duration: 200 }} style={{ flexDirection: 'row', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
+                                  {isPaceExpanded && (
+                                    <View style={{ position: 'absolute', top: 31, left: 0, right: 0, height: 1.5, backgroundColor: '#333333', zIndex: 0 }} />
+                                  )}
+                                  {allLapNumbers.map(lapNum => {
+                                    const lap = lapMap[lapNum];
+                                    if (!lap) return <View key={lapNum} style={{ width: slotWidth, height: paceRowH, marginRight: isPaceExpanded ? 2 : 1 }} />;
+                                    const { bg, isSpecial, label, isSc } = getPaceColor({ ...lap, isSafetyCarLap: isScLapFn(lap.lap) }, driver.driver_number, overallBestLap, driverAverages);
                                     if (isSpecial && label) {
                                       return (
-                                        <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', marginRight: 4 }}>
-                                          <Text style={{ color: '#E10600', fontSize: 7, fontWeight: '700' }}>{label}</Text>
+                                        <View key={lapNum} style={{ width: slotWidth, height: paceRowH, justifyContent: 'center', alignItems: 'center', marginRight: isPaceExpanded ? 2 : 1 }}>
+                                          <View style={{ width: 12, height: 14, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }}>
+                                            <Text style={{ color: '#E10600', fontSize: 7, fontWeight: '700', fontFamily: MONO }}>{label[0]}</Text>
+                                          </View>
                                         </View>
                                       );
                                     }
-                                    if (lap.time == null) {
-                                      return <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#0A0A0A', marginRight: 4 }} />;
-                                    }
-                                    const cellColor = isSc ? '#F39C12' : bg;
-                                    return (
-                                      <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: isSc ? '#F39C12' : '#000000', justifyContent: 'center', alignItems: 'center', borderWidth: isSc ? 0 : 1, borderColor: isSc ? 'transparent' : cellColor, marginRight: 4 }}>
-                                        <Text style={{ color: isSc ? '#000000' : cellColor, fontSize: 9, fontWeight: '700', fontFamily: MONO }}>
-                                          {(() => {
-                                            const t = lap.time;
-                                            const m = Math.floor(t / 60);
-                                            const s = (t % 60).toFixed(1).padStart(4, '0');
-                                            return `${m}:${s}`;
-                                          })()}
-                                        </Text>
-                                      </View>
-                                    );
-                                  }
-                                  if (isSpecial && label) {
-                                    return (
-                                      <View key={lapNum} style={{ width: slotWidth, height: 36, justifyContent: 'center', alignItems: 'center', zIndex: 1 }}>
-                                        <View style={{ width: 14, height: 16, borderRadius: 2, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }}>
-                                          <Text style={{ color: '#E10600', fontSize: 6, fontWeight: '700' }}>{label[0]}</Text>
+                                    const driverAvg = driverAverages[driver.driver_number];
+                                    const barColor = isSc ? '#F39C12' : bg;
+                                    if (isPaceExpanded) {
+                                      const centerY = 32;
+                                      const { barTop, barH } = (() => {
+                                        if (lap.time == null || driverAvg === undefined) return { barTop: centerY - 1, barH: 2 };
+                                        const delta = Math.max(-2.0, Math.min(2.0, lap.time - driverAvg));
+                                        if (delta === 0) return { barTop: centerY - 1, barH: 2 };
+                                        const halfHeight = Math.max(1, Math.min(28, Math.round(Math.abs(delta) * 12)));
+                                        return delta > 0 ? { barTop: centerY - halfHeight, barH: halfHeight } : { barTop: centerY, barH: halfHeight };
+                                      })();
+                                      return (
+                                        <View key={lapNum} style={{ width: slotWidth, height: 64, position: 'relative', marginRight: 2 }}>
+                                          <View style={{ position: 'absolute', top: barTop, left: 2, width: 11, height: barH, borderRadius: 0, backgroundColor: barColor, zIndex: 1 }} />
                                         </View>
+                                      );
+                                    }
+                                    const barH = (() => {
+                                      if (lap.time == null || driverAvg === undefined) return 2;
+                                      const delta = Math.max(-2.0, Math.min(2.0, lap.time - driverAvg));
+                                      return Math.max(2, Math.round(Math.abs(delta) * 4.5) + 1);
+                                    })();
+                                    return (
+                                      <View key={lapNum} style={{ width: slotWidth, height: 36, position: 'relative', justifyContent: 'flex-end', alignItems: 'flex-start', marginRight: 1, paddingLeft: 1 }}>
+                                        <View style={{ position: 'absolute', top: 17, left: 0, right: 0, height: 1, backgroundColor: '#222222', zIndex: 0 }} />
+                                        <View style={{ width: 12, height: barH, borderRadius: 0, backgroundColor: barColor, zIndex: 1 }} />
                                       </View>
                                     );
-                                  }
-                                  return (
-                                    <View key={lapNum} style={{ width: slotWidth, height: 36, justifyContent: 'center', alignItems: 'center', zIndex: 1 }}>
-                                      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: bg, borderWidth: isSc ? 1 : 0, borderColor: '#F39C12' }} />
-                                    </View>
-                                  );
-                                })}
-                              </View>
-                            );
-                          })}
+                                  })}
+                                </MotiView>
+                              ))}
+                            </View>
+                          </ScrollView>
                         </View>
                       </ScrollView>
-                    </View>
-                  </ScrollView>
+                    );
+                  })()}
                 </View>
               );
             })()}
@@ -1889,38 +2016,47 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <Modal transparent animationType="slide" visible={showWeatherModal} onRequestClose={() => setShowWeatherModal(false)}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowWeatherModal(false)} />
-          <View style={{ backgroundColor: "#141414", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 }}>
-            <View style={{ width: 40, height: 4, backgroundColor: "#2A2A2A", borderRadius: 2, alignSelf: "center", marginBottom: 20 }} />
-            <Text style={{ color: "#FFFFFF", fontSize: 13, fontFamily: MONO, letterSpacing: 2, marginBottom: 20 }}>CONDIZIONI PISTA</Text>
+        <BottomSheet
+          ref={weatherBottomSheetRef}
+          index={-1}
+          snapPoints={['50%']}
+          enablePanDownToClose={true}
+          onClose={() => {}}
+          backdropComponent={(props) => (
+            <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.6} />
+          )}
+          backgroundStyle={{ backgroundColor: '#141414' }}
+          handleIndicatorStyle={{ backgroundColor: '#2A2A2A' }}
+        >
+          <BottomSheetView style={{ padding: 24, paddingBottom: 40 }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 13, fontFamily: MONO, letterSpacing: 2, marginBottom: 20 }}>CONDIZIONI PISTA</Text>
             {!raceWeather ? (
-              <Text style={{ color: "#999999", fontSize: 13, textAlign: "center", paddingVertical: 24 }}>Dati meteo non disponibili</Text>
+              <Text style={{ color: '#999999', fontSize: 13, textAlign: 'center', paddingVertical: 24 }}>Dati meteo non disponibili</Text>
             ) : (
               <>
-                <Text style={{ color: "#555555", fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>TEMPERATURA</Text>
-                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 4, padding: 14, marginBottom: 16 }}>
-                  <WeatherRow label="Asfalto" value={`${raceWeather.track_temperature ?? "—"}°C`} />
-                  <WeatherRow label="Aria" value={`${raceWeather.air_temperature ?? "—"}°C`} />
+                <Text style={{ color: '#555555', fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>TEMPERATURA</Text>
+                <View style={{ backgroundColor: '#1E1E1E', borderRadius: 4, padding: 14, marginBottom: 16 }}>
+                  <WeatherRow label="Asfalto" value={`${raceWeather.track_temperature ?? '—'}°C`} />
+                  <WeatherRow label="Aria" value={`${raceWeather.air_temperature ?? '—'}°C`} />
                 </View>
-                <Text style={{ color: "#555555", fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>UMIDITÀ</Text>
-                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 4, padding: 14, marginBottom: 16 }}>
-                  <WeatherRow label="Umidità" value={`${raceWeather.humidity ?? "—"}%`} />
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5 }}>
-                    <Text style={{ color: "#999999", fontSize: 11, fontFamily: MONO_REG }}>Pioggia in corso</Text>
+                <Text style={{ color: '#555555', fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>UMIDITÀ</Text>
+                <View style={{ backgroundColor: '#1E1E1E', borderRadius: 4, padding: 14, marginBottom: 16 }}>
+                  <WeatherRow label="Umidità" value={`${raceWeather.humidity ?? '—'}%`} />
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 }}>
+                    <Text style={{ color: '#999999', fontSize: 11, fontFamily: MONO_REG }}>Pioggia in corso</Text>
                     <Text style={{ color: raceWeather.rainfall ? '#4FC3F7' : '#E8A000', fontSize: 12, fontFamily: MONO }}>{raceWeather.rainfall ? 'WET' : 'DRY'}</Text>
                   </View>
                   {raceRainRisk !== null && <WeatherRow label="Rischio pioggia" value={raceRainRisk} highlight={parseInt(raceRainRisk) > 30} />}
                 </View>
-                <Text style={{ color: "#555555", fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>VENTO</Text>
-                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 4, padding: 14 }}>
-                  <WeatherRow label="Velocità" value={`${raceWeather.wind_speed ?? "—"} m/s`} />
-                  <WeatherRow label="Direzione" value={raceWeather.wind_direction != null ? `${raceWeather.wind_direction}° (${getWindDirection(raceWeather.wind_direction)})` : "—"} />
+                <Text style={{ color: '#555555', fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>VENTO</Text>
+                <View style={{ backgroundColor: '#1E1E1E', borderRadius: 4, padding: 14 }}>
+                  <WeatherRow label="Velocità" value={`${raceWeather.wind_speed ?? '—'} m/s`} />
+                  <WeatherRow label="Direzione" value={raceWeather.wind_direction != null ? `${raceWeather.wind_direction}° (${getWindDirection(raceWeather.wind_direction)})` : '—'} />
                 </View>
               </>
             )}
-          </View>
-        </Modal>
+          </BottomSheetView>
+        </BottomSheet>
       </View>
     );
   }
@@ -1940,7 +2076,7 @@ export default function HomeScreen() {
               {activeQualiPhase ? `${activeQualiPhase} IN CORSO` : "QUALIFICHE IN CORSO"}
             </Text>
           </View>
-          <TouchableOpacity onPress={() => setShowWeatherModal(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={() => weatherBottomSheetRef.current?.expand()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{ color: "#999999", fontSize: 13, fontFamily: MONO }}>{raceWeather?.track_temperature ?? "—"}°C{' '}</Text>
             <Text style={{ color: weatherColor, fontSize: 11, fontWeight: '700', fontFamily: MONO }}>{weatherLabel}</Text>
             <Text style={{ color: "#999999", fontSize: 13, fontFamily: MONO }}>{' '}›</Text>
@@ -2088,38 +2224,47 @@ export default function HomeScreen() {
             });
           })()}
         </ScrollView>
-        <Modal transparent animationType="slide" visible={showWeatherModal} onRequestClose={() => setShowWeatherModal(false)}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowWeatherModal(false)} />
-          <View style={{ backgroundColor: "#141414", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 }}>
-            <View style={{ width: 40, height: 4, backgroundColor: "#2A2A2A", borderRadius: 2, alignSelf: "center", marginBottom: 20 }} />
-            <Text style={{ color: "#FFFFFF", fontSize: 13, fontFamily: MONO, letterSpacing: 2, marginBottom: 20 }}>CONDIZIONI PISTA</Text>
+        <BottomSheet
+          ref={weatherBottomSheetRef}
+          index={-1}
+          snapPoints={['50%']}
+          enablePanDownToClose={true}
+          onClose={() => {}}
+          backdropComponent={(props) => (
+            <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.6} />
+          )}
+          backgroundStyle={{ backgroundColor: '#141414' }}
+          handleIndicatorStyle={{ backgroundColor: '#2A2A2A' }}
+        >
+          <BottomSheetView style={{ padding: 24, paddingBottom: 40 }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 13, fontFamily: MONO, letterSpacing: 2, marginBottom: 20 }}>CONDIZIONI PISTA</Text>
             {!raceWeather ? (
-              <Text style={{ color: "#999999", fontSize: 13, textAlign: "center", paddingVertical: 24 }}>Dati meteo non disponibili</Text>
+              <Text style={{ color: '#999999', fontSize: 13, textAlign: 'center', paddingVertical: 24 }}>Dati meteo non disponibili</Text>
             ) : (
               <>
-                <Text style={{ color: "#555555", fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>TEMPERATURA</Text>
-                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 4, padding: 14, marginBottom: 16 }}>
-                  <WeatherRow label="Asfalto" value={`${raceWeather.track_temperature ?? "—"}°C`} />
-                  <WeatherRow label="Aria" value={`${raceWeather.air_temperature ?? "—"}°C`} />
+                <Text style={{ color: '#555555', fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>TEMPERATURA</Text>
+                <View style={{ backgroundColor: '#1E1E1E', borderRadius: 4, padding: 14, marginBottom: 16 }}>
+                  <WeatherRow label="Asfalto" value={`${raceWeather.track_temperature ?? '—'}°C`} />
+                  <WeatherRow label="Aria" value={`${raceWeather.air_temperature ?? '—'}°C`} />
                 </View>
-                <Text style={{ color: "#555555", fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>UMIDITÀ</Text>
-                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 4, padding: 14, marginBottom: 16 }}>
-                  <WeatherRow label="Umidità" value={`${raceWeather.humidity ?? "—"}%`} />
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5 }}>
-                    <Text style={{ color: "#999999", fontSize: 11, fontFamily: MONO_REG }}>Pioggia in corso</Text>
+                <Text style={{ color: '#555555', fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>UMIDITÀ</Text>
+                <View style={{ backgroundColor: '#1E1E1E', borderRadius: 4, padding: 14, marginBottom: 16 }}>
+                  <WeatherRow label="Umidità" value={`${raceWeather.humidity ?? '—'}%`} />
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 }}>
+                    <Text style={{ color: '#999999', fontSize: 11, fontFamily: MONO_REG }}>Pioggia in corso</Text>
                     <Text style={{ color: raceWeather.rainfall ? '#4FC3F7' : '#E8A000', fontSize: 12, fontFamily: MONO }}>{raceWeather.rainfall ? 'WET' : 'DRY'}</Text>
                   </View>
                   {raceRainRisk !== null && <WeatherRow label="Rischio pioggia" value={raceRainRisk} highlight={parseInt(raceRainRisk) > 30} />}
                 </View>
-                <Text style={{ color: "#555555", fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>VENTO</Text>
-                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 4, padding: 14 }}>
-                  <WeatherRow label="Velocità" value={`${raceWeather.wind_speed ?? "—"} m/s`} />
-                  <WeatherRow label="Direzione" value={raceWeather.wind_direction != null ? `${raceWeather.wind_direction}° (${getWindDirection(raceWeather.wind_direction)})` : "—"} />
+                <Text style={{ color: '#555555', fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 8 }}>VENTO</Text>
+                <View style={{ backgroundColor: '#1E1E1E', borderRadius: 4, padding: 14 }}>
+                  <WeatherRow label="Velocità" value={`${raceWeather.wind_speed ?? '—'} m/s`} />
+                  <WeatherRow label="Direzione" value={raceWeather.wind_direction != null ? `${raceWeather.wind_direction}° (${getWindDirection(raceWeather.wind_direction)})` : '—'} />
                 </View>
               </>
             )}
-          </View>
-        </Modal>
+          </BottomSheetView>
+        </BottomSheet>
       </View>
     );
   }

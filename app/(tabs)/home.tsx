@@ -162,9 +162,6 @@ export default function HomeScreen() {
   const [showLapTimes, setShowLapTimes] = useState(false);
   const [stintsTimelineWidth, setStintsTimelineWidth] = useState(0);
   const paceScrollRef = useRef<ScrollView>(null);
-  const paceHeaderScrollRef = useRef<ScrollView>(null);
-  const paceRowScrollRefs = useRef<Map<number, ScrollView | null>>(new Map());
-  const paceScrollXRef = useRef(0);
   const weatherBottomSheetRef = useRef<BottomSheet>(null);
   const previousIntervalsRef = useRef<Record<number, number>>({});
   const raceStintsRef = useRef<any[]>([]);
@@ -175,6 +172,7 @@ export default function HomeScreen() {
   const dnfRef = useRef<Set<number>>(new Set());
   const [expandedRaceDriver, setExpandedRaceDriver] = useState<number | null>(null);
   const [expandedPaceDriver, setExpandedPaceDriver] = useState<number | null>(null);
+  const [selectedPaceBar, setSelectedPaceBar] = useState<{ driverNumber: number; lapNum: number } | null>(null);
   const [showGapToLeader, setShowGapToLeader] = useState(false);
   const [homeHeadshots, setHomeHeadshots] = useState<Record<string, string>>({});
   const gapHistoryRef = useRef<Record<number, Array<{gap: number, stint: number, timestamp: number}>>>({});
@@ -1624,7 +1622,6 @@ export default function HomeScreen() {
                       ref={paceScrollRef}
                       horizontal
                       showsHorizontalScrollIndicator={false}
-                      onContentSizeChange={() => paceScrollRef.current?.scrollToEnd({ animated: false })}
                       scrollEventThrottle={16}
                     >
                       <View>
@@ -1738,38 +1735,12 @@ export default function HomeScreen() {
                   </View>
                 </ScrollView>
               ) : (
-                // GRAF MODE — existing single-ScrollView architecture (unchanged)
+                // GRAF MODE — single ScrollView, header inside same scroll area as bars
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row' }}>
-                    <View style={{ width: 52 }} />
-                    <ScrollView
-                      ref={paceHeaderScrollRef}
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      scrollEnabled={false}
-                    >
-                      <View style={{ flexDirection: 'row', height: 20, alignItems: 'flex-end' }}>
-                        {allLapNumbers.map(lapNum => {
-                          const isVsc = isVscLapFn(lapNum);
-                          const isSc = isPureScLapFn(lapNum);
-                          return (
-                            <View key={lapNum} style={{ width: 14, alignItems: 'center' }}>
-                              {isVsc ? (
-                                <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>VSC</Text>
-                              ) : isSc ? (
-                                <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>SC</Text>
-                              ) : null}
-                              <Text style={{ color: '#888', fontSize: 8 }}>{lapNum}</Text>
-                            </View>
-                          );
-                        })}
-                      </View>
-                    </ScrollView>
-                  </View>
                   {(() => {
                     const rowData = drivers.map(driver => {
                       const isPaceExpanded = expandedPaceDriver === driver.driver_number;
-                      const paceRowH = isPaceExpanded ? 64 : 36;
+                      const paceRowH = isPaceExpanded ? 120 : 36;
                       const laps = paceData[driver.driver_number] ?? [];
                       const lapMap: Record<number, typeof laps[0]> = {};
                       for (const l of laps) lapMap[l.lap] = l;
@@ -1828,6 +1799,7 @@ export default function HomeScreen() {
                       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>
                         <View style={{ flexDirection: 'row' }}>
                           <View style={{ width: 52 }}>
+                            <View style={{ height: 20 }} />
                             {rowData.map(({ driver, isPaceExpanded, paceRowH, teamColor }) => (
                               <MotiView key={driver.driver_number} animate={{ height: paceRowH }} transition={{ type: 'timing', duration: 200 }} style={{ overflow: 'hidden' }}>
                                 <TouchableOpacity
@@ -1835,11 +1807,21 @@ export default function HomeScreen() {
                                   onPress={() => {
                                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                     setExpandedPaceDriver(prev => prev === driver.driver_number ? null : driver.driver_number);
+                                    setSelectedPaceBar(null);
                                   }}
                                   style={{ height: paceRowH, flexDirection: 'row', alignItems: 'center' }}
                                 >
                                   <View style={{ width: 2, height: 20, borderRadius: 1, backgroundColor: teamColor, marginRight: 6, marginLeft: 12 }} />
-                                  <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700', fontFamily: MONO }}>{driver.name_acronym ?? driver.acronym ?? String(driver.driver_number)}</Text>
+                                  <View>
+                                    <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700', fontFamily: MONO }}>{driver.name_acronym ?? driver.acronym ?? String(driver.driver_number)}</Text>
+                                    {isPaceExpanded && (() => {
+                                      const avg = driverAverages[driver.driver_number];
+                                      if (avg === undefined) return null;
+                                      const m = Math.floor(avg / 60);
+                                      const s = (avg % 60).toFixed(3).padStart(6, '0');
+                                      return <Text style={{ color: '#555555', fontSize: 8, fontFamily: MONO }}>AVG {m}:{s}</Text>;
+                                    })()}
+                                  </View>
                                 </TouchableOpacity>
                               </MotiView>
                             ))}
@@ -1848,15 +1830,30 @@ export default function HomeScreen() {
                             ref={paceScrollRef}
                             horizontal
                             showsHorizontalScrollIndicator={false}
-                            onContentSizeChange={() => paceScrollRef.current?.scrollToEnd({ animated: false })}
-                            onScroll={(e) => paceHeaderScrollRef.current?.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false })}
                             scrollEventThrottle={16}
                           >
                             <View>
+                              {/* Lap number header inside the single ScrollView */}
+                              <View style={{ flexDirection: 'row', height: 20, alignItems: 'flex-end' }}>
+                                {allLapNumbers.map(lapNum => {
+                                  const isVsc = isVscLapFn(lapNum);
+                                  const isSc = isPureScLapFn(lapNum);
+                                  return (
+                                    <View key={lapNum} style={{ width: 14, marginRight: 1, alignItems: 'center' }}>
+                                      {isVsc ? (
+                                        <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>VSC</Text>
+                                      ) : isSc ? (
+                                        <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', lineHeight: 8 }}>SC</Text>
+                                      ) : null}
+                                      <Text style={{ color: '#888', fontSize: 8 }}>{lapNum}</Text>
+                                    </View>
+                                  );
+                                })}
+                              </View>
                               {rowData.map(({ driver, isPaceExpanded, paceRowH, lapMap, slotWidth, trendSequences }) => (
                                 <MotiView key={driver.driver_number} animate={{ height: paceRowH }} transition={{ type: 'timing', duration: 200 }} style={{ flexDirection: 'row', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
                                   {isPaceExpanded && (
-                                    <View style={{ position: 'absolute', top: 31, left: 0, right: 0, height: 1.5, backgroundColor: '#333333', zIndex: 0 }} />
+                                    <View style={{ position: 'absolute', top: 59, left: 0, right: 0, height: 1.5, backgroundColor: '#333333', zIndex: 0 }} />
                                   )}
                                   {allLapNumbers.map(lapNum => {
                                     const lap = lapMap[lapNum];
@@ -1874,29 +1871,72 @@ export default function HomeScreen() {
                                     const driverAvg = driverAverages[driver.driver_number];
                                     const barColor = isSc ? '#F39C12' : bg;
                                     if (isPaceExpanded) {
-                                      const centerY = 32;
+                                      const isVscLapExp = isVscLapFn(lapNum);
+                                      // SC/VSC label box in expanded row
+                                      if (isSc || isVscLapExp) {
+                                        return (
+                                          <View key={lapNum} style={{ width: slotWidth, height: 120, position: 'relative', marginRight: 2, justifyContent: 'center', alignItems: 'center' }}>
+                                            <Text style={{ position: 'absolute', top: 4, left: 0, right: 0, textAlign: 'center', fontSize: 6, color: '#444444', fontFamily: MONO }}>{lapNum}</Text>
+                                            <View style={{ width: 20, height: 18, backgroundColor: '#000000', borderWidth: 1, borderColor: '#F39C12', justifyContent: 'center', alignItems: 'center' }}>
+                                              <Text style={{ color: '#F39C12', fontSize: 6, fontWeight: '700', fontFamily: MONO }}>{isVscLapExp ? 'VS' : 'SC'}</Text>
+                                            </View>
+                                          </View>
+                                        );
+                                      }
+                                      const centerY = 60;
+                                      const delta = lap.time != null && driverAvg !== undefined ? Math.max(-2.0, Math.min(2.0, lap.time - driverAvg)) : 0;
                                       const { barTop, barH } = (() => {
                                         if (lap.time == null || driverAvg === undefined) return { barTop: centerY - 1, barH: 2 };
-                                        const delta = Math.max(-2.0, Math.min(2.0, lap.time - driverAvg));
                                         if (delta === 0) return { barTop: centerY - 1, barH: 2 };
-                                        const halfHeight = Math.max(1, Math.min(28, Math.round(Math.abs(delta) * 12)));
+                                        const halfHeight = Math.max(2, Math.min(44, Math.round(Math.abs(delta) * 22)));
                                         return delta > 0 ? { barTop: centerY - halfHeight, barH: halfHeight } : { barTop: centerY, barH: halfHeight };
                                       })();
+                                      const isSelected = selectedPaceBar?.driverNumber === driver.driver_number && selectedPaceBar?.lapNum === lapNum;
                                       return (
-                                        <View key={lapNum} style={{ width: slotWidth, height: 64, position: 'relative', marginRight: 2 }}>
+                                        <TouchableOpacity
+                                          key={lapNum}
+                                          activeOpacity={1}
+                                          onPress={() => setSelectedPaceBar(isSelected ? null : { driverNumber: driver.driver_number, lapNum })}
+                                          style={{ width: slotWidth, height: 120, position: 'relative', marginRight: 2 }}
+                                        >
+                                          <Text style={{ position: 'absolute', top: 4, left: 0, right: 0, textAlign: 'center', fontSize: 6, color: '#444444', fontFamily: MONO }}>{lapNum}</Text>
                                           <View style={{ position: 'absolute', top: barTop, left: 2, width: 11, height: barH, borderRadius: 0, backgroundColor: barColor, zIndex: 1 }} />
+                                          {isSelected && lap.time != null && driverAvg !== undefined && (
+                                            <View style={{ position: 'absolute', top: Math.max(12, barTop - 38), left: -8, zIndex: 10, backgroundColor: '#1A1A1A', borderRadius: 3, paddingHorizontal: 4, paddingVertical: 2, borderWidth: 0.5, borderColor: '#333333' }}>
+                                              <Text style={{ color: '#FFFFFF', fontSize: 8, fontFamily: MONO }}>
+                                                {Math.floor(lap.time / 60)}:{(lap.time % 60).toFixed(3).padStart(6, '0')}
+                                              </Text>
+                                              <Text style={{ color: delta > 0 ? '#E10600' : '#27AE60', fontSize: 8, fontFamily: MONO }}>
+                                                {delta > 0 ? '+' : ''}{delta.toFixed(3)}
+                                              </Text>
+                                            </View>
+                                          )}
+                                        </TouchableOpacity>
+                                      );
+                                    }
+                                    const isVscLap = isVscLapFn(lapNum);
+                                    if (isSc || isVscLap) {
+                                      return (
+                                        <View key={lapNum} style={{ width: slotWidth, height: 36, position: 'relative', marginRight: 1 }}>
+                                          <View style={{ position: 'absolute', top: 11, left: 1, width: 12, height: 14, borderRadius: 0, backgroundColor: '#000000', borderWidth: 1, borderColor: '#F39C12', justifyContent: 'center', alignItems: 'center', zIndex: 1 }}>
+                                            <Text style={{ color: '#F39C12', fontSize: 5, fontWeight: '700', fontFamily: MONO }}>{isVscLap ? 'VS' : 'SC'}</Text>
+                                          </View>
                                         </View>
                                       );
                                     }
-                                    const barH = (() => {
-                                      if (lap.time == null || driverAvg === undefined) return 2;
+                                    const { barTop: collapsedBarTop, barH: collapsedBarH } = (() => {
+                                      const centerY = 17;
+                                      if (lap.time == null || driverAvg === undefined) return { barTop: centerY - 1, barH: 2 };
                                       const delta = Math.max(-2.0, Math.min(2.0, lap.time - driverAvg));
-                                      return Math.max(2, Math.round(Math.abs(delta) * 4.5) + 1);
+                                      const halfHeight = Math.max(1, Math.round(Math.abs(delta) * 4));
+                                      return delta >= 0
+                                        ? { barTop: centerY - halfHeight, barH: halfHeight }
+                                        : { barTop: centerY, barH: halfHeight };
                                     })();
                                     return (
-                                      <View key={lapNum} style={{ width: slotWidth, height: 36, position: 'relative', justifyContent: 'flex-end', alignItems: 'flex-start', marginRight: 1, paddingLeft: 1 }}>
+                                      <View key={lapNum} style={{ width: slotWidth, height: 36, position: 'relative', marginRight: 1 }}>
                                         <View style={{ position: 'absolute', top: 17, left: 0, right: 0, height: 1, backgroundColor: '#222222', zIndex: 0 }} />
-                                        <View style={{ width: 12, height: barH, borderRadius: 0, backgroundColor: barColor, zIndex: 1 }} />
+                                        <View style={{ position: 'absolute', top: collapsedBarTop, left: 1, width: 12, height: collapsedBarH, borderRadius: 0, backgroundColor: barColor, zIndex: 1 }} />
                                       </View>
                                     );
                                   })}

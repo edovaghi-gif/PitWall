@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Animated, Dimensions, findNodeHandle, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, UIManager, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GlassView } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
@@ -488,6 +488,10 @@ export default function HomeScreen() {
     loop.start();
     return () => { loop.stop(); };
   }, [expandedRaceDriver, raceDrivers, raceSafetyCarActive, raceVscActive]);
+
+  useEffect(() => {
+    console.log('trendTooltip changed:', trendTooltip);
+  }, [trendTooltip]);
 
   function getSectorColor(segments: number[] | null): string {
     if (!segments || segments.length === 0) return "#2A2A2A";
@@ -1727,24 +1731,20 @@ export default function HomeScreen() {
                                         return;
                                       }
                                       setSelectedTrend({ driverNumber: driver.driver_number, seqIdx: si });
-                                      if (firstTime == null || lastTime == null) return;
-                                      const totalDelta = lastTime - firstTime;
-                                      const perLap = totalDelta / (seq.length - 1);
+                                      const totalDelta = lastTime != null && firstTime != null ? lastTime - firstTime : 0;
+                                      const perLap = seq.length > 1 ? totalDelta / (seq.length - 1) : 0;
                                       const isImproving = seq.trend === 'improving';
                                       const accentColor = isImproving ? '#27AE60' : '#E10600';
-                                      const screenH = Dimensions.get('window').height;
-                                      (e.target as any).measure((_x: number, _y: number, _w: number, _h: number, _px: number, py: number) => {
-                                        const tooltipY = py < 150 ? py + 36 : py > screenH - 150 ? py - 60 : py - 52;
-                                        setTrendTooltip({
-                                          y: tooltipY,
-                                          content: {
-                                            label: `${isImproving ? '↓ IMPROVING' : '↑ WORSENING'} · ${seq.length} GIRI`,
-                                            totalStr: `${totalDelta > 0 ? '+' : ''}${totalDelta.toFixed(3)}s`,
-                                            perLapStr: `${perLap > 0 ? '+' : ''}${perLap.toFixed(3)}s/giro`,
-                                            color: accentColor,
-                                          },
-                                        });
+                                      setTrendTooltip({
+                                        y: 300,
+                                        content: {
+                                          label: `${isImproving ? '↓ IMPROVING' : '↑ WORSENING'} · ${seq.length} GIRI`,
+                                          totalStr: `${totalDelta > 0 ? '+' : ''}${totalDelta.toFixed(3)}s`,
+                                          perLapStr: `${perLap > 0 ? '+' : ''}${perLap.toFixed(3)}s/giro`,
+                                          color: accentColor,
+                                        },
                                       });
+                                      console.log('TOOLTIP SET', { y: 300, isImproving, totalDelta });
                                     }}
                                     style={{
                                       position: 'absolute', left: seq.startIdx * slotW - 3, width: seq.length * slotW,
@@ -2415,7 +2415,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <>
+    <View style={{ flex: 1 }}>
     <SafeAreaView style={{ flex: 1, backgroundColor: "#000000" }}>
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.navbar}>
@@ -2635,7 +2635,7 @@ export default function HomeScreen() {
         </ScrollView>
       </View>
     </Modal>
-    </>
+    </View>
   );
 }
 

@@ -1484,36 +1484,36 @@ export default function HomeScreen() {
                     </View>
                   </TouchableOpacity>
                   {isExpanded && !driver.isDnf && (
-                    <MotiView from={{ opacity: 0, translateY: -6 }} animate={{ opacity: 1, translateY: 0 }} exit={{ opacity: 0, translateY: -6 }} transition={{ type: 'timing', duration: 180 }} style={{ backgroundColor: '#0F0F0F', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: '#2A2A2A' }}>
-                      <Text style={{ color: "#999999", fontSize: 10, textTransform: "uppercase", marginBottom: 4 }}>DIETRO</Text>
+                    <MotiView from={{ opacity: 0, translateY: -6 }} animate={{ opacity: 1, translateY: 0 }} exit={{ opacity: 0, translateY: -6 }} transition={{ type: 'timing', duration: 180 }} style={{ backgroundColor: '#0F0F0F', paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 0.5, borderTopColor: '#1A1A1A' }}>
+                      <Text style={{ color: '#444444', fontSize: 7, fontFamily: MONO, letterSpacing: 2, marginBottom: 4 }}>DIETRO</Text>
                       {!driverBehind || driverBehind.isDnf ? (
-                        <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>—</Text>
+                        <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700", fontFamily: MONO }}>—</Text>
                       ) : (
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                           <View>
-                            <Text style={{ color: "#555555", fontSize: 10, marginBottom: 2 }}>{driverBehind.name_acronym}</Text>
-                            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>{driverBehind.interval}</Text>
+                            <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '700', fontFamily: MONO, marginBottom: 2 }}>{driverBehind.name_acronym}</Text>
+                            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700', fontFamily: MONO }}>{driverBehind.interval}</Text>
                             {raceSafetyCarActive || raceVscActive ? (
-                              <Text style={{ color: "#F39C12", fontSize: 11, marginTop: 2 }}>🚗 SC/VSC — trend sospeso</Text>
+                              <Text style={{ color: '#F39C12', fontSize: 8, fontFamily: MONO, letterSpacing: 1, marginTop: 4 }}>▲ SC/VSC — TREND SOSPESO</Text>
                             ) : trendBehind ? (
-                              <Text style={{ color: trendBehind.color, fontSize: 11, marginTop: 2 }}>{trendBehind.text}</Text>
+                              <Text style={{ color: trendBehind.color, fontSize: 8, fontFamily: MONO, marginTop: 4 }}>{trendBehind.text}</Text>
                             ) : null}
                           </View>
                           {arrowConfig ? (
                             <View style={{ alignItems: "flex-end" }}>
-                              <View style={{ overflow: "hidden", width: 60, alignItems: "flex-end" }}>
+                              <View style={{ overflow: "hidden", flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
                                 {(arrowConfig.type === 'stable' || arrowConfig.type === 'sc') ? (
-                                  <Animated.Text style={{ color: arrowConfig.color, fontSize: 14, letterSpacing: 2, opacity: arrowOpacityRef.current }}>
+                                  <Animated.Text style={{ color: arrowConfig.color, fontSize: 16, fontFamily: MONO, letterSpacing: 3, opacity: arrowOpacityRef.current }}>
                                     {arrowConfig.text}
                                   </Animated.Text>
                                 ) : (
                                   <Animated.View style={{ transform: [{ translateX: arrowTranslateRef.current }] }}>
-                                    <Text style={{ color: arrowConfig.color, fontSize: 14, letterSpacing: 2 }}>{arrowConfig.text}</Text>
+                                    <Text style={{ color: arrowConfig.color, fontSize: 16, fontFamily: MONO, letterSpacing: 3 }}>{arrowConfig.text}</Text>
                                   </Animated.View>
                                 )}
                               </View>
                               {arrowConfig.type === 'closing' && catchEst !== null && catchEst <= 30 && (
-                                <Text style={{ fontSize: 11, fontWeight: "600", color: "#27AE60", marginTop: 2 }}>~{catchEst} giri</Text>
+                                <Text style={{ fontSize: 9, fontFamily: MONO, color: '#27AE60', marginTop: 2 }}>~{catchEst} giri</Text>
                               )}
                             </View>
                           ) : null}

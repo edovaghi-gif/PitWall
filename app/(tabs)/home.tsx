@@ -118,14 +118,14 @@ export default function HomeScreen() {
   const [qualifyingDrivers, setQualifyingDrivers] = useState<any[]>([]);
   const [qualiPhase, setQualiPhase] = useState<"Q1" | "Q2" | "Q3" | null>(null);
   const [nextSessionCountdown, setNextSessionCountdown] = useState<string | null>(null);
-  const QUALI_DEV_MODE = false;
+  const QUALI_DEV_MODE = true;
   const [activeQualiPhase, setActiveQualiPhase] = useState<string | null>(QUALI_DEV_MODE ? "Q3" : null);
   const QUALI_DEV_SESSION_KEY = 11249;
   const QUALI_DEV_MAX_LAP = 999;
   const FP_DEV_MODE = false;
   const FP_DEV_CIRCUIT = "Suzuka";
   const FP_DEV_YEAR = 2026;
-  const RACE_DEV_MODE = true;
+  const RACE_DEV_MODE = false;
   const RACE_DEV_SESSION_KEY = 11253;
 
   const [fpSessions, setFpSessions] = useState<{key: number, name: string, finished: boolean}[]>([]);
@@ -1064,6 +1064,39 @@ export default function HomeScreen() {
       setQualiCountdown(null);
     }
     setRaceRainRisk(extractRainRisk(data));
+
+    // Populate events feed for qualifying (same logic as race mode)
+    const events = data
+      .filter((e: any) => e.message && e.message.trim() !== '')
+      .slice(-20)
+      .reverse()
+      .map((e: any) => {
+        const category = e.category ?? '';
+        let type = 'DIR';
+        if (category === 'Flag') type = 'FLAG';
+        else if (category === 'SafetyCar') type = 'SC';
+        else if (category === 'Drs') type = 'DRS';
+        else if (e.message?.includes('INVESTIGATION') || e.message?.includes('INFRINGEMENT')) type = 'INV';
+        else if (e.message?.includes('PENALTY')) type = 'PEN';
+        const date = new Date(e.date);
+        const time = `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}:${String(date.getSeconds()).padStart(2,'0')}`;
+        return { time, type, message: e.message };
+      });
+    setRaceEvents(events);
+
+    // Red flag detection
+    const recentRed = data.slice(-10).some((e: any) => e.flag === 'RED');
+    setRaceRedFlagActive(recentRed);
+
+    // Yellow flag sectors
+    const qYellowSectors: Record<number, string> = {};
+    for (const e of data) {
+      if (e.flag === 'YELLOW') { const s = e.sector ?? 0; qYellowSectors[s] = 'YELLOW'; }
+      if ((e.flag === 'CLEAR' || e.flag === 'GREEN') && e.sector != null) delete qYellowSectors[e.sector];
+    }
+    const qActiveSectors = Object.keys(qYellowSectors).map(Number).filter(s => s > 0).sort((a, b) => a - b);
+    const qHasGeneric = qYellowSectors[0] !== undefined;
+    setRaceYellowSectors(qHasGeneric && qActiveSectors.length === 0 ? [-1] : qActiveSectors);
   }
 
   async function fetchQualifyingData() {
@@ -2336,7 +2369,7 @@ export default function HomeScreen() {
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12 }}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Animated.View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#E10600", marginRight: 8, opacity: pulseAnim }} />
-            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "800", letterSpacing: 1 }}>
+            <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "700", fontFamily: MONO, letterSpacing: 1 }}>
               {activeQualiPhase ? `${activeQualiPhase} IN CORSO` : "QUALIFICHE IN CORSO"}
             </Text>
           </View>
@@ -2355,16 +2388,78 @@ export default function HomeScreen() {
                 key={q}
                 onPress={() => setSelectedQPhase(q as "Q1" | "Q2" | "Q3")}
                 style={{
-                  paddingHorizontal: 12, paddingVertical: 4, borderRadius: 6,
+                  paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4,
                   backgroundColor: isLive ? "#E10600" : isSelected ? "#2A2A2A" : "#1E1E1E",
                   borderWidth: isSelected ? 1 : 0,
                   borderColor: "#FFFFFF",
                 }}
               >
-                <Text style={{ color: isLive || isSelected ? "#FFFFFF" : "#555555", fontSize: 12, fontWeight: "700" }}>{q}</Text>
+                <Text style={{ color: isLive || isSelected ? "#FFFFFF" : "#555555", fontSize: 9, fontWeight: "700", fontFamily: MONO }}>{q}</Text>
               </TouchableOpacity>
             );
           })}
+        </View>
+        {raceRedFlagActive && (
+          <MotiView from={{ opacity: 0, translateY: -8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 250 }}>
+            <View style={{ backgroundColor: '#1A0000', borderWidth: 1, borderColor: '#E10600', marginHorizontal: 12, marginVertical: 4, borderRadius: 4, paddingHorizontal: 12, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Animated.View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#E10600', opacity: pulseAnim }} />
+                <Text style={{ color: '#E10600', fontSize: 10 }}>▲</Text>
+                <Text style={{ color: '#E10600', fontSize: 12, fontWeight: '700', letterSpacing: 2, fontFamily: MONO }}>RED FLAG</Text>
+              </View>
+              <Text style={{ color: '#E10600', fontSize: 9, letterSpacing: 1.5, fontFamily: MONO, opacity: 0.7 }}>SESSIONE SOSPESA</Text>
+            </View>
+          </MotiView>
+        )}
+        {raceYellowSectors.length > 0 && (() => {
+          const yellowLabel = raceYellowSectors[0] === -1
+            ? "⚠️ BANDIERA GIALLA"
+            : `⚠️ GIALLA ${raceYellowSectors.join(' · ')}`;
+          return (
+            <View style={{ backgroundColor: "#F39C12", marginHorizontal: 16, marginBottom: 8, borderRadius: 6, paddingVertical: 4, paddingHorizontal: 12, flexDirection: "row", alignItems: "center" }}>
+              <Text style={{ color: "#000000", fontWeight: "700", fontSize: 11, letterSpacing: 0.5, fontFamily: MONO }}>{yellowLabel}</Text>
+            </View>
+          );
+        })()}
+        {raceEvents.length > 0 && (
+          <View style={{ borderBottomWidth: 0.5, borderBottomColor: '#0D0D0D' }}>
+            <TouchableOpacity
+              onPress={() => setEventsExpanded(prev => !prev)}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: eventsExpanded ? 0.5 : 0, borderBottomColor: '#0A0A0A' }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{
+                  backgroundColor: raceEvents[0].type === 'INV' ? '#F39C12' : raceEvents[0].type === 'FLAG' ? '#E10600' : '#1A1A1A',
+                  borderRadius: 3, paddingHorizontal: 5, paddingVertical: 1
+                }}>
+                  <Text style={{ color: raceEvents[0].type === 'INV' || raceEvents[0].type === 'FLAG' ? '#000' : '#555', fontSize: 9, fontWeight: '700' }}>{raceEvents[0].type}</Text>
+                </View>
+                <Text style={{ color: '#FFFFFF', fontSize: 11, fontFamily: MONO_REG }} numberOfLines={1}>{raceEvents[0].message}</Text>
+              </View>
+              <Text style={{ color: '#444', fontSize: 11 }}>{eventsExpanded ? '▲' : '▼'}</Text>
+            </TouchableOpacity>
+            {eventsExpanded && raceEvents.map((event, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: '#0A0A0A', opacity: i === 0 ? 1 : 0.5 }}>
+                <Text style={{ color: '#444', fontSize: 10, fontVariant: ['tabular-nums'], width: 56, marginRight: 6, fontFamily: MONO_REG }}>{event.time}</Text>
+                <View style={{
+                  backgroundColor: event.type === 'INV' ? '#F39C12' : event.type === 'FLAG' ? '#E10600' : event.type === 'PEN' ? '#E10600' : '#1A1A1A',
+                  borderRadius: 3, paddingHorizontal: 5, paddingVertical: 1, marginRight: 8, minWidth: 32
+                }}>
+                  <Text style={{ color: event.type === 'INV' || event.type === 'FLAG' || event.type === 'PEN' ? '#000' : '#555', fontSize: 9, fontWeight: '700' }}>{event.type}</Text>
+                </View>
+                <Text style={{ color: i === 0 ? '#FFFFFF' : '#666', fontSize: 11, flex: 1, lineHeight: 15, fontFamily: MONO_REG }} numberOfLines={2}>{event.message}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: '#2A2A2A' }}>
+          <Text style={{ width: 18, color: '#444444', fontSize: 8, fontFamily: MONO }}>{' '}</Text>
+          <View style={{ width: 2 + 6 + 32 + 8 + 32, marginLeft: 12 }} />
+          <Text style={{ width: 48, color: '#444444', fontSize: 8, fontFamily: MONO, textAlign: 'center' }}>S1</Text>
+          <Text style={{ width: 48, color: '#444444', fontSize: 8, fontFamily: MONO, textAlign: 'center', marginLeft: 4 }}>S2</Text>
+          <Text style={{ width: 48, color: '#444444', fontSize: 8, fontFamily: MONO, textAlign: 'center', marginLeft: 4 }}>S3</Text>
+          <Text style={{ flex: 1, color: '#444444', fontSize: 8, fontFamily: MONO, marginLeft: 8 }}>TIME</Text>
+          <Text style={{ color: '#444444', fontSize: 8, fontFamily: MONO }}>GAP</Text>
         </View>
         <ScrollView>
           {(() => {
@@ -2436,48 +2531,47 @@ export default function HomeScreen() {
                 <View key={driver.driver_number}>
                   <TouchableOpacity
                     onPress={() => setExpandedDriver(isExpanded ? null : acronym)}
-                    style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: isExpanded ? 0 : 0.5, borderBottomColor: "#1A1A1A" }}
+                    style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 7, borderBottomWidth: 0.5, borderBottomColor: "#1A1A1A" }}
                   >
-                    <Text style={{ color: isEliminated ? "#555555" : "#999999", fontSize: 11, width: 16 }}>{index + 1}</Text>
+                    <Text style={{ color: isEliminated ? "#555555" : "#999999", fontSize: 12, fontFamily: MONO_REG, width: 16 }}>{index + 1}</Text>
                     <View style={{ width: 2, height: 16, backgroundColor: teamColor, borderRadius: 2, marginRight: 6 }} />
                     {driver.headshot_url ? (
                       <Image source={{ uri: driver.headshot_url }} style={{ width: 32, height: 32, borderRadius: 16, marginRight: 6, backgroundColor: "#2A2A2A" }} resizeMode="cover" />
                     ) : (
                       <View style={{ width: 32, height: 32, borderRadius: 16, marginRight: 6, backgroundColor: "#2A2A2A" }} />
                     )}
-                    <Text style={{ color: isEliminated ? "#555555" : "#FFFFFF", fontSize: 12, fontWeight: "600", width: 30 }}>{acronym}</Text>
+                    <Text style={{ color: isEliminated ? "#555555" : "#FFFFFF", fontSize: 13, fontWeight: "700", fontFamily: MONO, width: 30 }}>{acronym}</Text>
                     <View style={{ flexDirection: "row", gap: 2, marginHorizontal: 6 }}>
-                      <View style={{ width: 62, height: 20, borderRadius: 3, backgroundColor: isEliminated ? "#1A1A1A" : (driver.sector1 !== null ? driver.sector1_color : "#2A2A2A"), justifyContent: "center", alignItems: "center" }}>
-                        <Text style={{ color: isEliminated ? "#555555" : "#000000", fontSize: 10, fontWeight: "700" }}>{driver.sector1 ? driver.sector1.toFixed(3) : ""}</Text>
+                      <View style={{ width: 48, height: 18, borderRadius: 3, backgroundColor: isEliminated ? "#1A1A1A" : (driver.sector1 !== null ? driver.sector1_color : "#2A2A2A"), justifyContent: "center", alignItems: "center" }}>
+                        <Text style={{ color: isEliminated ? "#555555" : "#000000", fontSize: 8, fontWeight: "700", fontFamily: MONO }}>{driver.sector1 ? driver.sector1.toFixed(3) : ""}</Text>
                       </View>
-                      <View style={{ width: 62, height: 20, borderRadius: 3, backgroundColor: isEliminated ? "#1A1A1A" : (driver.sector2 !== null ? driver.sector2_color : "#2A2A2A"), justifyContent: "center", alignItems: "center" }}>
-                        <Text style={{ color: isEliminated ? "#555555" : "#000000", fontSize: 10, fontWeight: "700" }}>{driver.sector2 ? driver.sector2.toFixed(3) : ""}</Text>
+                      <View style={{ width: 48, height: 18, borderRadius: 3, backgroundColor: isEliminated ? "#1A1A1A" : (driver.sector2 !== null ? driver.sector2_color : "#2A2A2A"), justifyContent: "center", alignItems: "center" }}>
+                        <Text style={{ color: isEliminated ? "#555555" : "#000000", fontSize: 8, fontWeight: "700", fontFamily: MONO }}>{driver.sector2 ? driver.sector2.toFixed(3) : ""}</Text>
                       </View>
-                      <View style={{ width: 62, height: 20, borderRadius: 3, backgroundColor: isEliminated ? "#1A1A1A" : (driver.sector3 !== null ? driver.sector3_color : "#2A2A2A"), justifyContent: "center", alignItems: "center" }}>
-                        <Text style={{ color: isEliminated ? "#555555" : "#000000", fontSize: 10, fontWeight: "700" }}>{driver.sector3 ? driver.sector3.toFixed(3) : ""}</Text>
+                      <View style={{ width: 48, height: 18, borderRadius: 3, backgroundColor: isEliminated ? "#1A1A1A" : (driver.sector3 !== null ? driver.sector3_color : "#2A2A2A"), justifyContent: "center", alignItems: "center" }}>
+                        <Text style={{ color: isEliminated ? "#555555" : "#000000", fontSize: 8, fontWeight: "700", fontFamily: MONO }}>{driver.sector3 ? driver.sector3.toFixed(3) : ""}</Text>
                       </View>
                     </View>
                     <View style={{ flexDirection: "row", alignItems: "center", marginLeft: 6 }}>
-                      <Text style={{ color: isEliminated ? "#555555" : "#FFFFFF", fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"], minWidth: 72 }}>
+                      <Text style={{ color: isEliminated ? "#555555" : "#FFFFFF", fontSize: 12, fontWeight: "700", fontFamily: MONO, fontVariant: ["tabular-nums"], minWidth: 72 }}>
                         {formatLapTime(driver.display_lap_duration)}
                       </Text>
-                      <Text style={{ color: isEliminated ? "#444444" : "#999999", fontSize: 10, fontVariant: ["tabular-nums"], marginLeft: 6, minWidth: 44 }}>
+                      <Text style={{ color: index === 0 ? "#E10600" : isEliminated ? "#555555" : "#FFFFFF", fontSize: 12, fontWeight: "700", fontFamily: MONO, fontVariant: ["tabular-nums"], marginLeft: 6, minWidth: 44 }}>
                         {index === 0 ? "LEADER" : gapStr}
                       </Text>
                     </View>
                   </TouchableOpacity>
                   {isExpanded && (
-                    <View style={{ flexDirection: "row", backgroundColor: "#1E1E1E", borderTopWidth: 0.5, borderTopColor: "#2A2A2A", borderBottomWidth: 0.5, borderBottomColor: "#1A1A1A" }}>
-                      <View style={{ flex: 1, paddingHorizontal: 8, paddingVertical: 6 }}>
-                        <Text style={{ color: "#999999", fontSize: 10, textTransform: "uppercase", marginBottom: 2 }}>VS Quali Record</Text>
-                        <Text style={{ color: vsRecord?.color ?? "#FFFFFF", fontSize: 14, fontWeight: "700", fontVariant: ["tabular-nums"] }}>
+                    <View style={{ flexDirection: "row", backgroundColor: "#0F0F0F", paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 0.5, borderTopColor: "#1A1A1A", borderBottomWidth: 0.5, borderBottomColor: "#1A1A1A" }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: "#444444", fontSize: 7, fontFamily: MONO, letterSpacing: 2, marginBottom: 4 }}>VS QUALI RECORD</Text>
+                        <Text style={{ color: vsRecord ? vsRecord.color : "#555555", fontSize: 13, fontWeight: "700", fontFamily: MONO, fontVariant: ["tabular-nums"] }}>
                           {vsRecord ? vsRecord.text : "N/D"}
                         </Text>
                       </View>
-                      <View style={{ width: 0.5, backgroundColor: "#2A2A2A" }} />
-                      <View style={{ flex: 1, paddingHorizontal: 8, paddingVertical: 6 }}>
-                        <Text style={{ color: "#999999", fontSize: 10, textTransform: "uppercase", marginBottom: 2 }}>VS PB 2025</Text>
-                        <Text style={{ color: vsPb?.color ?? "#FFFFFF", fontSize: 14, fontWeight: "700", fontVariant: ["tabular-nums"] }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: "#444444", fontSize: 7, fontFamily: MONO, letterSpacing: 2, marginBottom: 4 }}>VS PB 2025</Text>
+                        <Text style={{ color: vsPb ? vsPb.color : "#555555", fontSize: 13, fontWeight: "700", fontFamily: MONO, fontVariant: ["tabular-nums"] }}>
                           {vsPb ? vsPb.text : "N/D"}
                         </Text>
                       </View>

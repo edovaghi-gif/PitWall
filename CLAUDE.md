@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Claude Code repo guide.
+Repo guide.
 
 ## Commands
 
@@ -57,7 +57,7 @@ Dynamic fetch. Never hardcode via API.
 
 ## App Assets
 - Logo: `assets/images/PitWall Logo.png` — transparent PNG, all screens (`height: 32, width: 160, resizeMode: 'contain'`)
-- Foto muretto: `assets/images/PitWall Photo.png` — onboarding background (opacity 0.25)
+- Foto muretto: `assets/images/PitWall Photo.png` — onboarding bg (opacity 0.25)
 - All screens: `SafeAreaView` — navbar `paddingTop: 8`, NOT `paddingTop: 52`
 
 ---
@@ -100,7 +100,7 @@ Dynamic fetch. Never hardcode via API.
 - Race: 11253 (53 laps)
 
 ### OpenF1 — key findings
-- Sessions fetch: use `session_type=Race` (NOT `session_name=Race`) — confirmed working
+- Sessions fetch: use `session_type=Race` (NOT `session_name=Race`)
 - Quali = single session (no Q1/Q2/Q3 split) — one session_key
 - `date_start` populated on normal laps, null on out-laps
 - Laps: `segments_sector_1/2/3` = mini-sector color arrays, pre-calc by OpenF1:
@@ -233,7 +233,7 @@ Target good session: ~100–110 pts.
 - `fetchRaceData()`: poll every 15s — parallel fetch via `safeFetch`: `/position`, `/intervals`, `/race_control`, `/drivers` (only if cache empty)
 - `fetchRaceStints()`: poll every 30s — `/stints`
 - `fetchRaceWeather()`: poll every 120s — `/weather`
-- `safeFetch(url)`: null (never throws) on non-JSON, rate limit, network error. Retry once 1500ms, null silently.
+- `safeFetch(url)`: null on non-JSON, rate limit, network error. Retry once 1500ms, null silently.
 - On mount: one-shot fetch `/laps?lap_number={totalLaps}` → save finishers to `dnfRef`
 
 ### DNF detection
@@ -345,7 +345,7 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 ## Circuito Screen (circuito.tsx)
 
 - 25 circuits (24 real + Madrid placeholder)
-- `CIRCUIT_INFO_MAP`: maps circuit key → `require()` circuit-info JSON (same pattern as home.tsx)
+- `CIRCUIT_INFO_MAP`: maps circuit key → `require()` circuit-info JSON
 - `CIRCUIT_COUNTRY`: maps circuit key → country (for AI prompt)
 
 ### Header restyling
@@ -374,7 +374,7 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 
 ### AI Anecdotes
 - `fetchAnecdotes(circuitKey, circuitName, lapRecord, country)`: calls Claude Haiku via `https://a.anthropic.com/v1/messages`
-- Cache AsyncStorage key `anecdotes_{circuitKey}` — load cache if present, else fetch
+- Cache AsyncStorage `anecdotes_{circuitKey}` — load if present, else fetch
 - Silent fallback on error → `setAnecdotes([])`
 - Called on mount (circuit 0) and in `onMomentumScrollEnd` (reset + fetch new circuit)
 - Shown after DNA card
@@ -435,7 +435,7 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 ### PACE tab — aggiornamento 22 aprile 2026
 
 #### Toggle GRAF/LAP
-- Replace for the old red pill "1:23" toggle
+- Replaces old red pill "1:23" toggle
 - Two-option LED toggle styled like INT/GAP in Classifica
 - Left: "GRAF" (dot mode, `showLapTimes === false`), Right: "LAP" (lap time mode, `showLapTimes === true`)
 - Active LED: `#00C850`, inactive: `#1A1A1A`. Both options use green when active (not red).
@@ -454,12 +454,12 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 #### Trend detection — strict monotonic algorithm
 - `cleanLaps` filter: `l.lap > 1 && !l.isPit && !l.isOut && !isScLapFn(l.lap) && !isVscLapFn(l.lap) && l.time !== null && l.time > 60 && l.time < 200`
 - Direction from first two laps: `t1 < t0` = improving, `t1 > t0` = worsening, equal = skip
-- Extend while **strictly monotonic**: each next lap must be strictly less (improving) or strictly greater (worsening) than previous — equal or reversal breaks the sequence
+- Extend while strictly monotonic: each next lap strictly less (improving) or strictly greater (worsening) than prev — equal or reversal breaks sequence
 - Minimum sequence length: 3 laps
 - Minimum total delta: `0.1 * (seqLen - 1)` seconds (proportional — longer trends require larger total improvement)
 - On confirmed trend: advance `i = end + 2` (1-lap cooldown, prevents adjacent fake trends)
 - On no trend: advance `i = end`
-- Each sequence tagged with unique ID: `trendMap` stores `${direction}-${seqCounter}` (e.g. `improving-3`) to prevent adjacent same-direction sequences from merging
+- Each sequence tagged with unique ID: `trendMap` stores `${direction}-${seqCounter}` (e.g. `improving-3`) — prevents adjacent same-direction sequences from merging
 - `trendSequences` builder compares full tag string (not just direction) to detect sequence boundaries
 
 #### Trend overlay styling (LAP mode)

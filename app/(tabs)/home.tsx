@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Dimensions, findNodeHandle, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, UIManager, View } from "react-native";
+import { ActivityIndicator, Animated, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GlassView } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
@@ -174,8 +174,8 @@ export default function HomeScreen() {
   const [expandedRaceDriver, setExpandedRaceDriver] = useState<number | null>(null);
   const [expandedPaceDriver, setExpandedPaceDriver] = useState<number | null>(null);
   const [selectedPaceBar, setSelectedPaceBar] = useState<{ driverNumber: number; lapNum: number } | null>(null);
+  const [expandedStintDriver, setExpandedStintDriver] = useState<number | null>(null);
   const [selectedTrend, setSelectedTrend] = useState<{ driverNumber: number; seqIdx: number } | null>(null);
-  const [trendTooltip, setTrendTooltip] = useState<{ y: number; content: { label: string; totalStr: string; perLapStr: string; color: string } } | null>(null);
   const [showGapToLeader, setShowGapToLeader] = useState(false);
   const [homeHeadshots, setHomeHeadshots] = useState<Record<string, string>>({});
   const gapHistoryRef = useRef<Record<number, Array<{gap: number, stint: number, timestamp: number}>>>({});
@@ -488,10 +488,6 @@ export default function HomeScreen() {
     loop.start();
     return () => { loop.stop(); };
   }, [expandedRaceDriver, raceDrivers, raceSafetyCarActive, raceVscActive]);
-
-  useEffect(() => {
-    console.log('trendTooltip changed:', trendTooltip);
-  }, [trendTooltip]);
 
   function getSectorColor(segments: number[] | null): string {
     if (!segments || segments.length === 0) return "#2A2A2A";
@@ -1225,6 +1221,10 @@ export default function HomeScreen() {
       fetchRaceData();
       fetchRaceStints();
       fetchRaceWeather();
+      if (Object.keys(paceData).length === 0) {
+        const pace = await fetchPaceData(sessionKey);
+        setPaceData(pace);
+      }
     })();
     const dataInterval = setInterval(fetchRaceData, 15000);
     const stintsInterval = setInterval(fetchRaceStints, 30000);
@@ -1609,7 +1609,7 @@ export default function HomeScreen() {
 
               return showLapTimes ? (
                 // LAP MODE — sticky header + vertical ScrollView for driver rows
-                <TouchableOpacity activeOpacity={1} onPress={() => { setSelectedTrend(null); setTrendTooltip(null); }} style={{ flex: 1 }}>
+                <TouchableOpacity activeOpacity={1} onPress={() => setSelectedTrend(null)} style={{ flex: 1 }}>
                 {/* STICKY HEADER — outside vertical ScrollView */}
                 <View style={{ flexDirection: 'row' }}>
                   <View style={{ width: 52 }} />
@@ -1713,7 +1713,7 @@ export default function HomeScreen() {
                           }
 
                           return (
-                            <TouchableOpacity key={driver.driver_number} activeOpacity={1} onPress={() => { setSelectedTrend(null); setTrendTooltip(null); }} style={{ flexDirection: 'row', height: 36, alignItems: 'center', position: 'relative' }}>
+                            <TouchableOpacity key={driver.driver_number} activeOpacity={1} onPress={() => setSelectedTrend(null)} style={{ flexDirection: 'row', height: 36, alignItems: 'center', position: 'relative', zIndex: rowIndex === 0 ? 20 : 1, elevation: rowIndex === 0 ? 20 : 1 }}>
                               {trendSequences.map((seq, si) => {
                                 const slotW = cellWidth + 6;
                                 const trendColor = seq.trend === 'improving' ? '#27AE60' : '#E10600';
@@ -1723,37 +1723,52 @@ export default function HomeScreen() {
                                 const lastTime = lapMap[lapNums[lapNums.length - 1]]?.time;
                                 return (
                                   <TouchableOpacity key={`trend-${si}`} activeOpacity={0.8}
-                                    onPress={(e) => {
+                                    onPress={() => {
                                       const isActive = selectedTrend?.driverNumber === driver.driver_number && selectedTrend?.seqIdx === si;
-                                      if (isActive) {
-                                        setSelectedTrend(null);
-                                        setTrendTooltip(null);
-                                        return;
-                                      }
-                                      setSelectedTrend({ driverNumber: driver.driver_number, seqIdx: si });
-                                      const totalDelta = lastTime != null && firstTime != null ? lastTime - firstTime : 0;
-                                      const perLap = seq.length > 1 ? totalDelta / (seq.length - 1) : 0;
-                                      const isImproving = seq.trend === 'improving';
-                                      const accentColor = isImproving ? '#27AE60' : '#E10600';
-                                      setTrendTooltip({
-                                        y: 300,
-                                        content: {
-                                          label: `${isImproving ? '↓ IMPROVING' : '↑ WORSENING'} · ${seq.length} GIRI`,
-                                          totalStr: `${totalDelta > 0 ? '+' : ''}${totalDelta.toFixed(3)}s`,
-                                          perLapStr: `${perLap > 0 ? '+' : ''}${perLap.toFixed(3)}s/giro`,
-                                          color: accentColor,
-                                        },
-                                      });
-                                      console.log('TOOLTIP SET', { y: 300, isImproving, totalDelta });
+                                      setSelectedTrend(isActive ? null : { driverNumber: driver.driver_number, seqIdx: si });
                                     }}
                                     style={{
-                                      position: 'absolute', left: seq.startIdx * slotW - 3, width: seq.length * slotW,
+                                      position: 'absolute', left: seq.startIdx * slotW - 4, width: seq.length * slotW + 2,
                                       height: 30, top: 3, borderRadius: 10, borderWidth: 0.75, borderColor: trendColor,
                                       backgroundColor: trendBg, zIndex: 2,
                                     }}
                                   />
                                 );
                               })}
+                              {selectedTrend?.driverNumber === driver.driver_number && (() => {
+                                const si = selectedTrend.seqIdx;
+                                const seq = trendSequences[si];
+                                if (!seq) return null;
+                                const lapNums = allLapNumbers.slice(seq.startIdx, seq.startIdx + seq.length);
+                                const firstTime = lapMap[lapNums[0]]?.time;
+                                const lastTime = lapMap[lapNums[lapNums.length - 1]]?.time;
+                                if (firstTime == null || lastTime == null) return null;
+                                const totalDelta = lastTime - firstTime;
+                                const perLap = totalDelta / (seq.length - 1);
+                                const isImproving = seq.trend === 'improving';
+                                const accentColor = isImproving ? '#27AE60' : '#E10600';
+                                const slotW = cellWidth + 6;
+                                const rawLeft = seq.startIdx * slotW;
+                                const maxLeft = allLapNumbers.length * slotW - 148;
+                                const tooltipLeft = Math.max(0, Math.min(rawLeft, maxLeft));
+                                const driverIdx = drivers.indexOf(driver);
+                                const isFirst = driverIdx === 0;
+                                const tooltipTop = isFirst ? 36 : -38;
+                                return (
+                                  <View style={{
+                                    position: 'absolute', left: tooltipLeft, top: tooltipTop, zIndex: 30,
+                                    backgroundColor: '#1A1A1A', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 5,
+                                    borderWidth: 0.5, borderColor: accentColor, minWidth: 140, zIndex: 50,
+                                  }}>
+                                    <Text style={{ color: accentColor, fontSize: 8, fontFamily: MONO, fontWeight: '700' }}>
+                                      {isImproving ? '↓ IMPROVING' : '↑ WORSENING'} · {seq.length} GIRI
+                                    </Text>
+                                    <Text style={{ color: '#FFFFFF', fontSize: 8, fontFamily: MONO, marginTop: 2 }}>
+                                      {totalDelta > 0 ? '+' : ''}{totalDelta.toFixed(3)}s · {perLap > 0 ? '+' : ''}{perLap.toFixed(3)}s/giro
+                                    </Text>
+                                  </View>
+                                );
+                              })()}
                               {allLapNumbers.map(lapNum => {
                                 const lap = lapMap[lapNum];
                                 if (!lap) return <View key={lapNum} style={{ width: cellWidth, height: 20, borderRadius: 6, backgroundColor: '#0A0A0A', marginRight: 6 }} />;
@@ -2084,77 +2099,181 @@ export default function HomeScreen() {
                     <View style={{ flexDirection: 'row', marginLeft: 80, marginBottom: 4, height: 12 }}>
                       {stintsTimelineWidth > 0 && ticks.map((lap, i) => (
                         <View key={i} style={{ position: 'absolute', left: (ticks[i] - 1) / (total - 1) * stintsTimelineWidth }}>
-                          <Text style={{ color: '#444', fontSize: 8 }}>{lap}</Text>
+                          <Text style={{ color: '#444444', fontSize: 8, fontFamily: MONO_REG }}>{lap}</Text>
                         </View>
                       ))}
                     </View>
                   );
                 })()}
                 <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20, paddingTop: 4 }}>
-                  {raceDrivers.filter(d => !d.isDnf).map((driver, driverIdx) => {
-                    const total = raceTotalLaps!;
-
-                    // Dedup pass 1: unique by lap_start
-                    const seen = new Set<number>();
-                    const deduped1: any[] = [];
-                    for (const s of raceStintsRef.current.filter((s: any) => s.driver_number === driver.driver_number).sort((a: any, b: any) => a.lap_start - b.lap_start)) {
-                      if (!seen.has(s.lap_start)) { seen.add(s.lap_start); deduped1.push({ ...s }); }
+                  {(() => {
+                    // Compute SC/VSC windows for stints section
+                    const scWins: Array<{startLap: number, endLap: number}> = [];
+                    let _ss: number | null = null;
+                    for (const e of raceControlRef.current) {
+                      const msg: string = e.message ?? '';
+                      const ln: number | null = e.lap_number ?? null;
+                      if (ln === null) continue;
+                      const isStart = (msg.includes('SAFETY CAR DEPLOYED') && !msg.includes('VIRTUAL')) || msg.includes('VIRTUAL SAFETY CAR DEPLOYED') || msg.includes('VSC DEPLOYED');
+                      const isEnd = msg.includes('SAFETY CAR IN THIS LAP') || msg.includes('VIRTUAL SAFETY CAR ENDING') || msg.includes('VSC ENDING');
+                      if (isStart && _ss === null) _ss = ln;
+                      if (isEnd && _ss !== null) { scWins.push({ startLap: _ss, endLap: ln }); _ss = null; }
                     }
-                    // Dedup pass 2: merge consecutive same-compound stints within 2 laps
-                    const driverStints: any[] = [];
-                    for (const stint of deduped1) {
-                      const prev = driverStints[driverStints.length - 1];
-                      if (prev && prev.compound === stint.compound && stint.lap_start - prev.lap_start <= 2) {
-                        prev.lap_end = stint.lap_end ?? total;
-                      } else {
-                        driverStints.push(stint);
+                    if (_ss !== null) scWins.push({ startLap: _ss, endLap: 9999 });
+                    const isScOrVscLap = (lap: number) => scWins.some(w => lap >= w.startLap && lap <= w.endLap);
+
+                    // Compute driver averages for stints section
+                    const stintDriverAvg: Record<number, number> = {};
+                    for (const [numStr, laps] of Object.entries(paceData)) {
+                      const valid = laps.filter(l => l.lap > 1 && !l.isPit && !l.isOut && !isScOrVscLap(l.lap) && l.time !== null && l.time > 60 && l.time < 200).map(l => l.time as number);
+                      if (valid.length > 0) stintDriverAvg[Number(numStr)] = valid.reduce((a, b) => a + b, 0) / valid.length;
+                    }
+
+                    return raceDrivers.filter(d => !d.isDnf).map((driver, driverIdx) => {
+                      const total = raceTotalLaps!;
+
+                      // Dedup pass 1: unique by lap_start
+                      const seen = new Set<number>();
+                      const deduped1: any[] = [];
+                      for (const s of raceStintsRef.current.filter((s: any) => s.driver_number === driver.driver_number).sort((a: any, b: any) => a.lap_start - b.lap_start)) {
+                        if (!seen.has(s.lap_start)) { seen.add(s.lap_start); deduped1.push({ ...s }); }
                       }
-                    }
+                      // Dedup pass 2: merge consecutive same-compound stints within 2 laps
+                      const driverStints: any[] = [];
+                      for (const stint of deduped1) {
+                        const prev = driverStints[driverStints.length - 1];
+                        if (prev && prev.compound === stint.compound && stint.lap_start - prev.lap_start <= 2) {
+                          prev.lap_end = stint.lap_end ?? total;
+                        } else {
+                          driverStints.push(stint);
+                        }
+                      }
 
-                    const pitCount = Math.max(0, driverStints.length - 1);
-                    return (
-                      <View key={driver.driver_number} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                        {/* Left column */}
-                        <View style={{ width: 80, flexDirection: 'row', alignItems: 'center', paddingRight: 8 }}>
-                          <View style={{ width: 2, height: 36, borderRadius: 1, backgroundColor: driver.team_colour ? (driver.team_colour.startsWith('#') ? driver.team_colour : `#${driver.team_colour}`) : '#FFFFFF', marginRight: 6 }} />
-                          <View>
-                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{driver.name_acronym ?? driver.acronym ?? String(driver.driver_number)}</Text>
-                            <Text style={{ color: '#666', fontSize: 8, marginTop: 1 }}>{pitCount}-STOP</Text>
-                          </View>
-                        </View>
-                        {/* Timeline */}
-                        <View style={{ flex: 1, position: 'relative' }}>
-                          <View style={{ height: 24, borderRadius: 3, backgroundColor: '#0A0A0A', flexDirection: 'row', overflow: 'hidden' }}>
-                            {driverStints.map((stint: any, i: number) => {
-                              const lapEnd = stint.lap_end ?? total;
-                              const stintLaps = Math.max(1, lapEnd - stint.lap_start + 1);
-                              const widthPct = (stintLaps / total) * 100;
-                              const tyre = getTyreInfo(stint.compound);
-                              const blockWidthPx = stintsTimelineWidth > 0 ? (stintLaps / total) * stintsTimelineWidth : 0;
-                              const showAge = stint.tyre_age_at_start > 0 && blockWidthPx > 20;
-                              const gap = i < driverStints.length - 1 ? 1 : 0;
-                              return (
-                                <View key={i} style={{ width: `${widthPct}%` as any, height: 24, backgroundColor: tyre.bg, marginRight: gap, flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                                  <Text style={{ color: tyre.textColor, fontSize: 10, fontWeight: '700', lineHeight: 12 }}>{tyre.label}</Text>
-                                  {showAge && (
-                                    <Text style={{ color: tyre.textColor, fontSize: 7, opacity: 0.6, lineHeight: 8 }}>↺{stint.tyre_age_at_start}</Text>
+                      const pitCount = Math.max(0, driverStints.length - 1);
+                      const isExpanded = expandedStintDriver === driver.driver_number;
+                      const teamColor = driver.team_colour ? (driver.team_colour.startsWith('#') ? driver.team_colour : `#${driver.team_colour}`) : '#FFFFFF';
+                      const formatT = (t: number) => `${Math.floor(t / 60)}:${(t % 60).toFixed(3).padStart(6, '0')}`;
+
+                      return (
+                        <View key={driver.driver_number} style={{ marginBottom: 6 }}>
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              setExpandedStintDriver(prev => prev === driver.driver_number ? null : driver.driver_number);
+                            }}
+                            style={{ flexDirection: 'row', alignItems: 'center' }}
+                          >
+                            {/* Left column */}
+                            <View style={{ width: 80, flexDirection: 'row', alignItems: 'center', paddingRight: 8 }}>
+                              <View style={{ width: 2, height: 36, borderRadius: 1, backgroundColor: teamColor, marginRight: 6 }} />
+                              <View>
+                                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700', fontFamily: MONO }}>{driver.name_acronym ?? driver.acronym ?? String(driver.driver_number)}</Text>
+                                <Text style={{ color: '#555555', fontSize: 8, fontFamily: MONO_REG, marginTop: 1 }}>{pitCount}-STOP</Text>
+                              </View>
+                            </View>
+                            {/* Timeline */}
+                            <View style={{ flex: 1, position: 'relative' }}>
+                              <View style={{ height: 24, borderRadius: 3, backgroundColor: '#0A0A0A', flexDirection: 'row', overflow: 'hidden' }}>
+                                {driverStints.map((stint: any, i: number) => {
+                                  const lapEnd = stint.lap_end ?? total;
+                                  const stintLaps = Math.max(1, lapEnd - stint.lap_start + 1);
+                                  const widthPct = (stintLaps / total) * 100;
+                                  const tyre = getTyreInfo(stint.compound);
+                                  const blockWidthPx = stintsTimelineWidth > 0 ? (stintLaps / total) * stintsTimelineWidth : 0;
+                                  const showAge = stint.tyre_age_at_start > 0 && blockWidthPx > 20;
+                                  const gap = i < driverStints.length - 1 ? 1 : 0;
+                                  return (
+                                    <View key={i} style={{ width: `${widthPct}%` as any, height: 24, backgroundColor: tyre.bg, marginRight: gap, flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                                      <Text style={{ color: tyre.textColor, fontSize: 10, fontWeight: '700', fontFamily: MONO, lineHeight: 12 }}>{tyre.label}</Text>
+                                      {showAge && (
+                                        <Text style={{ color: tyre.textColor, fontSize: 7, fontFamily: MONO_REG, opacity: 0.6, lineHeight: 8 }}>↺{stint.tyre_age_at_start}</Text>
+                                      )}
+                                    </View>
+                                  );
+                                })}
+                              </View>
+                              {/* NOW line */}
+                              {stintsTimelineWidth > 0 && raceLap !== null && (
+                                <View style={{ position: 'absolute', left: (raceLap / total) * stintsTimelineWidth, top: 0, bottom: 0, width: 1.5, backgroundColor: '#E10600', zIndex: 10 }}>
+                                  {driverIdx === 0 && (
+                                    <Text style={{ color: '#E10600', fontSize: 8, fontFamily: MONO, fontWeight: '700', position: 'absolute', top: -12, left: 2 }}>L{raceLap}</Text>
                                   )}
                                 </View>
-                              );
-                            })}
-                          </View>
-                          {/* NOW line */}
-                          {stintsTimelineWidth > 0 && raceLap !== null && (
-                            <View style={{ position: 'absolute', left: (raceLap / total) * stintsTimelineWidth, top: 0, bottom: 0, width: 1.5, backgroundColor: '#E10600', zIndex: 10 }}>
-                              {driverIdx === 0 && (
-                                <Text style={{ color: '#E10600', fontSize: 8, fontWeight: '700', position: 'absolute', top: -12, left: 2 }}>L{raceLap}</Text>
                               )}
+                            </View>
+                          </TouchableOpacity>
+                          {/* Expand panel */}
+                          {isExpanded && (
+                            <View style={{ backgroundColor: '#0F0F0F', paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 0.5, borderTopColor: '#1A1A1A' }}>
+                              {driverStints.map((stint: any, i: number) => {
+                                const lapEnd = stint.lap_end ?? total;
+                                const stintLen = lapEnd - stint.lap_start + 1;
+                                const stintLapTimes = paceData[driver.driver_number]?.filter(l =>
+                                  l.lap >= stint.lap_start &&
+                                  l.lap <= lapEnd &&
+                                  l.lap !== stint.lap_start &&
+                                  (i === driverStints.length - 1 || l.lap !== lapEnd) &&
+                                  !isScOrVscLap(l.lap) &&
+                                  l.time !== null && l.time > 60 && l.time < 200
+                                ) ?? [];
+                                const stintAvg = stintLapTimes.length > 0
+                                  ? stintLapTimes.reduce((s, l) => s + (l.time as number), 0) / stintLapTimes.length
+                                  : null;
+                                const raceAvg = stintDriverAvg[driver.driver_number];
+                                const delta = stintAvg != null && raceAvg != null ? stintAvg - raceAvg : null;
+                                const mid = Math.floor(stintLapTimes.length / 2);
+                                const firstHalf = stintLapTimes.slice(0, mid);
+                                const secondHalf = stintLapTimes.slice(mid);
+                                const avgFirst = firstHalf.length > 0 ? firstHalf.reduce((s, l) => s + (l.time as number), 0) / firstHalf.length : null;
+                                const avgSecond = secondHalf.length > 0 ? secondHalf.reduce((s, l) => s + (l.time as number), 0) / secondHalf.length : null;
+                                const degradation = avgFirst != null && avgSecond != null ? avgSecond - avgFirst : null;
+                                const scCount = paceData[driver.driver_number]?.filter(l =>
+                                  l.lap >= stint.lap_start && l.lap <= lapEnd && isScOrVscLap(l.lap)
+                                ).length ?? 0;
+                                const tyre = getTyreInfo(stint.compound);
+                                return (
+                                  <View key={i} style={{ marginBottom: i < driverStints.length - 1 ? 12 : 0 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                                      <View style={{ backgroundColor: tyre.bg, borderRadius: 3, width: 20, height: 20, justifyContent: 'center', alignItems: 'center', marginRight: 8 }}>
+                                        <Text style={{ color: tyre.textColor, fontSize: 10, fontWeight: '700', fontFamily: MONO }}>{tyre.label}</Text>
+                                      </View>
+                                      <Text style={{ color: '#FFFFFF', fontSize: 10, fontFamily: MONO }}>
+                                        STINT {i + 1} · G{stint.lap_start}–G{lapEnd} · {stintLen} GIRI
+                                      </Text>
+                                      {scCount > 0 && (
+                                        <Text style={{ color: '#F39C12', fontSize: 8, fontFamily: MONO, marginLeft: 8 }}>{scCount} SC</Text>
+                                      )}
+                                    </View>
+                                    <View style={{ flexDirection: 'row', gap: 16 }}>
+                                      <View>
+                                        <Text style={{ color: '#555555', fontSize: 7, fontFamily: MONO, marginBottom: 2 }}>MEDIA STINT</Text>
+                                        <Text style={{ color: '#FFFFFF', fontSize: 10, fontFamily: MONO }}>
+                                          {stintAvg != null ? formatT(stintAvg) : '—'}
+                                        </Text>
+                                      </View>
+                                      <View>
+                                        <Text style={{ color: '#555555', fontSize: 7, fontFamily: MONO, marginBottom: 2 }}>VS MEDIA GARA</Text>
+                                        <Text style={{ color: delta == null ? '#555555' : delta > 0 ? '#E10600' : '#27AE60', fontSize: 10, fontFamily: MONO }}>
+                                          {delta != null ? `${delta > 0 ? '+' : ''}${delta.toFixed(3)}s` : '—'}
+                                        </Text>
+                                      </View>
+                                      <View>
+                                        <Text style={{ color: '#555555', fontSize: 7, fontFamily: MONO, marginBottom: 2 }}>DEGRADO</Text>
+                                        <Text style={{ color: degradation == null ? '#555555' : degradation > 0 ? '#E8A000' : '#27AE60', fontSize: 10, fontFamily: MONO }}>
+                                          {degradation != null ? `${degradation > 0 ? '+' : ''}${degradation.toFixed(3)}s` : '—'}
+                                        </Text>
+                                      </View>
+                                    </View>
+                                  </View>
+                                );
+                              })}
                             </View>
                           )}
                         </View>
-                      </View>
-                    );
-                  })}
+                      );
+                    });
+                  })()}
                 </ScrollView>
               </View>
             )}
@@ -2559,30 +2678,6 @@ export default function HomeScreen() {
       </View>
     </ScrollView>
     </SafeAreaView>
-
-    {trendTooltip && (
-      <View style={{
-        position: 'absolute',
-        left: 60,
-        top: trendTooltip.y,
-        zIndex: 9999,
-        backgroundColor: '#1A1A1A',
-        borderRadius: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 5,
-        borderWidth: 0.5,
-        borderColor: trendTooltip.content.color,
-        minWidth: 140,
-        pointerEvents: 'none',
-      }}>
-        <Text style={{ color: trendTooltip.content.color, fontSize: 8, fontFamily: MONO, fontWeight: '700' }}>
-          {trendTooltip.content.label}
-        </Text>
-        <Text style={{ color: '#FFFFFF', fontSize: 8, fontFamily: MONO, marginTop: 2 }}>
-          {trendTooltip.content.totalStr} · {trendTooltip.content.perLapStr}
-        </Text>
-      </View>
-    )}
 
     <Modal visible={showFpModal} animationType="slide" presentationStyle="pageSheet">
       <View style={{ flex: 1, backgroundColor: "#0A0A0A", paddingTop: 48 }}>

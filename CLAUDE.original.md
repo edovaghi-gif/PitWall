@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guide Claude Code repo.
+Claude Code repo guide.
 
 ## Commands
 
@@ -51,7 +51,7 @@ app/onboarding.tsx        → 5 slide onboarding con animazione, mostrato solo a
 - **Ergast** via `https://api.jolpi.ca/ergast/f1/` — results, standings, drivers, schedule
 - **OpenF1** via `https://api.openf1.org/v1/` — circuit GPS, live telemetry, post-race scoring
 
-Prefer dynamic fetch. Never hardcode via API.
+Dynamic fetch. Never hardcode via API.
 
 ---
 
@@ -116,6 +116,14 @@ Prefer dynamic fetch. Never hardcode via API.
 - SC: `race_control` `category === "SafetyCar"` + message contains `"DEPLOYED"` but NOT `"VIRTUAL"`
 - VSC: `category === "SafetyCar"` + message contains `"VIRTUAL SAFETY CAR DEPLOYED"` or `"VSC DEPLOYED"`
 - Yellow flag: `race_control` `flag === "YELLOW"` + `sector` field (int, may be null = track-wide)
+- `race_control` `lap_number` field affidabile per SC window detection
+- `raceControlRef.current` deve essere popolato da `fetchRaceData` (non solo `fetchRaceControl`) — aggiungere `raceControlRef.current = rcData` dopo fetch in `fetchRaceData`
+- SC windows: start su `"SAFETY CAR DEPLOYED"`, end su `"SAFETY CAR IN THIS LAP"`; VSC: `"VIRTUAL SAFETY CAR DEPLOYED"`/`"VSC DEPLOYED"` → `"VIRTUAL SAFETY CAR ENDING"`/`"VSC ENDING"`
+- `/laps` max ~1108 entries per gara (no pagination)
+- PIT/OUT da `/stints` (`lap_start-1`=pit, `lap_start`=out) — NON da `lap_duration`
+- Stint dedup: per `(driver_number, stint_number)`, tieni `lap_start` minore
+- Rate limiting: sequential fetch 500ms delay, mai `Promise.all`
+- ALB Giappone: 5 pit reali (test Williams) — dati corretti
 
 ---
 
@@ -171,7 +179,7 @@ If fix touches % / proportion calc logic, stop and ask.
 ## Scoring Prediction
 
 ### Fonte dati
-OpenF1 only. Never use Ergast for post-race scoring.
+OpenF1 only. Never Ergast for post-race scoring.
 
 ### Endpoint OpenF1
 - Podio reale: `/position?session_key={key}`
@@ -419,6 +427,55 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 - Telemetria post-gara (`/car_data` + `/location`)
 - GPS piloti live su mappa circuito
 
+### Implementato (Live Race)
+- PACE tab: griglia tempi giro per pilota, colori verde/giallo/viola/bordo-SC, P/O compatti, label SC/VSC su header giri
+- STINTS tab: timeline orizzontale compound per pilota, NOW line rossa, dedup stint, tyre age
+- PACE tab: pallini + trend Robinhood (bordo verde/rosso su sequenze 3+ giri), PIT/OUT da /stints, tutti 22 piloti, slot quadrati allineati
+
+### PACE tab — aggiornamento 22 aprile 2026
+
+#### Toggle GRAF/LAP
+- Replace for the old red pill "1:23" toggle
+- Two-option LED toggle styled like INT/GAP in Classifica
+- Left: "GRAF" (dot mode, `showLapTimes === false`), Right: "LAP" (lap time mode, `showLapTimes === true`)
+- Active LED: `#00C850`, inactive: `#1A1A1A`. Both options use green when active (not red).
+- Same pattern applies to INT/GAP toggle in Classifica: both LEDs are now green.
+
+#### LAP mode cell styling
+- `height: 20`, `borderRadius: 6`, `marginRight: 6`, font `JetBrainsMono_700Bold` fontSize 9
+- SC lap: `backgroundColor: '#F39C12'`, `borderWidth: 0`, `color: '#000000'` — solid fill, distinct from slow laps
+- Slow lap (> driver avg): border-only `#E8A000`, text `#E8A000`, bg `#000000`
+- Fast lap (≤ driver avg): border-only `#27AE60`, text `#27AE60`, bg `#000000`
+- Best lap overall: border-only `#9B59B6`, text `#9B59B6`, bg `#000000`
+- PIT/OUT: `backgroundColor: '#FFFFFF'`, text `#E10600`, full label "PIT"/"OUT"
+- Header slot width must match content: `slotW = cellWidth + 6` (including marginRight)
+- Driver acronym column: `JetBrainsMono_700Bold`, fontSize 13, color `#FFFFFF` (matches Classifica)
+
+#### Trend detection — strict monotonic algorithm
+- `cleanLaps` filter: `l.lap > 1 && !l.isPit && !l.isOut && !isScLapFn(l.lap) && !isVscLapFn(l.lap) && l.time !== null && l.time > 60 && l.time < 200`
+- Direction from first two laps: `t1 < t0` = improving, `t1 > t0` = worsening, equal = skip
+- Extend while **strictly monotonic**: each next lap must be strictly less (improving) or strictly greater (worsening) than previous — equal or reversal breaks the sequence
+- Minimum sequence length: 3 laps
+- Minimum total delta: `0.1 * (seqLen - 1)` seconds (proportional — longer trends require larger total improvement)
+- On confirmed trend: advance `i = end + 2` (1-lap cooldown, prevents adjacent fake trends)
+- On no trend: advance `i = end`
+- Each sequence tagged with unique ID: `trendMap` stores `${direction}-${seqCounter}` (e.g. `improving-3`) to prevent adjacent same-direction sequences from merging
+- `trendSequences` builder compares full tag string (not just direction) to detect sequence boundaries
+
+#### Trend overlay styling (LAP mode)
+- `height: 30`, `top: 3`, `borderRadius: 10`, `borderWidth: 0.75`
+- `left: seq.startIdx * slotW - 3`, `width: seq.length * slotW` (symmetric 3px gap outside cells)
+- `borderColor`: `#27AE60` (improving) or `#E10600` (worsening)
+- `backgroundColor`: `rgba(39,174,96,0.18)` (improving) or `rgba(225,6,0,0.18)` (worsening)
+- `zIndex: 0` (behind cells)
+- `slotW = cellWidth + 6` in LAP mode, `slotWidth` (20) in GRAF mode
+
+#### Trend overlay styling (GRAF/dot mode — unchanged)
+- `height: 22`, `top: 7`, `borderRadius: 11`, `borderWidth: 1`
+- `left: seq.startIdx * slotW + 1`, `width: seq.length * slotW - 4`
+- Same border/bg colors as LAP mode
+- `slotW = slotWidth` (20)
+
 ### Scartate (no dati pubblici)
 - Pit window
 - Gomma health
@@ -427,8 +484,8 @@ Yellow label: `"⚠️ GIALLA S1 · S3"` or `"⚠️ BANDIERA GIALLA"` if no sec
 - Live Race, Circuito, H2H, Prediction
 
 ### Claude Design workflow
-- Design genera mockup web → screenshot → prompt manuale per Code
-- NO handoff diretto — il codice generato è web, non React Native
+- Design: mockup web → screenshot → prompt manuale per Code
+- NO handoff diretto — codice generato web, not React Native
 
 ### Altro
 - Statistiche circuito aggiuntive: DRS zones, record costruttori, anno prima gara

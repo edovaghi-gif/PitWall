@@ -65,6 +65,43 @@ const TOTAL_LAPS: Record<string, number> = {
   "Yas Marina Circuit": 58,
 };
 
+function getLastTwoLaps(
+  driverNumber: number,
+  lapPhase: number | null,
+  laps: any[],
+  getPhaseWindowFn: (phase: number) => { start: Date | null; end: Date | null },
+  bestLapDuration: number | null
+): { current: any | null; prev: any | null } {
+  if (lapPhase === null || bestLapDuration === null) return { current: null, prev: null };
+  const window = getPhaseWindowFn(lapPhase);
+  const driverLaps = laps.filter((l: any) => {
+    if (l.driver_number !== driverNumber) return false;
+    if (window.start && l.date_start && new Date(l.date_start) < window.start) return false;
+    if (window.end && l.date_start && new Date(l.date_start) > window.end) return false;
+    return true;
+  });
+  const current = driverLaps.find(
+    (l: any) => l.lap_duration != null && Math.abs(l.lap_duration - bestLapDuration) < 0.001
+  ) ?? null;
+  if (!current) return { current: null, prev: null };
+  const isTimedLap = (l: any): boolean => {
+    const s1: number[] = l.segments_sector_1 ?? [];
+    const s2: number[] = l.segments_sector_2 ?? [];
+    const s3: number[] = l.segments_sector_3 ?? [];
+    return s1.some(v => v !== 2048) && s2.some(v => v !== 2048) && s3.some(v => v !== 2048);
+  };
+  const prev = driverLaps
+    .filter((l: any) =>
+      l.lap_number < current.lap_number &&
+      !l.is_pit_out_lap &&
+      l.lap_duration != null &&
+      l.duration_sector_1 != null &&
+      isTimedLap(l)
+    )
+    .sort((a: any, b: any) => b.lap_number - a.lap_number)[0] ?? null;
+  return { current, prev };
+}
+
 function timeToSecs(t: string): number {
   const parts = t.split(':');
   return parseInt(parts[0]) * 60 + parseFloat(parts[1]);
@@ -794,9 +831,8 @@ export default function HomeScreen() {
     const hasGenericYellow = yellowSectors[0] !== undefined;
     setRaceYellowSectors(hasGenericYellow && activeSectors.length === 0 ? [-1] : activeSectors);
 
-    const events = rcData
+    const allEvents = rcData
       .filter((e: any) => e.message && e.message.length > 2)
-      .slice(-5)
       .reverse()
       .map((e: any) => {
         const date = new Date(e.date);
@@ -810,7 +846,7 @@ export default function HomeScreen() {
         else if (e.message?.includes('PENALTY')) type = 'PEN';
         return { time, type, message: e.message };
       });
-    setRaceEvents(events);
+    setRaceEvents(allEvents);
 
     // Build driver list
     const driverMap: Record<number, any> = {};
@@ -1066,9 +1102,8 @@ export default function HomeScreen() {
     setRaceRainRisk(extractRainRisk(data));
 
     // Populate events feed for qualifying (same logic as race mode)
-    const events = data
+    const allEvents = data
       .filter((e: any) => e.message && e.message.trim() !== '')
-      .slice(-20)
       .reverse()
       .map((e: any) => {
         const category = e.category ?? '';
@@ -1082,7 +1117,7 @@ export default function HomeScreen() {
         const time = `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}:${String(date.getSeconds()).padStart(2,'0')}`;
         return { time, type, message: e.message };
       });
-    setRaceEvents(events);
+    setRaceEvents(allEvents);
 
     // Red flag detection
     const recentRed = data.slice(-10).some((e: any) => e.flag === 'RED');
@@ -1387,18 +1422,22 @@ export default function HomeScreen() {
               <Text style={{ color: '#444', fontSize: 11 }}>{eventsExpanded ? '▲' : '▼'}</Text>
             </TouchableOpacity>
 
-            {eventsExpanded && raceEvents.map((event, i) => (
-              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: '#0A0A0A', opacity: i === 0 ? 1 : 0.5 }}>
-                <Text style={{ color: '#444', fontSize: 10, fontVariant: ['tabular-nums'], width: 56, marginRight: 6, fontFamily: MONO_REG }}>{event.time}</Text>
-                <View style={{
-                  backgroundColor: event.type === 'INV' ? '#F39C12' : event.type === 'FLAG' ? '#E10600' : event.type === 'PEN' ? '#E10600' : '#1A1A1A',
-                  borderRadius: 3, paddingHorizontal: 5, paddingVertical: 1, marginRight: 8, minWidth: 32
-                }}>
-                  <Text style={{ color: event.type === 'INV' || event.type === 'FLAG' || event.type === 'PEN' ? '#000' : '#555', fontSize: 9, fontWeight: '700' }}>{event.type}</Text>
-                </View>
-                <Text style={{ color: i === 0 ? '#FFFFFF' : '#666', fontSize: 11, flex: 1, lineHeight: 15, fontFamily: MONO_REG }} numberOfLines={2}>{event.message}</Text>
-              </View>
-            ))}
+            {eventsExpanded && (
+              <ScrollView style={{ height: 160 }} showsVerticalScrollIndicator={false} nestedScrollEnabled={true}>
+                {raceEvents.map((event, i) => (
+                  <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: '#0A0A0A', opacity: i === 0 ? 1 : 0.5 }}>
+                    <Text style={{ color: '#444', fontSize: 10, fontVariant: ['tabular-nums'], width: 56, marginRight: 6, fontFamily: MONO_REG }}>{event.time}</Text>
+                    <View style={{
+                      backgroundColor: event.type === 'INV' ? '#F39C12' : event.type === 'FLAG' ? '#E10600' : event.type === 'PEN' ? '#E10600' : '#1A1A1A',
+                      borderRadius: 3, paddingHorizontal: 5, paddingVertical: 1, marginRight: 8, minWidth: 32
+                    }}>
+                      <Text style={{ color: event.type === 'INV' || event.type === 'FLAG' || event.type === 'PEN' ? '#000' : '#555', fontSize: 9, fontWeight: '700' }}>{event.type}</Text>
+                    </View>
+                    <Text style={{ color: i === 0 ? '#FFFFFF' : '#666', fontSize: 11, flex: 1, lineHeight: 15, fontFamily: MONO_REG }} numberOfLines={2}>{event.message}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
           </View>
         )}
         <View style={{ flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: '#1A1A1A', marginBottom: 0 }}>
@@ -1769,7 +1808,7 @@ export default function HomeScreen() {
                                 );
                               })}
                               {selectedTrend?.driverNumber === driver.driver_number && (() => {
-                                const si = selectedTrend.seqIdx;
+                                const si = selectedTrend?.seqIdx;
                                 const seq = trendSequences[si];
                                 if (!seq) return null;
                                 const lapNums = allLapNumbers.slice(seq.startIdx, seq.startIdx + seq.length);
@@ -1789,7 +1828,7 @@ export default function HomeScreen() {
                                 const tooltipTop = isFirst ? 36 : -38;
                                 return (
                                   <View style={{
-                                    position: 'absolute', left: tooltipLeft, top: tooltipTop, zIndex: 30,
+                                    position: 'absolute', left: tooltipLeft, top: tooltipTop,
                                     backgroundColor: '#1A1A1A', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 5,
                                     borderWidth: 0.5, borderColor: accentColor, minWidth: 140, zIndex: 50,
                                   }}>
@@ -2434,22 +2473,26 @@ export default function HomeScreen() {
                 }}>
                   <Text style={{ color: raceEvents[0].type === 'INV' || raceEvents[0].type === 'FLAG' ? '#000' : '#555', fontSize: 9, fontWeight: '700' }}>{raceEvents[0].type}</Text>
                 </View>
-                <Text style={{ color: '#FFFFFF', fontSize: 11, fontFamily: MONO_REG }} numberOfLines={1}>{raceEvents[0].message}</Text>
+                <Text style={{ color: '#FFFFFF', fontSize: 11, fontFamily: MONO_REG, flex: 1 }} numberOfLines={1}>{raceEvents[0].message}</Text>
               </View>
               <Text style={{ color: '#444', fontSize: 11 }}>{eventsExpanded ? '▲' : '▼'}</Text>
             </TouchableOpacity>
-            {eventsExpanded && raceEvents.map((event, i) => (
-              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: '#0A0A0A', opacity: i === 0 ? 1 : 0.5 }}>
-                <Text style={{ color: '#444', fontSize: 10, fontVariant: ['tabular-nums'], width: 56, marginRight: 6, fontFamily: MONO_REG }}>{event.time}</Text>
-                <View style={{
-                  backgroundColor: event.type === 'INV' ? '#F39C12' : event.type === 'FLAG' ? '#E10600' : event.type === 'PEN' ? '#E10600' : '#1A1A1A',
-                  borderRadius: 3, paddingHorizontal: 5, paddingVertical: 1, marginRight: 8, minWidth: 32
-                }}>
-                  <Text style={{ color: event.type === 'INV' || event.type === 'FLAG' || event.type === 'PEN' ? '#000' : '#555', fontSize: 9, fontWeight: '700' }}>{event.type}</Text>
-                </View>
-                <Text style={{ color: i === 0 ? '#FFFFFF' : '#666', fontSize: 11, flex: 1, lineHeight: 15, fontFamily: MONO_REG }} numberOfLines={2}>{event.message}</Text>
-              </View>
-            ))}
+            {eventsExpanded && (
+              <ScrollView style={{ height: 160 }} showsVerticalScrollIndicator={false} nestedScrollEnabled={true}>
+                {raceEvents.map((event, i) => (
+                  <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: '#0A0A0A', opacity: i === 0 ? 1 : 0.5 }}>
+                    <Text style={{ color: '#444', fontSize: 10, fontVariant: ['tabular-nums'], width: 56, marginRight: 6, fontFamily: MONO_REG }}>{event.time}</Text>
+                    <View style={{
+                      backgroundColor: event.type === 'INV' ? '#F39C12' : event.type === 'FLAG' ? '#E10600' : event.type === 'PEN' ? '#E10600' : '#1A1A1A',
+                      borderRadius: 3, paddingHorizontal: 5, paddingVertical: 1, marginRight: 8, minWidth: 32
+                    }}>
+                      <Text style={{ color: event.type === 'INV' || event.type === 'FLAG' || event.type === 'PEN' ? '#000' : '#555', fontSize: 9, fontWeight: '700' }}>{event.type}</Text>
+                    </View>
+                    <Text style={{ color: i === 0 ? '#FFFFFF' : '#999', fontSize: 11, flex: 1, lineHeight: 15, fontFamily: MONO_REG }}>{event.message}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
           </View>
         )}
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: '#2A2A2A' }}>
@@ -2561,22 +2604,103 @@ export default function HomeScreen() {
                       </Text>
                     </View>
                   </TouchableOpacity>
-                  {isExpanded && (
-                    <View style={{ flexDirection: "row", backgroundColor: "#0F0F0F", paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 0.5, borderTopColor: "#1A1A1A", borderBottomWidth: 0.5, borderBottomColor: "#1A1A1A" }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: "#444444", fontSize: 7, fontFamily: MONO, letterSpacing: 2, marginBottom: 4 }}>VS QUALI RECORD</Text>
-                        <Text style={{ color: vsRecord ? vsRecord.color : "#555555", fontSize: 13, fontWeight: "700", fontFamily: MONO, fontVariant: ["tabular-nums"] }}>
-                          {vsRecord ? vsRecord.text : "N/D"}
-                        </Text>
+                  {isExpanded && (() => {
+                    const { current: expandCurrent, prev: expandPrev } = getLastTwoLaps(
+                      driver.driver_number,
+                      driver.lap_phase,
+                      lapsRef.current,
+                      getPhaseWindow,
+                      driver.best_lap_duration
+                    );
+                    const expandCompound = expandCurrent?.compound ?? null;
+                    const compoundColors: Record<string, string> = {
+                      SOFT: "#E10600", MEDIUM: "#F5D400", HARD: "#FFFFFF",
+                      INTERMEDIATE: "#27AE60", WET: "#1E90FF",
+                    };
+                    const hasPrev = expandCurrent != null && expandPrev != null;
+                    const sectorDeltas = hasPrev ? [1, 2, 3].map(n => {
+                      const a = expandCurrent[`duration_sector_${n}`] as number | null;
+                      const b = expandPrev[`duration_sector_${n}`] as number | null;
+                      if (a == null || b == null) return null;
+                      return a - b;
+                    }) : [null, null, null];
+                    const totDelta = hasPrev && expandCurrent.lap_duration != null && expandPrev.lap_duration != null
+                      ? expandCurrent.lap_duration - expandPrev.lap_duration
+                      : null;
+                    const fmtD = (d: number | null): string => {
+                      if (d == null) return "--";
+                      return `${d <= 0 ? "" : "+"}${d.toFixed(3)}`;
+                    };
+                    return (
+                      <View style={{ backgroundColor: "#0F0F0F", paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 0.5, borderTopColor: "#1A1A1A", borderBottomWidth: 0.5, borderBottomColor: "#1A1A1A" }}>
+                        {expandCompound != null && (
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                            <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: compoundColors[expandCompound] ?? "#FFFFFF" }} />
+                            <Text style={{ color: "#FFFFFF", fontSize: 11, fontFamily: MONO, letterSpacing: 0.5 }}>
+                              {expandCompound}
+                            </Text>
+                          </View>
+                        )}
+                        {hasPrev && (
+                          <View style={{ marginBottom: 8 }}>
+                            <View style={{ flexDirection: "row", marginBottom: 4 }}>
+                              <Text style={{ width: 36, fontSize: 9, color: "#555555", fontFamily: MONO_REG }}>{""}</Text>
+                              {["S1", "S2", "S3", "TOT"].map(h => (
+                                <Text key={h} style={{ flex: 1, fontSize: 9, color: "#555555", fontFamily: MONO_REG, textAlign: "center" }}>{h}</Text>
+                              ))}
+                            </View>
+                            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 3 }}>
+                              <Text style={{ width: 36, fontSize: 9, color: "#555555", fontFamily: MONO_REG }}>PREC</Text>
+                              {[1, 2, 3].map(n => {
+                                const seg = expandPrev[`segments_sector_${n}`] ?? null;
+                                const val = expandPrev[`duration_sector_${n}`] as number | null;
+                                return (
+                                  <View key={n} style={{ flex: 1, alignItems: "center" }}>
+                                    <View style={{ backgroundColor: getSectorColor(seg), borderRadius: 3, paddingHorizontal: 4, paddingVertical: 2 }}>
+                                      <Text style={{ color: "#000000", fontSize: 10, fontFamily: MONO }}>
+                                        {val != null ? val.toFixed(3) : "--"}
+                                      </Text>
+                                    </View>
+                                  </View>
+                                );
+                              })}
+                              <Text style={{ flex: 1, fontSize: 10, color: "#FFFFFF", fontFamily: MONO, textAlign: "center" }}>
+                                {formatLapTime(expandPrev.lap_duration)}
+                              </Text>
+                            </View>
+                            <View style={{ flexDirection: "row", alignItems: "center" }}>
+                              <Text style={{ width: 36, fontSize: 9, color: "#555555", fontFamily: MONO_REG }}>Δ</Text>
+                              {sectorDeltas.map((d, i) => (
+                                <Text key={i} style={{ flex: 1, fontSize: 10, color: d == null ? "#555555" : "#FFFFFF", fontFamily: MONO, textAlign: "center" }}>
+                                  {fmtD(d)}
+                                </Text>
+                              ))}
+                              <Text style={{ flex: 1, fontSize: 10, color: totDelta == null ? "#555555" : "#FFFFFF", fontFamily: MONO, textAlign: "center" }}>
+                                {fmtD(totDelta)}
+                              </Text>
+                            </View>
+                          </View>
+                        )}
+                        {(hasPrev || expandCompound != null) && (
+                          <View style={{ height: 0.5, backgroundColor: "#222222", marginBottom: 10 }} />
+                        )}
+                        <View style={{ flexDirection: "row" }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ color: "#444444", fontSize: 7, fontFamily: MONO, letterSpacing: 2, marginBottom: 4 }}>VS QUALI RECORD</Text>
+                            <Text style={{ color: vsRecord ? vsRecord.color : "#555555", fontSize: 13, fontWeight: "700", fontFamily: MONO, fontVariant: ["tabular-nums"] }}>
+                              {vsRecord ? vsRecord.text : "N/D"}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ color: "#444444", fontSize: 7, fontFamily: MONO, letterSpacing: 2, marginBottom: 4 }}>VS PB 2025</Text>
+                            <Text style={{ color: vsPb ? vsPb.color : "#555555", fontSize: 13, fontWeight: "700", fontFamily: MONO, fontVariant: ["tabular-nums"] }}>
+                              {vsPb ? vsPb.text : "N/D"}
+                            </Text>
+                          </View>
+                        </View>
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: "#444444", fontSize: 7, fontFamily: MONO, letterSpacing: 2, marginBottom: 4 }}>VS PB 2025</Text>
-                        <Text style={{ color: vsPb ? vsPb.color : "#555555", fontSize: 13, fontWeight: "700", fontFamily: MONO, fontVariant: ["tabular-nums"] }}>
-                          {vsPb ? vsPb.text : "N/D"}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
+                    );
+                  })()}
                 </View>
               );
             });

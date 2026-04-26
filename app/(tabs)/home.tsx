@@ -2605,12 +2605,13 @@ export default function HomeScreen() {
                     </View>
                   </TouchableOpacity>
                   {isExpanded && (() => {
+                    const expandPhase = isHistoricalView ? selectedPhaseNum : driver.lap_phase;
                     const { current: expandCurrent, prev: expandPrev } = getLastTwoLaps(
                       driver.driver_number,
-                      driver.lap_phase,
+                      expandPhase,
                       lapsRef.current,
                       getPhaseWindow,
-                      driver.best_lap_duration
+                      driver.display_lap_duration ?? driver.best_lap_duration
                     );
                     const expandCompound = expandCurrent?.compound ?? null;
                     const compoundColors: Record<string, string> = {

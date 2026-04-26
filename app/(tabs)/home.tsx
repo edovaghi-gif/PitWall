@@ -182,6 +182,8 @@ export default function HomeScreen() {
   const FP_DEV_MODE = false;
   const FP_DEV_CIRCUIT = "Suzuka";
   const FP_DEV_YEAR = 2026;
+  const FP_LIVE_DEV_MODE = false;
+  const FP_LIVE_DEV_SESSION_KEY = 11248;
   const RACE_DEV_MODE = false;
   const RACE_DEV_SESSION_KEY = 11253;
 
@@ -223,6 +225,10 @@ export default function HomeScreen() {
   const weatherBottomSheetRef = useRef<BottomSheet>(null);
   const previousIntervalsRef = useRef<Record<number, number>>({});
   const raceStintsRef = useRef<any[]>([]);
+  const [fpLiveDrivers, setFpLiveDrivers] = useState<any[]>([]);
+  const [fpLiveSessionName, setFpLiveSessionName] = useState<string>('');
+  const [fpLiveSelectedTab, setFpLiveSelectedTab] = useState<number | null>(null);
+  const fpLiveStintsRef = useRef<any[]>([]);
   const qualiStintsRef = useRef<any[]>([]);
   const raceDriversCacheRef = useRef<any[]>([]);
   const raceLapsRef = useRef<Record<number, { s1: number|null, s2: number|null, s3: number|null, lapTime: number|null, lapNumber: number|null }>>({});
@@ -391,6 +397,82 @@ export default function HomeScreen() {
   }
 
 
+  async function fetchFpLiveData() {
+    if (!activeSession) return;
+    const sessionKey = activeSession.session_key;
+
+    const [driversData, lapsData] = await Promise.all([
+      safeFetch(`https://api.openf1.org/v1/drivers?session_key=${sessionKey}`),
+      safeFetch(`https://api.openf1.org/v1/laps?session_key=${sessionKey}`),
+    ]);
+    if (!Array.isArray(driversData) || !Array.isArray(lapsData)) return;
+
+    const stintsData = await safeFetch(`https://api.openf1.org/v1/stints?session_key=${sessionKey}`);
+    if (Array.isArray(stintsData)) fpLiveStintsRef.current = stintsData;
+
+    const driverMap: Record<number, any> = {};
+    for (const d of driversData) {
+      driverMap[d.driver_number] = {
+        driver_number: d.driver_number,
+        name_acronym: d.name_acronym,
+        team_colour: d.team_colour ?? '444444',
+        best_lap_duration: null,
+        sector1: null, sector2: null, sector3: null,
+        sector1_color: '#2A2A2A', sector2_color: '#2A2A2A', sector3_color: '#2A2A2A',
+      };
+    }
+
+    for (const lap of lapsData) {
+      const d = driverMap[lap.driver_number];
+      if (!d) continue;
+      if (lap.lap_duration == null) continue;
+      if (d.best_lap_duration === null || lap.lap_duration < d.best_lap_duration) {
+        d.best_lap_duration = lap.lap_duration;
+        d.sector1 = lap.duration_sector_1 ?? null;
+        d.sector2 = lap.duration_sector_2 ?? null;
+        d.sector3 = lap.duration_sector_3 ?? null;
+        d.sector1_color = getSectorColor(lap.segments_sector_1 ?? null);
+        d.sector2_color = getSectorColor(lap.segments_sector_2 ?? null);
+        d.sector3_color = getSectorColor(lap.segments_sector_3 ?? null);
+      }
+    }
+
+    const sorted = Object.values(driverMap).sort((a: any, b: any) => {
+      if (!a.best_lap_duration && !b.best_lap_duration) return 0;
+      if (!a.best_lap_duration) return 1;
+      if (!b.best_lap_duration) return -1;
+      return a.best_lap_duration - b.best_lap_duration;
+    });
+
+    // Compute session best per sector and re-color purple
+    let bestS1 = Infinity, bestS2 = Infinity, bestS3 = Infinity;
+    for (const d of Object.values(driverMap) as any[]) {
+      if (d.sector1 != null && d.sector1 < bestS1) bestS1 = d.sector1;
+      if (d.sector2 != null && d.sector2 < bestS2) bestS2 = d.sector2;
+      if (d.sector3 != null && d.sector3 < bestS3) bestS3 = d.sector3;
+    }
+    for (const d of Object.values(driverMap) as any[]) {
+      if (d.sector1 != null && d.sector1 === bestS1) d.sector1_color = '#9B59B6';
+      if (d.sector2 != null && d.sector2 === bestS2) d.sector2_color = '#9B59B6';
+      if (d.sector3 != null && d.sector3 === bestS3) d.sector3_color = '#9B59B6';
+    }
+
+    setFpLiveDrivers(sorted);
+    setFpLiveSessionName(activeSession.session_name);
+
+    // Persist to fpResults if session finished
+    const rcData = await safeFetch(`https://api.openf1.org/v1/race_control?session_key=${sessionKey}`);
+    if (Array.isArray(rcData)) {
+      const finished = rcData.some((e: any) => e.message === 'SESSION FINISHED');
+      if (finished && sorted.length > 0) {
+        setFpResults((prev: any) => ({ ...prev, [sessionKey]: sorted }));
+        setFpSessions((prev: any) => prev.map((s: any) =>
+          s.key === sessionKey ? { ...s, finished: true } : s
+        ));
+      }
+    }
+  }
+
   const fetchFpData = async () => {
     if (!nextRace) return;
     const circuitMap: Record<string, string> = {
@@ -446,6 +528,18 @@ export default function HomeScreen() {
         ]);
         const lapsData = await lapsRes.json();
         const driversData = await driversRes.json();
+        const stintsRes = await fetch(`https://api.openf1.org/v1/stints?session_key=${session.key}`);
+        const stintsData = await stintsRes.json();
+        const stintsByDriver: Record<number, string | null> = {};
+        const stintNumByDriver: Record<number, number> = {};
+        if (Array.isArray(stintsData)) {
+          for (const s of stintsData) {
+            if (!stintNumByDriver[s.driver_number] || s.stint_number > stintNumByDriver[s.driver_number]) {
+              stintsByDriver[s.driver_number] = s.compound ?? null;
+              stintNumByDriver[s.driver_number] = s.stint_number;
+            }
+          }
+        }
 
         if (!Array.isArray(driversData) || driversData.length === 0) {
           updatedSessions.push({ ...session, finished });
@@ -458,21 +552,39 @@ export default function HomeScreen() {
             driverInfo[d.driver_number] = d;
           }
 
-          const bestLaps: Record<number, number> = {};
+          const bestByDriver: Record<number, { lap: any; driver: any }> = {};
           for (const lap of lapsData) {
             if (lap.is_pit_out_lap || !lap.lap_duration) continue;
-            if (!bestLaps[lap.driver_number] || lap.lap_duration < bestLaps[lap.driver_number]) {
-              bestLaps[lap.driver_number] = lap.lap_duration;
+            const prev = bestByDriver[lap.driver_number];
+            if (!prev || lap.lap_duration < prev.lap.lap_duration) {
+              bestByDriver[lap.driver_number] = {
+                lap,
+                driver: driverInfo[lap.driver_number] || {},
+              };
             }
           }
 
-          const sorted = Object.entries(bestLaps)
-            .map(([driverNum, time]) => ({
-              driver_number: parseInt(driverNum),
-              best_lap: time,
-              info: driverInfo[parseInt(driverNum)] || {}
+          const sorted = Object.values(bestByDriver)
+            .map((entry: any) => ({
+              driver_number: entry.driver.driver_number ?? entry.lap.driver_number,
+              name_acronym: entry.driver.name_acronym ?? '',
+              team_colour: entry.driver.team_colour ?? '444444',
+              best_lap_duration: entry.lap.lap_duration,
+              best_lap: entry.lap.lap_duration,
+              sector1: entry.lap.duration_sector_1 ?? null,
+              sector2: entry.lap.duration_sector_2 ?? null,
+              sector3: entry.lap.duration_sector_3 ?? null,
+              sector1_color: getSectorColor(entry.lap.segments_sector_1 ?? null),
+              sector2_color: getSectorColor(entry.lap.segments_sector_2 ?? null),
+              sector3_color: getSectorColor(entry.lap.segments_sector_3 ?? null),
+              compound: stintsByDriver[entry.driver.driver_number ?? entry.lap.driver_number] ?? null,
+              info: entry.driver,
             }))
-            .sort((a, b) => a.best_lap - b.best_lap);
+            .sort((a: any, b: any) => {
+              if (!a.best_lap_duration) return 1;
+              if (!b.best_lap_duration) return -1;
+              return a.best_lap_duration - b.best_lap_duration;
+            });
 
           results[session.key] = sorted;
         }
@@ -1020,6 +1132,17 @@ export default function HomeScreen() {
   }
 
   async function checkActiveSession() {
+    if (FP_LIVE_DEV_MODE) {
+      const fakeSession = {
+        session_key: FP_LIVE_DEV_SESSION_KEY,
+        session_name: "Practice 3",
+        circuit_short_name: "Suzuka",
+        date_start: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+        date_end: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      };
+      setActiveSession(fakeSession);
+      return;
+    }
     if (QUALI_DEV_MODE) {
       const fakeSession = {
         session_key: QUALI_DEV_SESSION_KEY,
@@ -1058,6 +1181,8 @@ export default function HomeScreen() {
     } else if (active && active.session_name === "Race") {
       setActiveSession(active);
       return;
+    } else if (active && active.session_name?.startsWith('Practice')) {
+      setActiveSession(active);
     } else {
       const nextQual = sessions.find((s: any) => {
         const start = new Date(s.date_start);
@@ -1289,6 +1414,17 @@ export default function HomeScreen() {
   }, [activeSession]);
 
   useEffect(() => {
+    if (!activeSession) return;
+    const name = activeSession.session_name;
+    if (!name.startsWith('Practice')) return;
+    fetchFpLiveData();
+    fetchRaceWeather();
+    const dataInterval = setInterval(fetchFpLiveData, 10000);
+    const weatherInterval = setInterval(fetchRaceWeather, 120000);
+    return () => { clearInterval(dataInterval); clearInterval(weatherInterval); };
+  }, [activeSession]);
+
+  useEffect(() => {
     if (!activeSession || activeSession.session_name !== "Race") return;
     const sessionKey = activeSession.session_key;
     const totalLaps = TOTAL_LAPS[activeSession.circuit_short_name] ?? 50;
@@ -1351,6 +1487,7 @@ export default function HomeScreen() {
   const isRace = activeSession?.session_name === "Race";
   const isQualifying = activeSession &&
     (activeSession.session_name === "Qualifying" || activeSession.session_name === "Sprint Qualifying");
+  const isFpLive = activeSession?.session_name?.startsWith('Practice') && fpLiveDrivers.length > 0;
 
   function getTyreInfo(compound: string | null): { label: string; bg: string; textColor: string } {
     switch (compound) {
@@ -1825,7 +1962,7 @@ export default function HomeScreen() {
                               })}
                               {selectedTrend?.driverNumber === driver.driver_number && (() => {
                                 const si = selectedTrend?.seqIdx;
-                                const seq = trendSequences[si];
+                                const seq = si !== undefined ? trendSequences[si] : undefined;
                                 if (!seq) return null;
                                 const lapNums = allLapNumbers.slice(seq.startIdx, seq.startIdx + seq.length);
                                 const firstTime = lapMap[lapNums[0]]?.time;
@@ -2768,6 +2905,185 @@ export default function HomeScreen() {
           </BottomSheetView>
         </BottomSheet>
       </View>
+    );
+  }
+
+  if (isFpLive) {
+    const compoundColors: Record<string, string> = {
+      SOFT: '#E10600', MEDIUM: '#F5D400', HARD: '#FFFFFF',
+      INTERMEDIATE: '#27AE60', WET: '#1E90FF'
+    };
+
+    const selectedFpKey = fpLiveSelectedTab ?? activeSession?.session_key;
+    const isSelectedTabLive = selectedFpKey === activeSession?.session_key;
+    const selectedSession = fpSessions.find((s: any) => s.key === selectedFpKey);
+
+    let displayedFpDrivers: any[];
+    let fpTabStatus: 'live' | 'finished' | 'not_started';
+    if (isSelectedTabLive) {
+      displayedFpDrivers = fpLiveDrivers;
+      fpTabStatus = 'live';
+    } else if (selectedSession?.finished && fpResults[selectedFpKey!]) {
+      displayedFpDrivers = fpResults[selectedFpKey!];
+      fpTabStatus = 'finished';
+    } else {
+      displayedFpDrivers = [];
+      fpTabStatus = 'not_started';
+    }
+
+    const leaderTime = displayedFpDrivers[0]?.best_lap_duration ?? displayedFpDrivers[0]?.best_lap ?? null;
+
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#000000' }}>
+        {/* Logo */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 }}>
+          <Image source={require('@/assets/images/PitWall Logo.png')}
+            style={{ height: 32, width: 160, resizeMode: 'contain' }} />
+        </View>
+
+        {/* Header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+          paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {fpTabStatus === 'live' && (
+              <Animated.View style={{ width: 8, height: 8, borderRadius: 4,
+                backgroundColor: '#E10600', opacity: pulseAnim }} />
+            )}
+            <Text style={{ color: '#FFFFFF', fontSize: 13, fontFamily: MONO, letterSpacing: 1 }}>
+              {fpTabStatus === 'live'
+                ? fpLiveSessionName.toUpperCase() + ' IN CORSO'
+                : fpTabStatus === 'finished'
+                ? (selectedSession?.name.toUpperCase() ?? '') + ' — RISULTATI'
+                : (selectedSession?.name.toUpperCase() ?? '') + ' — NON DISPUTATA'}
+            </Text>
+          </View>
+          {raceWeather && (
+            <Text style={{ color: '#FFFFFF', fontSize: 12, fontFamily: MONO }}>
+              {raceWeather.track_temperature}°C {raceWeather.rainfall ? 'WET' : 'DRY'}
+            </Text>
+          )}
+        </View>
+
+        {/* FP tab bar */}
+        <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 8 }}>
+          {fpSessions.map((session: any) => {
+            const isActive = activeSession?.session_key === session.key;
+            const isSelected = fpLiveSelectedTab === session.key ||
+              (fpLiveSelectedTab === null && isActive);
+            return (
+              <TouchableOpacity
+                key={session.key}
+                onPress={() => setFpLiveSelectedTab(session.key)}
+                style={{
+                  paddingHorizontal: 12, paddingVertical: 4, borderRadius: 4,
+                  backgroundColor: isSelected ? '#E10600' : '#1E1E1E'
+                }}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 11, fontFamily: MONO }}>
+                  {session.name.replace('Practice ', 'FP')}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Column headers */}
+        <View style={{ flexDirection: 'row', alignItems: 'center',
+          paddingHorizontal: 12, paddingVertical: 4,
+          borderBottomWidth: 0.5, borderBottomColor: '#2A2A2A' }}>
+          <Text style={{ width: 24, color: '#444444', fontSize: 8, fontFamily: MONO }}>{' '}</Text>
+          <Text style={{ width: 2, marginLeft: 12 }}>{' '}</Text>
+          <Text style={{ width: 36, marginLeft: 6 }}>{' '}</Text>
+          <Text style={{ width: 44, color: '#444444', fontSize: 8, fontFamily: MONO, textAlign: 'center' }}>S1</Text>
+          <Text style={{ width: 44, color: '#444444', fontSize: 8, fontFamily: MONO, textAlign: 'center', marginLeft: 2 }}>S2</Text>
+          <Text style={{ width: 44, color: '#444444', fontSize: 8, fontFamily: MONO, textAlign: 'center', marginLeft: 2 }}>S3</Text>
+          <Text style={{ width: 24, color: '#444444', fontSize: 8, fontFamily: MONO, textAlign: 'center', marginLeft: 4 }}>CPD</Text>
+          <Text style={{ width: 72, color: '#444444', fontSize: 8, fontFamily: MONO, marginLeft: 8 }}>TIME</Text>
+          <Text style={{ color: '#444444', fontSize: 8, fontFamily: MONO }}>GAP</Text>
+        </View>
+
+        {/* Driver list */}
+        {fpTabStatus === 'not_started' ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: '#555555', fontSize: 12, fontFamily: MONO_REG }}>
+              Sessione non ancora disputata
+            </Text>
+          </View>
+        ) : (
+          <ScrollView>
+            {displayedFpDrivers.map((driver: any, index: number) => {
+              const isLiveRow = fpTabStatus === 'live';
+              const lapTime = driver.best_lap_duration ?? driver.best_lap;
+              const gap = index === 0 ? 'LEADER'
+                : leaderTime && lapTime
+                ? '+' + (lapTime - leaderTime).toFixed(3)
+                : '--';
+              const isLeader = index === 0;
+              const acronym = driver.name_acronym ?? driver.info?.name_acronym ?? driver.driver_number;
+              const teamColour = driver.team_colour ?? driver.info?.team_colour ?? '444444';
+              const driverStint = fpLiveStintsRef.current
+                .filter((s: any) => s.driver_number === driver.driver_number)
+                .sort((a: any, b: any) => b.stint_number - a.stint_number)[0];
+              const compound = isLiveRow ? (driverStint?.compound ?? null) : null;
+
+              return (
+                <View key={driver.driver_number}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center',
+                    paddingHorizontal: 12, paddingVertical: 6,
+                    borderBottomWidth: 0.5, borderBottomColor: '#111111' }}>
+                    <Text style={{ width: 24, color: '#999999', fontSize: 11, fontFamily: MONO }}>
+                      {index + 1}
+                    </Text>
+                    <View style={{ width: 2, height: 20, backgroundColor: '#' + teamColour,
+                      marginLeft: 12, marginRight: 6 }} />
+                    <Text style={{ width: 36, color: '#FFFFFF', fontSize: 12, fontFamily: MONO }}>
+                      {acronym}
+                    </Text>
+                    {driver.sector1 != null || driver.sector2 != null || driver.sector3 != null ? (
+                      [
+                        { color: driver.sector1_color, val: driver.sector1 },
+                        { color: driver.sector2_color, val: driver.sector2 },
+                        { color: driver.sector3_color, val: driver.sector3 },
+                      ].map((s, i) => (
+                        <View key={i} style={{ width: 44, height: 20, backgroundColor: s.color,
+                          borderRadius: 3, marginLeft: i === 0 ? 0 : 2,
+                          alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ color: '#000000', fontSize: 9, fontFamily: MONO }}>
+                            {s.val != null ? s.val.toFixed(3) : '--'}
+                          </Text>
+                        </View>
+                      ))
+                    ) : (
+                      <View style={{ width: 44 * 3 + 2 * 2, height: 20 }} />
+                    )}
+                    <View style={{ width: 24, alignItems: 'center', marginLeft: 4 }}>
+                      {compound && compoundColors[compound] && (
+                        <View style={{
+                          backgroundColor: compoundColors[compound],
+                          borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1,
+                        }}>
+                          <Text style={{ color: compound === 'MEDIUM' || compound === 'HARD' ? '#000000' : '#FFFFFF',
+                            fontSize: 8, fontFamily: MONO }}>
+                            {compound[0]}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text numberOfLines={1} style={{ width: 72, color: '#FFFFFF', fontSize: 12, fontFamily: MONO,
+                      marginLeft: 8, textAlign: 'right' }}>
+                      {lapTime ? formatLapTime(lapTime) : '--:--.---'}
+                    </Text>
+                    <Text style={{ color: isLeader ? '#E10600' : '#999999',
+                      fontSize: 11, fontFamily: MONO, minWidth: 52, textAlign: 'right' }}>
+                      {gap}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </ScrollView>
+        )}
+      </SafeAreaView>
     );
   }
 

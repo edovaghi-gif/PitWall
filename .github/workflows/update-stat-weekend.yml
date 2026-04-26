@@ -20,7 +20,7 @@ jobs:
       - name: Generate stat weekend
         run: node scripts/fetch-stat-weekend.js
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPICAPIKEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEYS }}
 
       - name: Commit and push
         run: |

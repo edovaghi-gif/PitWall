@@ -2,9 +2,8 @@ const fs = require('fs');
 const path = require('path');
 
 async function main() {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    console.error('Missing ANTHROPIC_API_KEY');
+  if (!process.env.GEMINI_API_KEY) {
+    console.error('Missing GEMINI_API_KEY');
     process.exit(1);
   }
 
@@ -52,30 +51,26 @@ async function main() {
   }
   console.log(`Last winner: ${lastWinner} (${lastWinnerTeam})`);
 
-  // 4. Generate stat with Haiku
-  console.log('Calling Claude Haiku...');
-  const prompt = `Sei un esperto di Formula 1. Genera una statistica interessante e coinvolgente in italiano (max 3 frasi) per il prossimo GP: ${raceName} sul circuito ${circuitName}. Dati disponibili: pilota più vincente = ${topWinnerName} con ${topWinnerCount} vittorie su ${total} edizioni, ultima vittoria di ${lastWinner} (${lastYear ?? 'N/A'}). Rendi il testo dinamico, non iniziare sempre con il nome del pilota, usa costruzioni narrative variegate.`;
-
-  const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 300,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
-  const aiData = await aiRes.json();
-  if (!aiRes.ok) {
-    console.error('Haiku error:', JSON.stringify(aiData));
-    process.exit(1);
-  }
-  const stat = aiData.content[0].text.trim();
-  console.log(`Stat: ${stat}`);
+  // 4. Generate stat with Gemini Flash
+  console.log('Calling Gemini Flash...');
+  const geminiRes = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: `Sei un esperto di Formula 1. Genera una statistica interessante e coinvolgente in italiano (max 3 frasi) per il prossimo GP: ${raceName} sul circuito ${circuitName}. Dati disponibili: pilota più vincente = ${topWinnerName} con ${topWinnerCount} vittorie su ${total} edizioni, ultima vittoria di ${lastWinner} (${lastYear ?? 'N/A'}). Rendi il testo dinamico, non iniziare sempre con il nome del pilota, usa costruzioni narrative variegate.`
+          }]
+        }]
+      })
+    }
+  );
+  const geminiData = await geminiRes.json();
+  if (!geminiRes.ok) throw new Error(JSON.stringify(geminiData));
+  const stat = geminiData.candidates[0].content.parts[0].text.trim();
+  console.log(`Stat: ${stat.slice(0, 100)}...`);
 
   // 5. Save to assets/stat-weekend.json
   const output = {

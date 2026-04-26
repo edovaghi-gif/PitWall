@@ -52,11 +52,10 @@ async function main() {
   console.log(`Last winner: ${lastWinner} (${lastWinnerTeam})`);
 
   // 4. Generate 3 stat variants with Gemini Flash
-  const baseData = `Dati: pilota più vincente = ${topWinnerName} con ${topWinnerCount} vittorie su ${total} edizioni, ultima vittoria di ${lastWinner} (${lastYear ?? 'N/A'}).`;
   const prompts = [
-    `Sei un esperto di Formula 1. Genera una statistica interessante in italiano (max 3 frasi) sul prossimo GP: ${raceName} sul circuito ${circuitName}. Focus su record storici e piloti più vincenti. ${baseData} Usa costruzioni narrative variegate.`,
-    `Sei un esperto di Formula 1. Genera una curiosità coinvolgente in italiano (max 3 frasi) sul prossimo GP: ${raceName} sul circuito ${circuitName}. Focus su curiosità, aneddoti o aspetti tecnici del circuito. ${baseData} Usa costruzioni narrative variegate.`,
-    `Sei un esperto di Formula 1. Genera un commento in italiano (max 3 frasi) sul prossimo GP: ${raceName} sul circuito ${circuitName}. Focus sul contesto della stagione attuale e sui favoriti. ${baseData} Usa costruzioni narrative variegate.`,
+    `Sei un esperto di Formula 1. Scrivi UNA o MAX DUE frasi in italiano su un record o primato storico del Gran Premio di Miami. Dati: pilota più vincente = ${topWinnerName} con ${topWinnerCount} vittorie su ${total} edizioni. Sii conciso e diretto, niente introduzioni.`,
+    `Sei un esperto di Formula 1. Scrivi UNA o MAX DUE frasi in italiano su una curiosità tecnica o caratteristica unica del Miami International Autodrome. Non parlare di vittorie o classifiche. Sii conciso e diretto, niente introduzioni.`,
+    `Sei un esperto di Formula 1. Scrivi UNA o MAX DUE frasi in italiano sul contesto della stagione 2026 in vista del Gran Premio di Miami. Ultimo vincitore: ${lastWinner} (${lastYear ?? 'N/A'}). Sii conciso e diretto, niente introduzioni.`,
   ];
 
   const geminiCall = async (text) => {

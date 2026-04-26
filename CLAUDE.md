@@ -21,6 +21,7 @@ node scripts/generate-circuit.js  # Rigenera i JSON circuiti da OpenF1
 node scripts/find-session-keys.js Miami 2026  # Trova session_key per qualsiasi GP
 node scripts/capture-quali.js <session_key>   # Cattura snapshot qualifiche ogni 30s
 node scripts/capture-race.js <session_key>    # Cattura snapshot gara ogni 30s
+node scripts/capture-fp.js <session_key>    # Cattura snapshot FP ogni 30s
 node scripts/fetch-all-quali-2025.js          # Aggiorna scripts/quali-2025-sessions.json
 node scripts/fetch-lap-records.js             # Aggiorna scripts/lap-records.json
 node scripts/fetch-quali-records.js           # Aggiorna scripts/quali-records.json
@@ -59,6 +60,7 @@ Dynamic fetch only. No hardcode via API.
 - `RACE_DEV_MODE = false` / `RACE_DEV_SESSION_KEY = 11253`
 - `QUALI_DEV_MODE = false` / `QUALI_DEV_SESSION_KEY = 11249`
 - `FP_DEV_MODE = false`
+- `FP_LIVE_DEV_MODE = false` / `FP_LIVE_DEV_SESSION_KEY = 11248`
 
 ---
 

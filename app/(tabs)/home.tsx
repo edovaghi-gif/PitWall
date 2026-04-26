@@ -5,6 +5,7 @@ import { GlassView } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { MotiView } from 'moti';
+import statWeekend from '@/assets/stat-weekend.json';
 
 const logo = require('../../assets/images/PitWall Logo.png');
 const qualiPb2025 = require('../../assets/quali-pb-2025.json');
@@ -143,10 +144,26 @@ function getRaceSectorColor(value: number | null, sector: 1|2|3, allLaps: Record
   return '#F39C12';
 }
 
+const CONSTRUCTOR_NAME_MAP: Record<string, string> = {
+  'Mercedes': 'Mercedes',
+  'Ferrari': 'Ferrari',
+  'McLaren': 'McLaren',
+  'Red Bull': 'Red Bull',
+  'Aston Martin': 'Aston Martin',
+  'Williams': 'Williams',
+  'Haas F1 Team': 'Haas',
+  'Alpine F1 Team': 'Alpine',
+  'RB F1 Team': 'Racing Bulls',
+  'Cadillac F1 Team': 'Cadillac',
+  'Kick Sauber': 'Audi',
+  'Sauber': 'Audi',
+};
+
+const displayConstructor = (name: string): string => CONSTRUCTOR_NAME_MAP[name] ?? name;
+
 export default function HomeScreen() {
   const [lastRace, setLastRace] = useState<any>(null);
   const [standings, setStandings] = useState<any[]>([]);
-  const [statOfDay, setStatOfDay] = useState<string>("");
   const [nextRace, setNextRace] = useState<any>(null);
   const [constructorStandings, setConstructorStandings] = useState<any[]>([]);
   const [raceExpanded, setRaceExpanded] = useState(false);
@@ -269,9 +286,7 @@ export default function HomeScreen() {
       const upcoming = allRaces.find((r: any) => new Date(r.date) > now);
       setNextRace(upcoming);
 
-      if (upcoming) {
-        await fetchStatOfDay(upcoming.Circuit.circuitId, upcoming.raceName);
-      }
+
     } catch (e) {
       console.error(e);
     } finally {
@@ -364,31 +379,6 @@ export default function HomeScreen() {
     } catch {}
   }
 
-  async function fetchStatOfDay(circuitId: string, raceName: string) {
-    try {
-      const res = await fetch(`https://api.jolpi.ca/ergast/f1/circuits/${circuitId}/results/1.json?limit=100`);
-      const data = await res.json();
-      const races = data.MRData.RaceTable.Races;
-      if (!races || races.length === 0) return;
-
-      const winners: Record<string, number> = {};
-      races.forEach((r: any) => {
-        const driver = r.Results[0]?.Driver?.familyName;
-        if (driver) winners[driver] = (winners[driver] || 0) + 1;
-      });
-
-      const topWinner = Object.entries(winners).sort((a, b) => b[1] - a[1])[0];
-      const totalRaces = races.length;
-      const lastWinner = races[races.length - 1]?.Results[0]?.Driver?.familyName;
-      const lastYear = races[races.length - 1]?.season;
-
-      setStatOfDay(
-        `${topWinner[0]} è il pilota più vincente nella storia di questa gara con ${topWinner[1]} vittorie su ${totalRaces} edizioni. L'ultima volta ha vinto ${lastWinner} (${lastYear}).`
-      );
-    } catch (e) {
-      console.error(e);
-    }
-  }
 
   const fetchFpData = async () => {
     if (!nextRace) return;
@@ -2826,12 +2816,12 @@ export default function HomeScreen() {
         ) : null;
       })()}
 
-      {statOfDay ? (
+      {statWeekend.stat ? (
         <View style={styles.statCard}>
           <Text style={styles.statLabel}>
-            Stat del weekend{nextRace ? ` · ${nextRace.raceName}` : ""}
+            STAT DEL WEEKEND{statWeekend.raceName ? ` · ${statWeekend.raceName}` : ""}
           </Text>
-          <Text style={styles.statText}>{statOfDay}</Text>
+          <Text style={styles.statText}>{statWeekend.stat}</Text>
         </View>
       ) : null}
 
@@ -2866,7 +2856,7 @@ export default function HomeScreen() {
                 <View style={{ width: 2, height: 20, backgroundColor: teamColor, borderRadius: 1, marginRight: 10 }} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: "#FFFFFF", fontSize: 13, fontFamily: 'JetBrainsMono_400Regular' }}>{r.Driver.familyName}</Text>
-                  <Text style={{ color: "#555555", fontSize: 11, fontFamily: 'JetBrainsMono_400Regular', marginTop: 1 }}>{r.Constructor.name}</Text>
+                  <Text style={{ color: "#555555", fontSize: 11, fontFamily: 'JetBrainsMono_400Regular', marginTop: 1 }}>{displayConstructor(r.Constructor.name)}</Text>
                 </View>
                 <View style={{ backgroundColor: pillBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}>
                   <Text style={{ color: pillColor, fontSize: isLeader ? 10 : 12, fontFamily: 'JetBrainsMono_700Bold', letterSpacing: isLeader ? 1 : 0 }}>{gapText}</Text>
@@ -2927,7 +2917,7 @@ export default function HomeScreen() {
               ) : (
                 <View style={{ width: 32, height: 20, marginRight: 10 }} />
               )}
-              <Text style={{ color: "#CCCCCC", fontSize: 13, fontFamily: 'JetBrainsMono_400Regular', flex: 1 }}>{s.Constructor.name}</Text>
+              <Text style={{ color: "#CCCCCC", fontSize: 13, fontFamily: 'JetBrainsMono_400Regular', flex: 1 }}>{displayConstructor(s.Constructor.name)}</Text>
               <View style={{ flexDirection: "row", alignItems: "baseline", gap: 2 }}>
                 <Text style={{ color: "#FFFFFF", fontSize: 13, fontFamily: 'JetBrainsMono_700Bold', fontVariant: ["tabular-nums"] }}>{pts.toLocaleString("it-IT")}</Text>
                 <Text style={{ color: "#555555", fontSize: 11, fontFamily: 'JetBrainsMono_400Regular' }}>pt</Text>

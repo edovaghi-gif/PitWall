@@ -1,0 +1,31 @@
+name: Update Stat Weekend
+
+on:
+  schedule:
+    - cron: '0 10 * * 4'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate stat weekend
+        run: node scripts/fetch-stat-weekend.js
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPICAPIKEY }}
+
+      - name: Commit and push
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add assets/stat-weekend.json
+          git diff --staged --quiet || git commit -m "chore: update stat weekend auto"
+          git push

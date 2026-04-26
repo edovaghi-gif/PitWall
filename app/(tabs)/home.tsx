@@ -203,6 +203,7 @@ export default function HomeScreen() {
   const weatherBottomSheetRef = useRef<BottomSheet>(null);
   const previousIntervalsRef = useRef<Record<number, number>>({});
   const raceStintsRef = useRef<any[]>([]);
+  const qualiStintsRef = useRef<any[]>([]);
   const raceDriversCacheRef = useRef<any[]>([]);
   const raceLapsRef = useRef<Record<number, { s1: number|null, s2: number|null, s3: number|null, lapTime: number|null, lapNumber: number|null }>>({});
   const raceCurrentLapRef = useRef<number>(0);
@@ -1134,6 +1135,16 @@ export default function HomeScreen() {
     setRaceYellowSectors(qHasGeneric && qActiveSectors.length === 0 ? [-1] : qActiveSectors);
   }
 
+  async function fetchQualifyingStints(sessionKey: number) {
+    try {
+      const data = await safeFetch(`https://api.openf1.org/v1/stints?session_key=${sessionKey}`);
+      console.log('[STINTS]', sessionKey, Array.isArray(data) ? data.length : data);
+      if (Array.isArray(data)) qualiStintsRef.current = data;
+    } catch (e) {
+      console.log('[STINTS ERROR]', e);
+    }
+  }
+
   async function fetchQualifyingData() {
     if (!activeSession) return;
     const sessionKey = activeSession.session_key;
@@ -1265,6 +1276,7 @@ export default function HomeScreen() {
     const sessionKey = activeSession.session_key;
     fetchRaceControl(sessionKey);
     fetchQualifyingData();
+    fetchQualifyingStints(sessionKey);
     fetchRaceWeather();
     const rcInterval = setInterval(() => fetchRaceControl(sessionKey), 30000);
     const dataInterval = setInterval(fetchQualifyingData, 10000);
@@ -2613,7 +2625,10 @@ export default function HomeScreen() {
                       getPhaseWindow,
                       driver.display_lap_duration ?? driver.best_lap_duration
                     );
-                    const expandCompound = expandCurrent?.compound ?? null;
+                    const driverStints = qualiStintsRef.current
+                      .filter((s: any) => s.driver_number === driver.driver_number)
+                      .sort((a: any, b: any) => b.stint_number - a.stint_number);
+                    const expandCompound = driverStints[0]?.compound ?? expandCurrent?.compound ?? null;
                     const compoundColors: Record<string, string> = {
                       SOFT: "#E10600", MEDIUM: "#F5D400", HARD: "#FFFFFF",
                       INTERMEDIATE: "#27AE60", WET: "#1E90FF",

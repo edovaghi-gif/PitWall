@@ -149,13 +149,16 @@ export default function HomeScreen() {
   const [statOfDay, setStatOfDay] = useState<string>("");
   const [nextRace, setNextRace] = useState<any>(null);
   const [constructorStandings, setConstructorStandings] = useState<any[]>([]);
+  const [raceExpanded, setRaceExpanded] = useState(false);
+  const [driversExpanded, setDriversExpanded] = useState(false);
+  const [constructorsExpanded, setConstructorsExpanded] = useState(false);
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [loading, setLoading] = useState(true);
   const [activeSession, setActiveSession] = useState<any>(null);
   const [qualifyingDrivers, setQualifyingDrivers] = useState<any[]>([]);
   const [qualiPhase, setQualiPhase] = useState<"Q1" | "Q2" | "Q3" | null>(null);
   const [nextSessionCountdown, setNextSessionCountdown] = useState<string | null>(null);
-  const QUALI_DEV_MODE = true;
+  const QUALI_DEV_MODE = false;
   const [activeQualiPhase, setActiveQualiPhase] = useState<string | null>(QUALI_DEV_MODE ? "Q3" : null);
   const QUALI_DEV_SESSION_KEY = 11249;
   const QUALI_DEV_MAX_LAP = 999;
@@ -258,8 +261,8 @@ export default function HomeScreen() {
 
       const lastRaceData = raceData.MRData.RaceTable.Races[0];
       setLastRace(lastRaceData);
-      setStandings(standingsData.MRData.StandingsTable.StandingsLists[0].DriverStandings.slice(0, 5));
-      setConstructorStandings(constructorsData.MRData.StandingsTable.StandingsLists[0].ConstructorStandings.slice(0, 5));
+      setStandings(standingsData.MRData.StandingsTable.StandingsLists[0].DriverStandings);
+      setConstructorStandings(constructorsData.MRData.StandingsTable.StandingsLists[0].ConstructorStandings);
 
       const allRaces = scheduleData.MRData.RaceTable.Races;
       const now = new Date();
@@ -2834,13 +2837,24 @@ export default function HomeScreen() {
 
       {lastRace && (
         <View style={{ paddingBottom: 16, marginBottom: 8 }}>
-          <Text style={[styles.cardLabel, { marginBottom: 6 }]}>Ultima gara</Text>
-          <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF", marginBottom: 10 }}>{lastRace.raceName}</Text>
-          {lastRace.Results.slice(0, 3).map((r: any, i: number) => {
+          <TouchableOpacity
+            onPress={() => setRaceExpanded(v => !v)}
+            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontFamily: 'JetBrainsMono_400Regular', fontSize: 10, color: '#555555', letterSpacing: 1.5 }}>ULTIMA GARA</Text>
+            <Text style={{ fontFamily: 'JetBrainsMono_400Regular', fontSize: 12, color: '#555555' }}>{raceExpanded ? '▲' : '▼'}</Text>
+          </TouchableOpacity>
+          <Text style={{ fontSize: 16, fontFamily: 'JetBrainsMono_700Bold', color: "#FFFFFF", marginBottom: 10 }}>{lastRace.raceName}</Text>
+          {(raceExpanded ? lastRace.Results : lastRace.Results.slice(0, 3)).map((r: any, i: number) => {
             const teamColor = HOME_TEAM_COLORS[r.Constructor.constructorId] || "#555555";
-            const gap = i === 0 ? null : r.Time?.time ?? r.status;
             const acronym = r.Driver?.code;
             const headshotUrl = homeHeadshots[acronym];
+            const isLeader = r.positionText === '1';
+            const isFinished = r.status === 'Finished';
+            const gapText = isLeader ? 'LEADER' : isFinished ? (r.Time?.time ?? r.status) : r.status;
+            const pillBg = isLeader ? '#E10600' : '#1A1A1A';
+            const pillColor = isLeader ? '#FFFFFF' : isFinished ? '#FFFFFF' : '#555555';
             return (
               <View key={i} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: "#0A0A0A" }}>
                 <Text style={{ color: "#555555", fontSize: 11, width: 20 }}>{i + 1}</Text>
@@ -2851,13 +2865,11 @@ export default function HomeScreen() {
                 )}
                 <View style={{ width: 2, height: 20, backgroundColor: teamColor, borderRadius: 1, marginRight: 10 }} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "600" }}>{r.Driver.familyName}</Text>
-                  <Text style={{ color: "#555555", fontSize: 11, marginTop: 1 }}>{r.Constructor.name}</Text>
+                  <Text style={{ color: "#FFFFFF", fontSize: 13, fontFamily: 'JetBrainsMono_400Regular' }}>{r.Driver.familyName}</Text>
+                  <Text style={{ color: "#555555", fontSize: 11, fontFamily: 'JetBrainsMono_400Regular', marginTop: 1 }}>{r.Constructor.name}</Text>
                 </View>
-                <View style={{ backgroundColor: i === 0 ? "#0D2B1A" : "#161616", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                  <Text style={{ color: i === 0 ? "#27AE60" : "#666666", fontSize: 11, fontWeight: "600" }}>
-                    {i === 0 ? "LEADER" : gap}
-                  </Text>
+                <View style={{ backgroundColor: pillBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}>
+                  <Text style={{ color: pillColor, fontSize: isLeader ? 10 : 12, fontFamily: 'JetBrainsMono_700Bold', letterSpacing: isLeader ? 1 : 0 }}>{gapText}</Text>
                 </View>
               </View>
             );
@@ -2866,8 +2878,15 @@ export default function HomeScreen() {
       )}
 
       <View style={{ marginBottom: 8 }}>
-        <Text style={[styles.cardLabel, { marginBottom: 10 }]}>Classifica piloti</Text>
-        {standings.map((s: any, i: number) => {
+        <TouchableOpacity
+          onPress={() => setDriversExpanded(v => !v)}
+          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}
+          activeOpacity={0.7}
+        >
+          <Text style={{ fontFamily: 'JetBrainsMono_400Regular', fontSize: 10, color: '#555555', letterSpacing: 1.5 }}>CLASSIFICA PILOTI</Text>
+          <Text style={{ fontFamily: 'JetBrainsMono_400Regular', fontSize: 12, color: '#555555' }}>{driversExpanded ? '▲' : '▼'}</Text>
+        </TouchableOpacity>
+        {(driversExpanded ? standings : standings.slice(0, 5)).map((s: any, i: number) => {
           const pts = parseFloat(s.points);
           const acronym = s.Driver?.code ?? s.Driver?.driverId?.slice(0, 3).toUpperCase();
           const headshotUrl = homeHeadshots[acronym];
@@ -2879,10 +2898,10 @@ export default function HomeScreen() {
               ) : (
                 <View style={{ width: 28, height: 28, borderRadius: 14, marginRight: 10, backgroundColor: "#111111" }} />
               )}
-              <Text style={{ color: "#CCCCCC", fontSize: 15, fontWeight: "500", flex: 1 }}>{s.Driver.familyName}</Text>
+              <Text style={{ color: "#CCCCCC", fontSize: 13, fontFamily: 'JetBrainsMono_400Regular', flex: 1 }}>{s.Driver.familyName}</Text>
               <View style={{ flexDirection: "row", alignItems: "baseline", gap: 2 }}>
-                <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600", fontVariant: ["tabular-nums"] }}>{pts.toLocaleString("it-IT")}</Text>
-                <Text style={{ color: "#444444", fontSize: 11 }}>pt</Text>
+                <Text style={{ color: "#FFFFFF", fontSize: 13, fontFamily: 'JetBrainsMono_700Bold', fontVariant: ["tabular-nums"] }}>{pts.toLocaleString("it-IT")}</Text>
+                <Text style={{ color: "#555555", fontSize: 11, fontFamily: 'JetBrainsMono_400Regular' }}>pt</Text>
               </View>
             </View>
           );
@@ -2890,8 +2909,15 @@ export default function HomeScreen() {
       </View>
 
       <View style={{ marginBottom: 8 }}>
-        <Text style={[styles.cardLabel, { marginBottom: 10 }]}>Classifica costruttori</Text>
-        {constructorStandings.map((s: any, i: number) => {
+        <TouchableOpacity
+          onPress={() => setConstructorsExpanded(v => !v)}
+          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}
+          activeOpacity={0.7}
+        >
+          <Text style={{ fontFamily: 'JetBrainsMono_400Regular', fontSize: 10, color: '#555555', letterSpacing: 1.5 }}>CLASSIFICA COSTRUTTORI</Text>
+          <Text style={{ fontFamily: 'JetBrainsMono_400Regular', fontSize: 12, color: '#555555' }}>{constructorsExpanded ? '▲' : '▼'}</Text>
+        </TouchableOpacity>
+        {(constructorsExpanded ? constructorStandings : constructorStandings.slice(0, 5)).map((s: any, i: number) => {
           const pts = parseFloat(s.points);
           return (
             <View key={i} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: "#0A0A0A" }}>
@@ -2901,10 +2927,10 @@ export default function HomeScreen() {
               ) : (
                 <View style={{ width: 32, height: 20, marginRight: 10 }} />
               )}
-              <Text style={{ color: "#CCCCCC", fontSize: 15, fontWeight: "500", flex: 1 }}>{s.Constructor.name}</Text>
+              <Text style={{ color: "#CCCCCC", fontSize: 13, fontFamily: 'JetBrainsMono_400Regular', flex: 1 }}>{s.Constructor.name}</Text>
               <View style={{ flexDirection: "row", alignItems: "baseline", gap: 2 }}>
-                <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600", fontVariant: ["tabular-nums"] }}>{pts.toLocaleString("it-IT")}</Text>
-                <Text style={{ color: "#444444", fontSize: 11 }}>pt</Text>
+                <Text style={{ color: "#FFFFFF", fontSize: 13, fontFamily: 'JetBrainsMono_700Bold', fontVariant: ["tabular-nums"] }}>{pts.toLocaleString("it-IT")}</Text>
+                <Text style={{ color: "#555555", fontSize: 11, fontFamily: 'JetBrainsMono_400Regular' }}>pt</Text>
               </View>
             </View>
           );
@@ -2970,22 +2996,22 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-  container: { flex: 1, backgroundColor: "#0A0A0A" },
-  content: { padding: 16, gap: 12, backgroundColor: "#0A0A0A" },
+  container: { flex: 1, backgroundColor: "#000000" },
+  content: { padding: 16, gap: 12, backgroundColor: "#000000" },
   navbar: { paddingVertical: 8, paddingTop: 8, marginBottom: 4 },
 
   countdownCard: {
     borderRadius: 16, padding: 24, alignItems: "center", gap: 4, marginBottom: 8,
   },
-  countdownLabel: { fontSize: 18, fontWeight: "700", color: "#FFFFFF" },
-  countdownCircuit: { fontSize: 13, color: "#999999", marginBottom: 16 },
+  countdownLabel: { fontSize: 16, fontFamily: 'JetBrainsMono_700Bold', color: "#FFFFFF" },
+  countdownCircuit: { fontSize: 13, fontFamily: 'JetBrainsMono_400Regular', color: "#999999", marginBottom: 16 },
   countdownRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-evenly", width: "100%", paddingHorizontal: 8, marginTop: 8 },
   countdownUnit: { alignItems: "center", flex: 1 },
-  countdownNum: { fontSize: 52, fontWeight: "300", color: "#FFFFFF", letterSpacing: -2, textAlign: "center" },
-  countdownUnitLabel: { fontSize: 9, fontWeight: "600", color: "#E10600", letterSpacing: 2, marginTop: 4, textAlign: "center" },
+  countdownNum: { fontSize: 52, fontFamily: 'JetBrainsMono_700Bold', color: "#FFFFFF", letterSpacing: -2, textAlign: "center" },
+  countdownUnitLabel: { fontSize: 9, fontFamily: 'JetBrainsMono_400Regular', color: "#555555", letterSpacing: 2, marginTop: 4, textAlign: "center" },
   countdownSep: { fontSize: 28, color: "#1A1A1A", marginBottom: 16 },
   card: { backgroundColor: "#141414", borderRadius: 12, padding: 14, gap: 8, marginBottom: 8 },
-  cardLabel: { fontSize: 10, color: "#999", textTransform: "uppercase", letterSpacing: 0.5 },
+  cardLabel: { fontSize: 10, fontFamily: 'JetBrainsMono_400Regular', color: "#555555", textTransform: "uppercase", letterSpacing: 1.5 },
   cardTitle: { fontSize: 16, fontWeight: "600", marginBottom: 4, color: "#FFFFFF" },
   podiumRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
   podiumPos: { fontSize: 12, color: "#999", width: 20 },

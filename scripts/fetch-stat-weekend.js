@@ -51,33 +51,50 @@ async function main() {
   }
   console.log(`Last winner: ${lastWinner} (${lastWinnerTeam})`);
 
-  // 4. Generate stat with Gemini Flash
-  console.log('Calling Gemini Flash...');
-  const geminiRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: `Sei un esperto di Formula 1. Genera una statistica interessante e coinvolgente in italiano (max 3 frasi) per il prossimo GP: ${raceName} sul circuito ${circuitName}. Dati disponibili: pilota più vincente = ${topWinnerName} con ${topWinnerCount} vittorie su ${total} edizioni, ultima vittoria di ${lastWinner} (${lastYear ?? 'N/A'}). Rendi il testo dinamico, non iniziare sempre con il nome del pilota, usa costruzioni narrative variegate.`
-          }]
-        }]
-      })
-    }
-  );
-  const geminiData = await geminiRes.json();
-  if (!geminiRes.ok) throw new Error(JSON.stringify(geminiData));
-  const stat = geminiData.candidates[0].content.parts[0].text.trim();
-  console.log(`Stat: ${stat.slice(0, 100)}...`);
+  // 4. Generate 3 stat variants with Gemini Flash
+  const baseData = `Dati: pilota più vincente = ${topWinnerName} con ${topWinnerCount} vittorie su ${total} edizioni, ultima vittoria di ${lastWinner} (${lastYear ?? 'N/A'}).`;
+  const prompts = [
+    `Sei un esperto di Formula 1. Genera una statistica interessante in italiano (max 3 frasi) sul prossimo GP: ${raceName} sul circuito ${circuitName}. Focus su record storici e piloti più vincenti. ${baseData} Usa costruzioni narrative variegate.`,
+    `Sei un esperto di Formula 1. Genera una curiosità coinvolgente in italiano (max 3 frasi) sul prossimo GP: ${raceName} sul circuito ${circuitName}. Focus su curiosità, aneddoti o aspetti tecnici del circuito. ${baseData} Usa costruzioni narrative variegate.`,
+    `Sei un esperto di Formula 1. Genera un commento in italiano (max 3 frasi) sul prossimo GP: ${raceName} sul circuito ${circuitName}. Focus sul contesto della stagione attuale e sui favoriti. ${baseData} Usa costruzioni narrative variegate.`,
+  ];
+
+  const geminiCall = async (text) => {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text }] }] }),
+      }
+    );
+    const data = await res.json();
+    if (!res.ok) throw new Error(JSON.stringify(data));
+    return data.candidates[0].content.parts[0].text.trim();
+  };
+
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  console.log('Calling Gemini Flash (1/3 — storia)...');
+  const stat1 = await geminiCall(prompts[0]);
+  console.log(`stat1: ${stat1.slice(0, 80)}...`);
+  await sleep(1000);
+
+  console.log('Calling Gemini Flash (2/3 — curiosità)...');
+  const stat2 = await geminiCall(prompts[1]);
+  console.log(`stat2: ${stat2.slice(0, 80)}...`);
+  await sleep(1000);
+
+  console.log('Calling Gemini Flash (3/3 — attualità)...');
+  const stat3 = await geminiCall(prompts[2]);
+  console.log(`stat3: ${stat3.slice(0, 80)}...`);
 
   // 5. Save to assets/stat-weekend.json
   const output = {
     raceName,
     circuitId,
     generatedAt: new Date().toISOString(),
-    stat,
+    stats: [stat1, stat2, stat3],
   };
   const outPath = path.join(__dirname, '..', 'assets', 'stat-weekend.json');
   fs.writeFileSync(outPath, JSON.stringify(output, null, 2));

@@ -2816,14 +2816,18 @@ export default function HomeScreen() {
         ) : null;
       })()}
 
-      {statWeekend.stat ? (
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>
-            STAT DEL WEEKEND{statWeekend.raceName ? ` · ${statWeekend.raceName}` : ""}
-          </Text>
-          <Text style={styles.statText}>{statWeekend.stat}</Text>
-        </View>
-      ) : null}
+      {(() => {
+        const statIndex = new Date().getDay() % 3;
+        const statText = (statWeekend as any).stats?.[statIndex] ?? (statWeekend as any).stat ?? '';
+        return statText ? (
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>
+              STAT DEL WEEKEND{statWeekend.raceName ? ` · ${statWeekend.raceName}` : ""}
+            </Text>
+            <Text style={styles.statText}>{statText}</Text>
+          </View>
+        ) : null;
+      })()}
 
       {lastRace && (
         <View style={{ paddingBottom: 16, marginBottom: 8 }}>

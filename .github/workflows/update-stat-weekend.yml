@@ -31,4 +31,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git add assets/stat-weekend.json
           git diff --staged --quiet || git commit -m "chore: update stat weekend auto"
+          git pull --rebase
           git push

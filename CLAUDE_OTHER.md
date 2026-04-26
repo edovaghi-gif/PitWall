@@ -142,3 +142,17 @@ All 11 in `assets/images/` (NOT in teams/ subfolder):
 
 ### Remaining redesign
 - Live Race, Circuito, H2H, Prediction
+
+## Home pre-weekend aggiornamenti (26 aprile)
+- Font: JetBrainsMono ovunque (700Bold per valori, 400Regular per label)
+- Accordion expand: `raceExpanded`, `driversExpanded`, `constructorsExpanded` state
+  - Ultima gara: slice(0,3) collapsed, tutti expanded
+  - Piloti/Costruttori: slice(0,5) collapsed, tutti expanded (no slice al fetch)
+  - Status doppiati: `isLeader` → LEADER pill rosso, `isFinished` → time gap, else → `r.status` grigio
+- `CONSTRUCTOR_NAME_MAP`: normalizza nomi Ergast (Haas F1 Team→Haas, Alpine F1 Team→Alpine, RB F1 Team→Racing Bulls, Cadillac F1 Team→Cadillac, Kick Sauber/Sauber→Audi)
+- Stat del Weekend:
+  - 3 stat generate da Gemini 2.5 Flash (GitHub Actions ogni giovedì 10:00 UTC)
+  - Script: `scripts/fetch-stat-weekend.js` → `assets/stat-weekend.json`
+  - Workflow: `.github/workflows/update-stat-weekend.yml`, secret: `GEMINI_API_KEYS`
+  - App fetch da URL raw GitHub (`cache: 'no-store'`), state `statWeekend`
+  - Rotazione: `new Date().getDay() % 3`, fallback a `statWeekend.stat`

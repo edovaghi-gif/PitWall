@@ -5,7 +5,6 @@ import { GlassView } from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { MotiView } from 'moti';
-import statWeekend from '@/assets/stat-weekend.json';
 
 const logo = require('../../assets/images/PitWall Logo.png');
 const qualiPb2025 = require('../../assets/quali-pb-2025.json');
@@ -166,6 +165,7 @@ export default function HomeScreen() {
   const [standings, setStandings] = useState<any[]>([]);
   const [nextRace, setNextRace] = useState<any>(null);
   const [constructorStandings, setConstructorStandings] = useState<any[]>([]);
+  const [statWeekend, setStatWeekend] = useState<any>(null);
   const [raceExpanded, setRaceExpanded] = useState(false);
   const [driversExpanded, setDriversExpanded] = useState(false);
   const [constructorsExpanded, setConstructorsExpanded] = useState(false);
@@ -244,6 +244,17 @@ export default function HomeScreen() {
   useEffect(() => {
     fetchData();
     fetchHomeHeadshots();
+    async function fetchStatWeekend() {
+      try {
+        const res = await fetch(
+          'https://raw.githubusercontent.com/edovaghi-gif/PitWall/main/assets/stat-weekend.json',
+          { cache: 'no-store' }
+        );
+        const data = await res.json();
+        setStatWeekend(data);
+      } catch {}
+    }
+    fetchStatWeekend();
   }, []);
 
   useEffect(() => {
@@ -2818,11 +2829,11 @@ export default function HomeScreen() {
 
       {(() => {
         const statIndex = new Date().getDay() % 3;
-        const statText = (statWeekend as any).stats?.[statIndex] ?? (statWeekend as any).stat ?? '';
+        const statText = statWeekend?.stats?.[statIndex] ?? statWeekend?.stat ?? null;
         return statText ? (
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>
-              STAT DEL WEEKEND{statWeekend.raceName ? ` · ${statWeekend.raceName}` : ""}
+              STAT DEL WEEKEND{statWeekend?.raceName ? ` · ${statWeekend.raceName}` : ""}
             </Text>
             <Text style={styles.statText}>{statText}</Text>
           </View>

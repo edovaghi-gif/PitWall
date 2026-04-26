@@ -32,3 +32,16 @@
 - Q1/Q2/Q3 from `/race_control` field `qualifying_phase` (1/2/3)
 - `SESSION STARTED`/`SESSION FINISHED` → exact timestamps per phase
 - `/intervals` not available for quali
+
+## Expand panel pilota (quali)
+- Compound: da `qualiStintsRef` (fetch `/stints` one-shot, ref: `qualiStintsRef`)
+  - `driverStints.filter(s => s.driver_number === driver.driver_number).sort desc stint_number[0]?.compound`
+  - Dot colorato: SOFT=#E10600, MEDIUM=#F5D400, HARD=#FFFFFF, INTERMEDIATE=#27AE60, WET=#1E90FF
+- `getLastTwoLaps(driverNumber, lapPhase, laps, getPhaseWindowFn, bestLapDuration)`:
+  - current = lap con `Math.abs(lap_duration - bestLapDuration) < 0.001`
+  - prev = più recente timed lap con `lap_number < current.lap_number`
+  - `isTimedLap`: tutti e 3 i settori con almeno un segmento ≠ 2048
+  - Phase window: `expandPhase = isHistoricalView ? selectedPhaseNum : driver.lap_phase`
+  - Call site: `driver.display_lap_duration ?? driver.best_lap_duration` come 5° arg
+- Tabella: header S1/S2/S3/TOT, riga PREC (box colorati), riga Δ (delta bianco)
+- VS QUALI RECORD e VS PB 2025: invariati, sotto divider

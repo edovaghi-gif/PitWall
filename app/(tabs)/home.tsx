@@ -177,15 +177,20 @@ export default function HomeScreen() {
   const [nextSessionCountdown, setNextSessionCountdown] = useState<string | null>(null);
   const QUALI_DEV_MODE = false;
   const [activeQualiPhase, setActiveQualiPhase] = useState<string | null>(QUALI_DEV_MODE ? "Q3" : null);
-  const QUALI_DEV_SESSION_KEY = 11249;
+  const QUALI_DEV_SESSION_KEY = 11276;  // Miami GP Qualifying
   const QUALI_DEV_MAX_LAP = 999;
   const FP_DEV_MODE = false;
   const FP_DEV_CIRCUIT = "Suzuka";
   const FP_DEV_YEAR = 2026;
   const FP_LIVE_DEV_MODE = false;
-  const FP_LIVE_DEV_SESSION_KEY = 11248;
+  const FP_LIVE_DEV_SESSION_KEY = 11270; // Miami FP1
   const RACE_DEV_MODE = false;
-  const RACE_DEV_SESSION_KEY = 11253;
+  const RACE_DEV_SESSION_KEY = 11280;   // Miami Race
+  const SPRINT_QUALI_DEV_SESSION_KEY = 11271;
+  const SPRINT_DEV_SESSION_KEY = 11275;
+  const FP1_MIAMI_SESSION_KEY = 11270;
+  const QUALI_MIAMI_SESSION_KEY = 11276;
+  const RACE_MIAMI_SESSION_KEY = 11280;
 
   const [fpSessions, setFpSessions] = useState<{key: number, name: string, finished: boolean}[]>([]);
   const [fpResults, setFpResults] = useState<Record<number, any[]>>({});
@@ -1178,7 +1183,7 @@ export default function HomeScreen() {
     });
     if (active && (active.session_name === "Qualifying" || active.session_name === "Sprint Qualifying")) {
       setActiveSession(active);
-    } else if (active && active.session_name === "Race") {
+    } else if (active && (active.session_name === "Race" || active.session_name === "Sprint")) {
       setActiveSession(active);
       return;
     } else if (active && active.session_name?.startsWith('Practice')) {

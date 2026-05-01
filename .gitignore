@@ -45,3 +45,4 @@ app-example
 # Claude Code
 .claude/
 .env
+captured-data/

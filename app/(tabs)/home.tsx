@@ -1,10 +1,9 @@
+import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
+import * as Haptics from 'expo-haptics';
+import { MotiView } from 'moti';
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { GlassView } from 'expo-glass-effect';
-import * as Haptics from 'expo-haptics';
-import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
-import { MotiView } from 'moti';
 
 const logo = require('../../assets/images/PitWall Logo.png');
 const qualiPb2025 = require('../../assets/quali-pb-2025.json');
@@ -161,6 +160,8 @@ const CONSTRUCTOR_NAME_MAP: Record<string, string> = {
 const displayConstructor = (name: string): string => CONSTRUCTOR_NAME_MAP[name] ?? name;
 
 export default function HomeScreen() {
+  const OPENF1_USERNAME = process.env.EXPO_PUBLIC_OPENF1_USERNAME ?? '';
+  const OPENF1_PASSWORD = process.env.EXPO_PUBLIC_OPENF1_PASSWORD ?? '';
   const [lastRace, setLastRace] = useState<any>(null);
   const [standings, setStandings] = useState<any[]>([]);
   const [nextRace, setNextRace] = useState<any>(null);
@@ -177,7 +178,7 @@ export default function HomeScreen() {
   const [nextSessionCountdown, setNextSessionCountdown] = useState<string | null>(null);
   const QUALI_DEV_MODE = false;
   const [activeQualiPhase, setActiveQualiPhase] = useState<string | null>(QUALI_DEV_MODE ? "Q3" : null);
-  const QUALI_DEV_SESSION_KEY = 11276;  // Miami GP Qualifying
+  const QUALI_DEV_SESSION_KEY = 11271;  // Miami Sprint Qualifying
   const QUALI_DEV_MAX_LAP = 999;
   const FP_DEV_MODE = false;
   const FP_DEV_CIRCUIT = "Suzuka";
@@ -185,7 +186,7 @@ export default function HomeScreen() {
   const FP_LIVE_DEV_MODE = false;
   const FP_LIVE_DEV_SESSION_KEY = 11270; // Miami FP1
   const RACE_DEV_MODE = false;
-  const RACE_DEV_SESSION_KEY = 11280;   // Miami Race
+  const RACE_DEV_SESSION_KEY = 11275;   // Miami Sprint
   const SPRINT_QUALI_DEV_SESSION_KEY = 11271;
   const SPRINT_DEV_SESSION_KEY = 11275;
   const FP1_MIAMI_SESSION_KEY = 11270;
@@ -251,8 +252,11 @@ export default function HomeScreen() {
   const arrowTranslateRef = useRef(new Animated.Value(0));
   const arrowOpacityRef = useRef(new Animated.Value(1));
   const arrowLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  const openF1TokenRef = useRef<string | null>(null);
+  const openF1TokenExpiryRef = useRef<number>(0);
 
   useEffect(() => {
+    getOpenF1Token();
     fetchData();
     fetchHomeHeadshots();
     async function fetchStatWeekend() {
@@ -692,9 +696,37 @@ export default function HomeScreen() {
     return best;
   }
 
-  async function safeFetch(url: string): Promise<any | null> {
+  async function getOpenF1Token(): Promise<string | null> {
+    const now = Date.now();
+    if (openF1TokenRef.current && now < openF1TokenExpiryRef.current - 60000) {
+      return openF1TokenRef.current;
+    }
+    try {
+      const res = await fetch('https://api.openf1.org/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `username=${encodeURIComponent(OPENF1_USERNAME)}&password=${encodeURIComponent(OPENF1_PASSWORD)}`,
+      });
+      const data = await res.json();
+      if (data.access_token) {
+        openF1TokenRef.current = data.access_token;
+        openF1TokenExpiryRef.current = now + parseInt(data.expires_in) * 1000;
+        return data.access_token;
+      }
+    } catch {}
+    return null;
+  }
+
+  async function safeFetch(url: string, options?: RequestInit): Promise<any | null> {
+    const isOpenF1 = url.includes('api.openf1.org');
+    if (isOpenF1) {
+      const token = await getOpenF1Token();
+      if (token) {
+        options = { ...options, headers: { ...(options?.headers ?? {}), 'Authorization': `Bearer ${token}` } };
+      }
+    }
     const attempt = async () => {
-      const res = await fetch(url);
+      const res = await fetch(url, options);
       const text = await res.text();
       if (!text.startsWith('[') && !text.startsWith('{')) return null;
       const data = JSON.parse(text);
@@ -1130,8 +1162,7 @@ export default function HomeScreen() {
     };
     const circuitShortName = circuitMap[raceName];
     if (!circuitShortName) return null;
-    const res = await fetch(`https://api.openf1.org/v1/sessions?year=${year}&circuit_short_name=${encodeURIComponent(circuitShortName)}`);
-    const data = await res.json();
+    const data = await safeFetch(`https://api.openf1.org/v1/sessions?year=${year}&circuit_short_name=${encodeURIComponent(circuitShortName)}`);
     if (!Array.isArray(data)) return null;
     return data;
   }

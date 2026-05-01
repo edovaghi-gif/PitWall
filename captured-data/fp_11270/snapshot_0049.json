@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-05-01T16:27:07.656Z",
+  "snapshot_index": 49,
+  "session_key": 11270,
+  "laps": {
+    "detail": "Live F1 session in progress. Global API access (including past sessions) is restricted to authenticated users until the session ends. Get an API key here: https://buy.stripe.com/eVqcN41BPekP0iIalBcEw02"
+  },
+  "stints": {
+    "detail": "Live F1 session in progress. Global API access (including past sessions) is restricted to authenticated users until the session ends. Get an API key here: https://buy.stripe.com/eVqcN41BPekP0iIalBcEw02"
+  },
+  "race_control": {
+    "detail": "Live F1 session in progress. Global API access (including past sessions) is restricted to authenticated users until the session ends. Get an API key here: https://buy.stripe.com/eVqcN41BPekP0iIalBcEw02"
+  },
+  "weather": {
+    "detail": "Live F1 session in progress. Global API access (including past sessions) is restricted to authenticated users until the session ends. Get an API key here: https://buy.stripe.com/eVqcN41BPekP0iIalBcEw02"
+  },
+  "drivers": {
+    "detail": "Live F1 session in progress. Global API access (including past sessions) is restricted to authenticated users until the session ends. Get an API key here: https://buy.stripe.com/eVqcN41BPekP0iIalBcEw02"
+  }
+}

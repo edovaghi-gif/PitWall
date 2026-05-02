@@ -167,6 +167,7 @@ export default function HomeScreen() {
   const [nextRace, setNextRace] = useState<any>(null);
   const [constructorStandings, setConstructorStandings] = useState<any[]>([]);
   const [statWeekend, setStatWeekend] = useState<any>(null);
+  const [lastFinishedQuali, setLastFinishedQuali] = useState<{session_name: string, session_key: number} | null>(null);
   const [raceExpanded, setRaceExpanded] = useState(false);
   const [driversExpanded, setDriversExpanded] = useState(false);
   const [constructorsExpanded, setConstructorsExpanded] = useState(false);
@@ -174,11 +175,12 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [activeSession, setActiveSession] = useState<any>(null);
   const [qualifyingDrivers, setQualifyingDrivers] = useState<any[]>([]);
+  const [frozenPhaseData, setFrozenPhaseData] = useState<Record<number, any[]>>({});
   const [qualiPhase, setQualiPhase] = useState<"Q1" | "Q2" | "Q3" | null>(null);
   const [nextSessionCountdown, setNextSessionCountdown] = useState<string | null>(null);
-  const QUALI_DEV_MODE = false;
+  const QUALI_DEV_MODE = true;
   const [activeQualiPhase, setActiveQualiPhase] = useState<string | null>(QUALI_DEV_MODE ? "Q3" : null);
-  const QUALI_DEV_SESSION_KEY = 11271;  // Miami Sprint Qualifying
+  const QUALI_DEV_SESSION_KEY = 11276;  // Miami GP Qualifying
   const QUALI_DEV_MAX_LAP = 999;
   const FP_DEV_MODE = false;
   const FP_DEV_CIRCUIT = "Suzuka";
@@ -388,12 +390,10 @@ export default function HomeScreen() {
 
   async function fetchHomeHeadshots() {
     try {
-      const sessRes = await fetch('https://api.openf1.org/v1/sessions?year=2026&session_type=Race');
-      const sessData = await sessRes.json();
+      const sessData = await safeFetch('https://api.openf1.org/v1/sessions?year=2026&session_type=Race');
       if (!Array.isArray(sessData) || sessData.length === 0) return;
       const sessionKey = sessData[sessData.length - 1].session_key;
-      const drvRes = await fetch(`https://api.openf1.org/v1/drivers?session_key=${sessionKey}`);
-      const drvData = await drvRes.json();
+      const drvData = await safeFetch(`https://api.openf1.org/v1/drivers?session_key=${sessionKey}`);
       if (!Array.isArray(drvData)) return;
       const map: Record<string, string> = {};
       for (const d of drvData) {
@@ -513,8 +513,7 @@ export default function HomeScreen() {
     const year = FP_DEV_MODE ? FP_DEV_YEAR : new Date(nextRace.date).getFullYear();
     if (!circuitShortName) return;
 
-    const sessionsRes = await fetch(`https://api.openf1.org/v1/sessions?year=${year}&circuit_short_name=${encodeURIComponent(circuitShortName)}`);
-    const sessionsData = await sessionsRes.json();
+    const sessionsData = await safeFetch(`https://api.openf1.org/v1/sessions?year=${year}&circuit_short_name=${encodeURIComponent(circuitShortName)}`);
     if (!Array.isArray(sessionsData)) return;
     const fpSessionList = sessionsData
       .filter((s: any) => s.session_name?.startsWith('Practice'))
@@ -526,19 +525,15 @@ export default function HomeScreen() {
     const results: Record<number, any[]> = {};
     const updatedSessions = [];
     for (const session of fpSessionList) {
-      const rcRes = await fetch(`https://api.openf1.org/v1/race_control?session_key=${session.key}`);
-      const rcData = await rcRes.json();
+      const rcData = await safeFetch(`https://api.openf1.org/v1/race_control?session_key=${session.key}`);
       const finished = Array.isArray(rcData) && rcData.some((e: any) => e.message === 'SESSION FINISHED');
 
       if (finished) {
-        const [lapsRes, driversRes] = await Promise.all([
-          fetch(`https://api.openf1.org/v1/laps?session_key=${session.key}`),
-          fetch(`https://api.openf1.org/v1/drivers?session_key=${session.key}`)
+        const [lapsData, driversData] = await Promise.all([
+          safeFetch(`https://api.openf1.org/v1/laps?session_key=${session.key}`),
+          safeFetch(`https://api.openf1.org/v1/drivers?session_key=${session.key}`)
         ]);
-        const lapsData = await lapsRes.json();
-        const driversData = await driversRes.json();
-        const stintsRes = await fetch(`https://api.openf1.org/v1/stints?session_key=${session.key}`);
-        const stintsData = await stintsRes.json();
+        const stintsData = await safeFetch(`https://api.openf1.org/v1/stints?session_key=${session.key}`);
         const stintsByDriver: Record<number, string | null> = {};
         const stintNumByDriver: Record<number, number> = {};
         if (Array.isArray(stintsData)) {
@@ -654,9 +649,9 @@ export default function HomeScreen() {
 
   function getSectorColor(segments: number[] | null): string {
     if (!segments || segments.length === 0) return "#2A2A2A";
-    if (segments.includes(2064)) return "#9B59B6";
-    if (segments.includes(2051)) return "#27AE60";
-    if (segments.includes(2049)) return "#F39C12";
+    if (segments.includes(2051)) return "#9B59B6";
+    if (segments.includes(2049)) return "#27AE60";
+    if (segments.includes(2048)) return "#F39C12";
     return "#2A2A2A";
   }
 
@@ -669,11 +664,29 @@ export default function HomeScreen() {
 
   function getPhaseWindow(phaseNum: number): { start: Date | null; end: Date | null } {
     const rcData = raceControlRef.current;
-    const startEvent = rcData.find((e: any) => Number(e.qualifying_phase) === phaseNum && e.message?.includes("SESSION STARTED"));
-    const endEvent = rcData.find((e: any) => Number(e.qualifying_phase) === phaseNum && e.message?.includes("SESSION FINISHED"));
+    let startEvent: any;
+    let endEvent: any;
+    if (phaseNum === 1) {
+      const allStarted = rcData
+        .filter((e: any) => e.message?.includes('SESSION STARTED') && (e.qualifying_phase === 1 || e.qualifying_phase === null))
+        .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      const allFinished = rcData
+        .filter((e: any) => e.message?.includes('SESSION FINISHED') && (e.qualifying_phase === 1 || e.qualifying_phase === null))
+        .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      startEvent = allStarted[0];
+      endEvent = allFinished[0];
+    } else {
+      startEvent = rcData.find((e: any) => Number(e.qualifying_phase) === phaseNum && e.message?.includes("SESSION STARTED"));
+      endEvent = rcData.find((e: any) => Number(e.qualifying_phase) === phaseNum && e.message?.includes("SESSION FINISHED"));
+    }
+    let endDate: Date | null = endEvent?.date ? new Date(endEvent.date) : null;
+    if (!endDate && phaseNum < 3) {
+      const nextStartEvent = rcData.find((e: any) => Number(e.qualifying_phase) === phaseNum + 1 && e.message?.includes("SESSION STARTED"));
+      endDate = nextStartEvent?.date ? new Date(nextStartEvent.date) : null;
+    }
     return {
       start: startEvent?.date ? new Date(startEvent.date) : null,
-      end: endEvent?.date ? new Date(endEvent.date) : null,
+      end: endDate,
     };
   }
 
@@ -698,7 +711,7 @@ export default function HomeScreen() {
 
   async function getOpenF1Token(): Promise<string | null> {
     const now = Date.now();
-    if (openF1TokenRef.current && now < openF1TokenExpiryRef.current - 60000) {
+    if (openF1TokenRef.current && openF1TokenExpiryRef.current > 0 && now < openF1TokenExpiryRef.current - 60000) {
       return openF1TokenRef.current;
     }
     try {
@@ -1207,13 +1220,24 @@ export default function HomeScreen() {
     const sessions = await getCurrentSessionInfo(nextRace.raceName, year);
     if (!sessions) return;
     const now = new Date();
-    const active = sessions.find((s: any) => {
-      const start = new Date(s.date_start);
-      const end = new Date(s.date_end);
-      return now >= start && now <= end;
-    });
-    if (active && (active.session_name === "Qualifying" || active.session_name === "Sprint Qualifying")) {
-      setActiveSession(active);
+    const isActiveWindow = (s: any) =>
+      now.getTime() >= new Date(s.date_start).getTime() &&
+      new Date(s.date_end).getTime() + 600000 > now.getTime();
+    const active = sessions.find((s: any) => isActiveWindow(s));
+    const activeQualifying = (() => {
+      const candidates = sessions.filter((s: any) =>
+        (s.session_name === "Qualifying" || s.session_name === "Sprint Qualifying") &&
+        now.getTime() >= new Date(s.date_start).getTime() &&
+        new Date(s.date_end).getTime() + 1800000 > now.getTime()
+      );
+      if (candidates.length === 0) return null;
+      return candidates.reduce((best: any, s: any) =>
+        new Date(s.date_start).getTime() > new Date(best.date_start).getTime() ? s : best
+      );
+    })();
+    if (activeQualifying) {
+      setActiveSession(activeQualifying);
+      setLastFinishedQuali({ session_name: activeQualifying.session_name, session_key: activeQualifying.session_key });
     } else if (active && (active.session_name === "Race" || active.session_name === "Sprint")) {
       setActiveSession(active);
       return;
@@ -1236,8 +1260,7 @@ export default function HomeScreen() {
   }
 
   async function fetchRaceControl(sessionKey: number) {
-    const res = await fetch(`https://api.openf1.org/v1/race_control?session_key=${sessionKey}`);
-    const data = await res.json();
+    const data = await safeFetch(`https://api.openf1.org/v1/race_control?session_key=${sessionKey}`);
     if (!Array.isArray(data)) return;
     raceControlRef.current = data;
 
@@ -1303,7 +1326,6 @@ export default function HomeScreen() {
   async function fetchQualifyingStints(sessionKey: number) {
     try {
       const data = await safeFetch(`https://api.openf1.org/v1/stints?session_key=${sessionKey}`);
-      console.log('[STINTS]', sessionKey, Array.isArray(data) ? data.length : data);
       if (Array.isArray(data)) qualiStintsRef.current = data;
     } catch (e) {
       console.log('[STINTS ERROR]', e);
@@ -1312,16 +1334,17 @@ export default function HomeScreen() {
 
   async function fetchQualifyingData() {
     if (!activeSession) return;
+    if (activeSession.date_end) {
+      const expired = new Date(activeSession.date_end).getTime() + 1800000 < Date.now();
+      if (expired) { setActiveSession(null); return; }
+    }
     const sessionKey = activeSession.session_key;
 
-    const driversRes = await fetch(`https://api.openf1.org/v1/drivers?session_key=${sessionKey}`);
-    const driversData = await driversRes.json();
+    const driversData = await safeFetch(`https://api.openf1.org/v1/drivers?session_key=${sessionKey}`);
     if (!Array.isArray(driversData)) return;
-    const lapsRes = await fetch(`https://api.openf1.org/v1/laps?session_key=${sessionKey}`);
-    const lapsData = await lapsRes.json();
+    const lapsData = await safeFetch(`https://api.openf1.org/v1/laps?session_key=${sessionKey}`);
     if (!Array.isArray(lapsData)) return;
     lapsRef.current = lapsData;
-
     const effectivePhase = devQualiPhase.current ?? qualiPhase;
     setActiveQualiPhase(effectivePhase);
 
@@ -1380,6 +1403,18 @@ export default function HomeScreen() {
             if (best) bestPhase = p;
           }
         }
+      } else {
+        // No race_control data yet — use most recent valid lap after session date_start
+        const sessionStart = activeSession?.date_start ? new Date(activeSession.date_start) : null;
+        let mostRecent: any = null;
+        for (const lap of lapsRef.current) {
+          if (lap.driver_number !== num) continue;
+          if (lap.is_pit_out_lap) continue;
+          if (!lap.lap_duration || lap.lap_duration >= 200) continue;
+          if (sessionStart && lap.date_start && new Date(lap.date_start) < sessionStart) continue;
+          if (!mostRecent || lap.lap_number > mostRecent.lap_number) mostRecent = lap;
+        }
+        if (mostRecent) { best = mostRecent; bestPhase = 1; }
       }
       if (best) {
         bestLaps[num] = best;
@@ -1425,6 +1460,36 @@ export default function HomeScreen() {
     });
 
     setQualifyingDrivers(sorted);
+
+    // Freeze finished phases
+    const rcData = raceControlRef.current;
+    for (const phaseNum of [1, 2, 3]) {
+      const phaseFinished = rcData.some((e: any) =>
+        Number(e.qualifying_phase) === phaseNum && e.message?.includes('SESSION FINISHED')
+      );
+      if (phaseFinished) {
+        const phaseDrivers = sorted.map((d: any) => {
+          const participated = (d.lap_phase ?? 0) >= phaseNum;
+          const phaseLap = participated ? getBestLapInPhase(d.driver_number, phaseNum, true) : null;
+          return {
+            ...d,
+            display_lap_duration: participated ? (phaseLap?.lap_duration ?? null) : null,
+            participated_in_phase: participated,
+          };
+        }).sort((a: any, b: any) => {
+          if (a.participated_in_phase && !b.participated_in_phase) return -1;
+          if (!a.participated_in_phase && b.participated_in_phase) return 1;
+          if (!a.display_lap_duration && !b.display_lap_duration) return 0;
+          if (!a.display_lap_duration) return 1;
+          if (!b.display_lap_duration) return -1;
+          return a.display_lap_duration - b.display_lap_duration;
+        });
+        setFrozenPhaseData(prev => {
+          if (prev[phaseNum]) return prev;
+          return { ...prev, [phaseNum]: phaseDrivers };
+        });
+      }
+    }
   }
 
   useEffect(() => {
@@ -1468,8 +1533,7 @@ export default function HomeScreen() {
     dnfRef.current = new Set();
     (async () => {
       try {
-        const res = await fetch(`https://api.openf1.org/v1/laps?session_key=${sessionKey}&lap_number=${totalLaps}`);
-        const data = await res.json();
+        const data = await safeFetch(`https://api.openf1.org/v1/laps?session_key=${sessionKey}&lap_number=${totalLaps}`);
         if (Array.isArray(data) && data.length > 0) {
           dnfRef.current = new Set(data.map((l: any) => l.driver_number));
         }
@@ -2704,22 +2768,42 @@ export default function HomeScreen() {
 
             let displayedDrivers: any[];
             if (isHistoricalView) {
-              displayedDrivers = qualifyingDrivers.map((d: any) => {
-                const participatedInPhase = (d.lap_phase ?? 0) >= selectedPhaseNum;
-                const phaseLap = participatedInPhase ? getBestLapInPhase(d.driver_number, selectedPhaseNum, true) : null;
-                return {
-                  ...d,
-                  display_lap_duration: participatedInPhase ? (phaseLap?.lap_duration ?? null) : d.best_lap_duration,
-                  participated_in_phase: participatedInPhase,
-                };
-              }).sort((a: any, b: any) => {
-                if (a.participated_in_phase && !b.participated_in_phase) return -1;
-                if (!a.participated_in_phase && b.participated_in_phase) return 1;
-                if (!a.display_lap_duration && !b.display_lap_duration) return 0;
-                if (!a.display_lap_duration) return 1;
-                if (!b.display_lap_duration) return -1;
-                return a.display_lap_duration - b.display_lap_duration;
-              });
+              if (frozenPhaseData[selectedPhaseNum]) {
+                displayedDrivers = frozenPhaseData[selectedPhaseNum];
+              } else {
+                const window = getPhaseWindow(selectedPhaseNum);
+                if (!window.start) {
+                  // future phase — no data yet
+                  displayedDrivers = qualifyingDrivers.map((d: any) => ({
+                    ...d,
+                    display_lap_duration: null,
+                    participated_in_phase: false,
+                  }));
+                } else {
+                  displayedDrivers = qualifyingDrivers.map((d: any) => {
+                    const participatedInPhase = (d.lap_phase ?? 0) >= selectedPhaseNum;
+                    const phaseLap = participatedInPhase ? getBestLapInPhase(d.driver_number, selectedPhaseNum, true) : null;
+                    return {
+                      ...d,
+                      display_lap_duration: participatedInPhase ? (phaseLap?.lap_duration ?? null) : null,
+                      participated_in_phase: participatedInPhase,
+                      sector1: phaseLap?.duration_sector_1 ?? null,
+                      sector2: phaseLap?.duration_sector_2 ?? null,
+                      sector3: phaseLap?.duration_sector_3 ?? null,
+                      sector1_color: getSectorColor(phaseLap?.segments_sector_1 ?? null),
+                      sector2_color: getSectorColor(phaseLap?.segments_sector_2 ?? null),
+                      sector3_color: getSectorColor(phaseLap?.segments_sector_3 ?? null),
+                    };
+                  }).sort((a: any, b: any) => {
+                    if (a.participated_in_phase && !b.participated_in_phase) return -1;
+                    if (!a.participated_in_phase && b.participated_in_phase) return 1;
+                    if (!a.display_lap_duration && !b.display_lap_duration) return 0;
+                    if (!a.display_lap_duration) return 1;
+                    if (!b.display_lap_duration) return -1;
+                    return a.display_lap_duration - b.display_lap_duration;
+                  });
+                }
+              }
             } else {
               displayedDrivers = qualifyingDrivers.map((d: any) => ({
                 ...d,
@@ -2729,6 +2813,41 @@ export default function HomeScreen() {
             }
 
             const leaderTime = displayedDrivers[0]?.display_lap_duration;
+
+            if (isHistoricalView) {
+              const phaseBestLaps = new Map<number, any>();
+              for (const driver of qualifyingDrivers) {
+                const lap = getBestLapInPhase(driver.driver_number, selectedPhaseNum, true);
+                if (lap) phaseBestLaps.set(driver.driver_number, lap);
+              }
+              const vals = (key: 'duration_sector_1' | 'duration_sector_2' | 'duration_sector_3') =>
+                [...phaseBestLaps.values()].map((l: any) => l[key]).filter((v: any) => v != null && !isNaN(v)) as number[];
+              const s1vals = vals('duration_sector_1');
+              const s2vals = vals('duration_sector_2');
+              const s3vals = vals('duration_sector_3');
+              const bestS1 = s1vals.length ? Math.min(...s1vals) : null;
+              const bestS2 = s2vals.length ? Math.min(...s2vals) : null;
+              const bestS3 = s3vals.length ? Math.min(...s3vals) : null;
+              const histSectorColor = (segments: number[] | null, duration: number | null, phaseBest: number | null): string => {
+                const base = getSectorColor(segments);
+                if (base === '#9B59B6') {
+                  return (duration != null && phaseBest != null && Math.abs(duration - phaseBest) < 0.001) ? '#9B59B6' : '#27AE60';
+                }
+                return base;
+              };
+              displayedDrivers = displayedDrivers.map((d: any) => {
+                const lap = phaseBestLaps.get(d.driver_number) ?? null;
+                return {
+                  ...d,
+                  sector1: lap?.duration_sector_1 ?? null,
+                  sector2: lap?.duration_sector_2 ?? null,
+                  sector3: lap?.duration_sector_3 ?? null,
+                  sector1_color: histSectorColor(lap?.segments_sector_1 ?? null, lap?.duration_sector_1 ?? null, bestS1),
+                  sector2_color: histSectorColor(lap?.segments_sector_2 ?? null, lap?.duration_sector_2 ?? null, bestS2),
+                  sector3_color: histSectorColor(lap?.segments_sector_3 ?? null, lap?.duration_sector_3 ?? null, bestS3),
+                };
+              });
+            }
 
             return displayedDrivers.map((driver, index) => {
               const isEliminated = isHistoricalView
@@ -3178,6 +3297,43 @@ export default function HomeScreen() {
           </TouchableOpacity>
         ) : null;
       })()}
+
+      {lastFinishedQuali && (
+        <TouchableOpacity
+          onPress={() => {
+            setActiveSession({ ...lastFinishedQuali, date_start: '', date_end: '' });
+          }}
+          style={{
+            backgroundColor: '#141414',
+            borderRadius: 8,
+            padding: 16,
+            marginHorizontal: 16,
+            marginBottom: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderLeftWidth: 2,
+            borderLeftColor: '#E10600',
+          }}
+        >
+          <View>
+            <Text style={{ color: '#999999', fontSize: 10, fontFamily: 'JetBrainsMono_400Regular', letterSpacing: 1 }}>
+              {lastFinishedQuali.session_name.toUpperCase()}
+            </Text>
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontFamily: 'JetBrainsMono_700Bold', marginTop: 2 }}>
+              {lastFinishedQuali.session_name === 'Sprint Qualifying' ? 'Sprint Qualifying' : 'Qualifiche'}
+            </Text>
+            <Text style={{ color: '#999999', fontSize: 11, fontFamily: 'JetBrainsMono_400Regular', marginTop: 2 }}>
+              {lastFinishedQuali.session_name} terminata
+            </Text>
+          </View>
+          <View style={{ backgroundColor: '#E10600', borderRadius: 4, paddingHorizontal: 10, paddingVertical: 4 }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 10, fontFamily: 'JetBrainsMono_700Bold', letterSpacing: 1 }}>
+              RISULTATI
+            </Text>
+          </View>
+        </TouchableOpacity>
+      )}
 
       {(() => {
         const statIndex = new Date().getDay() % 3;

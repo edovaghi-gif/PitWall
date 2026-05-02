@@ -115,10 +115,10 @@ OpenF1 fornisce dati live e storici dal 2023. Tutti gli endpoint supportano filt
 ```
 
 **Segmenti sector (mini-settori):**
-- `2048` = grigio (nessun dato)
-- `2049` = giallo (non migliorato)
-- `2051` = verde (personal best)
-- `2064` = viola (best assoluto sessione)
+- `2048` = giallo (yellow sector)
+- `2049` = verde (green sector / personal best)
+- `2051` = viola (purple sector / best assoluto sessione)
+- `2064` = pitlane (grigio)
 - `0` = nessun dato (out-lap o dato mancante)
 
 ✅ Già usati: `lap_duration`, `is_pit_out_lap`, `date_start`, `duration_sector_*`, `segments_sector_*`

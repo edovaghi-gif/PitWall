@@ -351,7 +351,7 @@ pos  ▌  ACR  [S1][S2][S3]  M:SS.mmm  +X.XXX
 - `▌`: barra colorata team (2px), grigio #444444 se eliminato
 - `ACR`: name_acronym, bianco se attivo, grigio #555555 se eliminato
 - `[S1][S2][S3]`: box 62×20px, colori settore se attivo, #1A1A1A se eliminato
-  - Colori settore: viola #9B59B6 (2064), verde #27AE60 (2051), giallo #F39C12 (2049), grigio #2A2A2A (no tempo)
+  - Colori settore: viola #9B59B6 (2051), verde #27AE60 (2049), giallo #F39C12 (2048), grigio #2A2A2A (2064=pitlane, 0=no data)
   - Testo settore: nero #000000 su sfondo colorato, grigio #555555 se eliminato
 - Tempo: `formatLapTime(best_lap_duration)` → "M:SS.mmm", --:--.--- se null
 - Gap: sempre relativo a `leaderTime` (qualifyingDrivers[0].best_lap_duration)

@@ -81,7 +81,7 @@ Dynamic fetch only. No hardcode via API.
 - `interval` lapped = string `"LAP"` (not numeric)
 - `raceControlRef.current` must populate in `fetchRaceData` (not only `fetchRaceControl`)
 - Baku + Yas Marina: no lap data in OpenF1 (archive gaps)
-- Laps segments: 2048=grey, 2049=yellow, 2051=green, 2064=purple
+- Laps segments: 0=no data, 2048=yellow, 2049=green, 2051=purple, 2064=pitlane (grey)
 - ALB Giappone: 5 real pits (Williams test) — correct data
 
 ---
